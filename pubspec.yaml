@@ -1,0 +1,31 @@
+name: do_an
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^13.0.1
+  url_launcher: ^6.1.10
+  flutter_tts: ^4.2.2   # Để đọc văn bản tiếng Việt/Anh (Đã xóa dòng lặp)
+  shared_preferences: ^2.5.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Khai báo các thư mục tài nguyên (Requirement 4 & 5)
+  assets:
+    #- assets/audio/  # Chứa file thuyết minh thu sẵn .mp3
+    - assets/images/ # Chứa ảnh các quán ốc tại Vĩnh Khánh 

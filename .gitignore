@@ -399,3 +399,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Thêm dòng này để chặn các file nặng gây lỗi
+/build/
+/.dart_tool/
+/.packages
