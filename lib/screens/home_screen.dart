@@ -5,8 +5,7 @@ import '../models/poi_model.dart';
 import 'map_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  final VoidCallback onLogout;
-  const MainScreen({super.key, required this.onLogout});
+  const MainScreen({super.key});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -14,16 +13,17 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+
+  // Giữ trạng thái bản đồ để không phải load lại tốn RAM 8GB
   late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
-    // IndexedStack giúp giữ trạng thái bản đồ, cực kỳ tiết kiệm RAM 8GB
     _pages = [
       const HomeScreen(),
       const MapScreen(),
-      ProfilePage(onLogout: widget.onLogout),
+      const Center(child: Text("Profile Page")), 
     ];
   }
 
@@ -41,11 +41,21 @@ class _MainScreenState extends State<MainScreen> {
             currentIndex: _currentIndex,
             onTap: (index) => setState(() => _currentIndex = index),
             selectedItemColor: Colors.orange,
+            unselectedItemColor: Colors.grey,
             type: BottomNavigationBarType.fixed,
             items: [
-              BottomNavigationBarItem(icon: const Icon(Icons.home_rounded), label: LanguageService.t('home')),
-              BottomNavigationBarItem(icon: const Icon(Icons.map_rounded), label: LanguageService.t('map')),
-              BottomNavigationBarItem(icon: const Icon(Icons.person_rounded), label: LanguageService.t('profile')),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.home_rounded), 
+                label: LanguageService.t('home')
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.map_rounded), 
+                label: LanguageService.t('map')
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.person_rounded), 
+                label: LanguageService.t('profile')
+              ),
             ],
           ),
         );
@@ -66,6 +76,7 @@ class HomeScreen extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
+          
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,6 +89,7 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
+
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(
@@ -87,51 +99,68 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
+          
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
     );
   }
 
-  // 1. Thanh tiêu đề Sliver
   Widget _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 120, pinned: true, backgroundColor: Colors.white, elevation: 0,
+      expandedHeight: 120,
+      floating: true,
+      pinned: true,
+      backgroundColor: Colors.white,
+      elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 15),
         title: Text(
           "${LanguageService.t('welcome')} Gastronome! 👋",
-          style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.black, 
+            fontSize: 18, 
+            fontWeight: FontWeight.bold
+          ),
         ),
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.translate, color: Colors.orange),
-          onPressed: () => _showLanguageDialog(context),
-        )
+        Padding(
+          padding: const EdgeInsets.only(right: 10),
+          child: IconButton(
+            icon: const Icon(Icons.translate, color: Colors.orange),
+            onPressed: () => _showLanguageDialog(context),
+          ),
+        ),
       ],
     );
   }
 
-  // 2. Tiêu đề các mục
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-      child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      child: Text(
+        title, 
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
+      ),
     );
   }
 
-  // 3. Danh sách ngang: ĐÃ SỬA LỖI DÍNH CHỮ
   Widget _buildHorizontalList(List<POI> pois) {
     return SizedBox(
-      height: 200, 
+      height: 200,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.only(left: 20),
         itemCount: pois.length,
         itemBuilder: (context, index) {
           final poi = pois[index];
+          final String name = LanguageService.currentLocale.value == 'vi' 
+              ? poi.name 
+              : poi.nameEn;
+
           return Container(
-            width: 160, 
+            width: 160,
             margin: const EdgeInsets.only(right: 15),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,12 +176,9 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  LanguageService.currentLocale.value == 'vi' ? poi.name : poi.nameEn,
-                  maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+                const SizedBox(height: 10),
+                Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, 
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               ],
             ),
           );
@@ -161,101 +187,97 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // 4. Danh mục món ăn: ĐÃ SỬA LỖI DEPRECATED
   Widget _buildCategoryGrid() {
+    final categories = [
+      {'name': 'all', 'icon': Icons.restaurant_menu},
+      {'name': 'snails', 'icon': Icons.waves},
+      {'name': 'grill', 'icon': Icons.local_fire_department},
+      {'name': 'drinks', 'icon': Icons.local_bar},
+    ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Wrap(
         spacing: 12,
-        children: [
-          ActionChip(
-            avatar: const Icon(Icons.waves, size: 16, color: Colors.orange),
-            label: Text(LanguageService.t('snails')),
-            backgroundColor: Colors.orange.withValues(alpha: 0.1), 
-            side: BorderSide(color: Colors.orange.withValues(alpha: 0.2)),
-            onPressed: () {},
-          ),
-          // Bạn có thể thêm các ActionChip khác ở đây cho 'grill', 'drinks'...
-        ],
+        runSpacing: 10,
+        children: categories.map((cat) => ActionChip(
+          elevation: 0,
+          pressElevation: 4,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          avatar: Icon(cat['icon'] as IconData, size: 18, color: Colors.orange),
+          label: Text(LanguageService.t(cat['name'] as String)),
+          // SỬA LỖI DEPRECATED TẠI ĐÂY:
+          backgroundColor: Colors.orange.withValues(alpha: 0.05),
+          side: BorderSide(color: Colors.orange.withValues(alpha: 0.2)),
+          onPressed: () {},
+        )).toList(),
       ),
     );
   }
 
-  // 5. Danh sách dọc: Sử dụng Card để giao diện chuyên nghiệp hơn
   Widget _buildVerticalItem(POI poi) {
     final String name = LanguageService.currentLocale.value == 'vi' ? poi.name : poi.nameEn;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.1))
+      ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(10),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(10), 
           child: Image.asset(
             'assets/images/${poi.imageAsset}', 
-            width: 55, height: 55, fit: BoxFit.cover,
-            errorBuilder: (_,__,___) => const Icon(Icons.restaurant)
+            width: 60, height: 60, fit: BoxFit.cover,
+            errorBuilder: (_,__,___) => const Icon(Icons.image, size: 50),
           )
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: const Text("4.8 ⭐ • Vĩnh Khánh, Q4"),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Row(
+            children: [
+              const Icon(Icons.star, color: Colors.amber, size: 16),
+              const Text(" 4.8", style: TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(width: 10),
+              Text("• District 4", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+            ],
+          ),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+        onTap: () {},
       ),
     );
   }
 
-  // 6. Dialog đổi ngôn ngữ
   void _showLanguageDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(LanguageService.t('language_choice')),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(LanguageService.t('language_choice'), style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.language, color: Colors.blue),
-              title: const Text("Tiếng Việt"), 
-              onTap: () { LanguageService.changeLanguage('vi'); Navigator.pop(context); }
-            ),
-            ListTile(
-              leading: const Icon(Icons.language, color: Colors.red),
-              title: const Text("English"), 
-              onTap: () { LanguageService.changeLanguage('en'); Navigator.pop(context); }
-            ),
+            _buildLangOption(context, "Tiếng Việt", 'vi', Colors.blue),
+            const Divider(),
+            _buildLangOption(context, "English", 'en', Colors.red),
           ],
         ),
       ),
     );
   }
-}
 
-class ProfilePage extends StatelessWidget {
-  final VoidCallback onLogout;
-  const ProfilePage({super.key, required this.onLogout});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.account_circle, size: 100, color: Colors.grey),
-          const SizedBox(height: 20),
-          Text(LanguageService.t('profile'), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 40),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-            ),
-            onPressed: onLogout,
-            icon: const Icon(Icons.logout),
-            label: Text(LanguageService.t('logout')),
-          ),
-        ],
-      ),
+  Widget _buildLangOption(BuildContext context, String title, String code, Color color) {
+    return ListTile(
+      leading: Icon(Icons.language, color: color),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      onTap: () { 
+        LanguageService.changeLanguage(code); 
+        Navigator.pop(context); 
+      },
     );
   }
 }
