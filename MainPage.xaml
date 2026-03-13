@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DoAnCSharp.MainPage"
+             BackgroundColor="White">
+
+    <Grid RowDefinitions="Auto, *, Auto">
+        <!-- Header (SliverAppBar tương ứng) -->
+        <HorizontalStackLayout Grid.Row="0" Padding="20,10" Spacing="10" VerticalOptions="Center">
+            <Label Text="Vĩnh Khánh Food Tour 👋"
+                   FontSize="20" FontAttributes="Bold" VerticalOptions="Center"/>
+            <Button Text="🌐" BackgroundColor="Transparent" Clicked="OnLanguageClicked" HorizontalOptions="End"/>
+        </HorizontalStackLayout>
+
+        <!-- Body (CustomScrollView tương ứng) -->
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20" Spacing="15">
+                <Label Text="Gợi ý cho bạn" FontSize="18" FontAttributes="Bold" />
+
+                <!-- Horizontal List tương ứng -->
+                <CollectionView ItemsSource="{Binding RecommendedPois}" HeightRequest="200">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="15"/>
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <VerticalStackLayout WidthRequest="160">
+                                <Frame CornerRadius="15" Padding="0" IsClippedToBounds="True" HeightRequest="120">
+                                    <Image Source="{Binding ImageAsset}" Aspect="AspectFill" />
+                                </Frame>
+                                <Label Text="{Binding Name}" FontAttributes="Bold" LineBreakMode="TailTruncation" MaxLines="2" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label Text="Phổ biến" FontSize="18" FontAttributes="Bold" />
+
+                <!-- Vertical List tương ứng -->
+                <CollectionView ItemsSource="{Binding AllPois}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame Margin="0,0,0,10" CornerRadius="10" Padding="10">
+                                <HorizontalStackLayout Spacing="10">
+                                    <Image Source="{Binding ImageAsset}" WidthRequest="55" HeightRequest="55" Aspect="AspectFill"/>
+                                    <VerticalStackLayout VerticalOptions="Center">
+                                        <Label Text="{Binding Name}" FontAttributes="Bold" />
+                                        <Label Text="4.8 ⭐ • Vĩnh Khánh, Q4" FontSize="12" />
+                                    </VerticalStackLayout>
+                                </HorizontalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Bottom Navigation tương ứng -->
+        <TabBar Grid.Row="2" BackgroundColor="#FF8C00">
+            <!-- Navigation items go here in AppShell -->
+        </TabBar>
+    </Grid>
+</ContentPage>
