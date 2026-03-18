@@ -1,6 +1,6 @@
-﻿using Foundation;
+using Foundation;
 
-namespace VinhKhanhFoodTour_Clean;
+namespace DoAnCSharp;
 
 [Register("AppDelegate")]
 public class AppDelegate : MauiUIApplicationDelegate

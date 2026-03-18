@@ -11,9 +11,9 @@ public final class R {
 		public static final int buttonSize = 0x7f030099;
 		public static final int circleCrop = 0x7f0300dc;
 		public static final int colorScheme = 0x7f030128;
-		public static final int imageAspectRatio = 0x7f030245;
-		public static final int imageAspectRatioAdjust = 0x7f030246;
-		public static final int scopeUris = 0x7f0303c9;
+		public static final int imageAspectRatio = 0x7f030246;
+		public static final int imageAspectRatioAdjust = 0x7f030247;
+		public static final int scopeUris = 0x7f0303ca;
 	}
 	public static final class color {
 		public static final int common_google_signin_btn_text_dark = 0x7f050037;
@@ -48,8 +48,8 @@ public final class R {
 		public static final int common_google_signin_btn_text_light_focused = 0x7f070091;
 		public static final int common_google_signin_btn_text_light_normal = 0x7f070092;
 		public static final int common_google_signin_btn_text_light_normal_background = 0x7f070093;
-		public static final int googleg_disabled_color_18 = 0x7f070099;
-		public static final int googleg_standard_color_18 = 0x7f07009a;
+		public static final int googleg_disabled_color_18 = 0x7f07009a;
+		public static final int googleg_standard_color_18 = 0x7f07009b;
 	}
 	public static final class id {
 		public static final int adjust_height = 0x7f080048;
@@ -82,11 +82,11 @@ public final class R {
 		public static final int common_signin_button_text_long = 0x7f0f003f;
 	}
 	public static final class styleable {
-		public static final int[] LoadingImageView = new int[] { 0x7f0300dc, 0x7f030245, 0x7f030246 };
+		public static final int[] LoadingImageView = new int[] { 0x7f0300dc, 0x7f030246, 0x7f030247 };
 		public static final int LoadingImageView_circleCrop = 0;
 		public static final int LoadingImageView_imageAspectRatio = 1;
 		public static final int LoadingImageView_imageAspectRatioAdjust = 2;
-		public static final int[] SignInButton = new int[] { 0x7f030099, 0x7f030128, 0x7f0303c9 };
+		public static final int[] SignInButton = new int[] { 0x7f030099, 0x7f030128, 0x7f0303ca };
 		public static final int SignInButton_buttonSize = 0;
 		public static final int SignInButton_colorScheme = 1;
 		public static final int SignInButton_scopeUris = 2;

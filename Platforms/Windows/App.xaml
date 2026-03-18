@@ -1,8 +1,8 @@
-﻿<maui:MauiWinUIApplication
-    x:Class="VinhKhanhFoodTour_Clean.WinUI.App"
+<maui:MauiWinUIApplication
+    x:Class="DoAnCSharp_Clean.WinUI.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:maui="using:Microsoft.Maui"
-    xmlns:local="using:VinhKhanhFoodTour_Clean.WinUI">
+    xmlns:local="using:DoAnCSharp_Clean.WinUI">
 
 </maui:MauiWinUIApplication>

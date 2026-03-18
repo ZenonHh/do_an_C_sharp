@@ -1,70 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
-             x:Class="VinhKhanhFoodTour.Views.MapPage"
-             Title="Bản đồ quán ngon">
-
+             xmlns:map="clr-namespace:Mapsui.UI.Maui;assembly=Mapsui.UI.Maui"
+             x:Class="DoAnCSharp.Views.MapPage"
+             Title="Bản đồ Vĩnh Khánh Food Tour">
+    
     <Grid>
-        <maps:Map x:Name="FoodMap"
-                  IsShowingUser="True"
-                  ItemsSource="{Binding Pins}">
-            <maps:Map.ItemTemplate>
-                <DataTemplate>
-                    <maps:Pin Location="{Binding Location}"
-                              Label="{Binding Name}"
-                              Address="Nhấn để xem chi tiết" />
-                </DataTemplate>
-            </maps:Map.ItemTemplate>
-        </maps:Map>
-
-        <Button Text="📍" 
-                VerticalOptions="Start" 
-                HorizontalOptions="End"
-                Margin="0,20,20,0" 
-                WidthRequest="50" 
-                HeightRequest="50" 
-                CornerRadius="25"
-                BackgroundColor="White" 
-                TextColor="Blue"
-                Clicked="OnCenterUserClicked">
-            <Button.Shadow>
-                <Shadow Brush="Black" Offset="2,2" Radius="5" Opacity="0.3" />
-            </Button.Shadow>
-        </Button>
-
-        <Frame VerticalOptions="End" 
-               Margin="20,0,20,30"
-               IsVisible="{Binding IsActiveCardVisible}"
-               CornerRadius="20" 
-               HasShadow="True" 
-               Padding="10" 
-               BackgroundColor="White"
-               BorderColor="#EEEEEE">
-            
-            <Grid ColumnDefinitions="60, *, 50" ColumnSpacing="15">
-                <Frame Grid.Column="0" CornerRadius="12" Padding="0" HeightRequest="60" IsClippedToBounds="True" HasShadow="False">
-                    <Image Source="{Binding ActivePoi.ImageAsset}" Aspect="AspectFill"/>
-                </Frame>
-                
-                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
-                    <Label Text="{Binding ActivePoiName}" 
-                           FontAttributes="Bold" 
-                           FontSize="16"
-                           TextColor="Black"/>
-                    <Label Text="Đang thuyết minh..." 
-                           IsVisible="{Binding IsPlaying}" 
-                           TextColor="#FF8C00" 
-                           FontSize="12"/>
-                </VerticalStackLayout>
-
-                <ImageButton Grid.Column="2" 
-                             Source="{Binding PlayPauseIcon}"
-                             Command="{Binding ToggleAudioCommand}"
-                             HeightRequest="40" 
-                             WidthRequest="40"
-                             VerticalOptions="Center" />
-            </Grid>
-        </Frame>
+        <map:MapView x:Name="foodMapView" 
+                    VerticalOptions="Fill" 
+                    HorizontalOptions="Fill" />
     </Grid>
 </ContentPage>

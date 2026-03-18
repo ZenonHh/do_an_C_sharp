@@ -1,34 +1,40 @@
-using VinhKhanhFoodTour.ViewModels;
-using Microsoft.Maui.Controls.Maps;
-using Microsoft.Maui.Maps;
+using Microsoft.Maui.Controls;
+using Mapsui;
+using Mapsui.Tiling;
+using Mapsui.Projections;
+using System;
 
-namespace VinhKhanhFoodTour.Views;
+namespace DoAnCSharp.Views;
 
 public partial class MapPage : ContentPage
 {
-    private readonly MapViewModel _viewModel;
-
-    public MapPage(MapViewModel viewModel)
+    public MapPage()
     {
         InitializeComponent();
-        _viewModel = viewModel;
-        BindingContext = _viewModel;
+
+        // Khởi tạo bản đồ
+        foodMapView.Map = CreateMap();
     }
 
-    private async void OnCenterUserClicked(object sender, EventArgs e)
+    private Mapsui.Map CreateMap()
     {
-        // Kiểm tra FoodMap có null không trước khi gọi để tránh Code 3
-        if (FoodMap != null && _viewModel.UserPos != null)
+        var map = new Mapsui.Map();
+
+        // 1. Thêm bản đồ nền OpenStreetMap
+        map.Layers.Add(OpenStreetMap.CreateTileLayer());
+
+        // 2. Lấy tọa độ dạng cặp số (Tuple)
+        var lonLat = SphericalMercator.FromLonLat(106.6953, 10.7769);
+        
+        // 3. Gói nó vào MPoint để truyền cho bản đồ (Sửa lỗi CS1503 ở đây)
+        var hoChiMinhLocation = new MPoint(lonLat.x, lonLat.y);
+        
+        // 4. Đặt vị trí trung tâm
+        map.Home = n => 
         {
-            var region = MapSpan.FromCenterAndRadius(
-                _viewModel.UserPos, 
-                Distance.FromMeters(200));
-                
-            FoodMap.MoveToRegion(region);
-        }
-        else
-        {
-            await DisplayAlert("Thông báo", "Vui lòng đợi trong giây lát để GPS ổn định...", "OK");
-        }
+            n.CenterOn(hoChiMinhLocation);
+        }; 
+
+        return map;
     }
 }

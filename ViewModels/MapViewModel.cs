@@ -1,10 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using VinhKhanhFoodTour.Services;
-using VinhKhanhFoodTour.Models;
+using DoAnCSharp.Services;
+using DoAnCSharp.Models;
 using System.Collections.ObjectModel;
 
-namespace VinhKhanhFoodTour.ViewModels;
+namespace DoAnCSharp.ViewModels;
 
 public partial class MapViewModel : ObservableObject
 {
@@ -14,12 +14,12 @@ public partial class MapViewModel : ObservableObject
 
     // SỬA: Thêm dấu ? để hết cảnh báo CS8618 (Biến có thể rỗng lúc mới mở App)
     [ObservableProperty] private Location? _userPos;
-    [ObservableProperty] private PoiModel? _activePoi;
+    [ObservableProperty] private POI? _activePoi;
     
     [ObservableProperty] private bool _isPlaying;
     [ObservableProperty] private bool _isActiveCardVisible;
 
-    public ObservableCollection<PoiModel> Pins { get; } = new();
+    public ObservableCollection<POI> Pins { get; } = new();
 
     public MapViewModel(ILocationService loc, IGeofenceService geo, IPoiRepository repo)
     {

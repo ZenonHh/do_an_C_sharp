@@ -1,4 +1,4 @@
-namespace VinhKhanhFoodTour.Services;
+namespace DoAnCSharp.Services;
 
 public interface ILocationService
 {

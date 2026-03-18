@@ -1,89 +1,42 @@
-<<<<<<< HEAD
-using System.Collections.ObjectModel;
 using DoAnCSharp.Models;
 using DoAnCSharp.Services;
+using System.Collections.ObjectModel;
 
-namespace DoAnCSharp
-{
-    public partial class MainPage : ContentPage
-    {
-        // Sử dụng ObservableCollection để giao diện tự cập nhật khi dữ liệu thay đổi (Đặc trưng C#)
-        public ObservableCollection<POI> RecommendedPois { get; set; } = new ObservableCollection<POI>();
-        public ObservableCollection<POI> AllPois { get; set; } = new ObservableCollection<POI>();
-
-        public MainPage()
-        {
-            InitializeComponent();
-
-            // Liên kết dữ liệu (Data Binding)
-            BindingContext = this;
-
-            LoadData();
-        }
-
-        private void LoadData()
-        {
-            // Lấy dữ liệu từ POIRepository (C#)
-            var data = POIRepository.GetTourPoints();
-
-            foreach (var item in data)
-            {
-                AllPois.Add(item);
-                // Giả lập danh sách gợi ý (lấy 2 phần tử đầu)
-                if (RecommendedPois.Count < 2)
-                {
-                    RecommendedPois.Add(item);
-                }
-            }
-        }
-
-        private async void OnLanguageClicked(object sender, EventArgs e)
-        {
-            string action = await DisplayActionSheet("Chọn ngôn ngữ / Select Language", "Hủy", null, "Tiếng Việt", "English");
-
-            if (action == "Tiếng Việt")
-            {
-                LanguageService.ChangeLanguage("vi");
-                await DisplayAlert("Thông báo", "Đã đổi sang Tiếng Việt", "OK");
-            }
-            else if (action == "English")
-            {
-                LanguageService.ChangeLanguage("en");
-                await DisplayAlert("Notice", "Language changed to English", "OK");
-            }
-        }
-
-        // Xử lý khi nhấn vào một địa điểm (Tương đương ListTile onTap trong Flutter)
-        private async void OnItemTapped(object sender, TappedEventArgs e)
-        {
-            if (e.Parameter is POI selectedPoi)
-            {
-                await DisplayAlert("Thông tin", $"Bạn đã chọn: {selectedPoi.Name}", "Đóng");
-            }
-        }
-    }
-=======
-﻿namespace VinhKhanhFoodTour_Clean;
+namespace DoAnCSharp;
 
 public partial class MainPage : ContentPage
 {
-	int count = 0;
+    private readonly ILanguageService _languageService;
+    private readonly IPoiRepository _poiRepository;
 
-	public MainPage()
-	{
-		InitializeComponent();
-	}
+    public ObservableCollection<POI> RecommendedPois { get; set; } = new();
+    public ObservableCollection<POI> AllPois { get; set; } = new();
 
-	private void OnCounterClicked(object? sender, EventArgs e)
-	{
-		count++;
+    // SỬA LỖI CS0103 & CS0120: Truyền service vào đây
+    public MainPage(ILanguageService languageService, IPoiRepository poiRepository)
+    {
+        InitializeComponent();
+        _languageService = languageService;
+        _poiRepository = poiRepository;
+        BindingContext = this;
+        LoadData();
+    }
 
-		if (count == 1)
-			CounterBtn.Text = $"Clicked {count} time";
-		else
-			CounterBtn.Text = $"Clicked {count} times";
+    private void LoadData()
+    {
+        // Gọi qua _poiRepository thay vì gọi tên Class trực tiếp
+        var data = _poiRepository.GetTourPoints();
+        foreach (var item in data)
+        {
+            AllPois.Add(item);
+            if (RecommendedPois.Count < 2) RecommendedPois.Add(item);
+        }
+    }
 
-		SemanticScreenReader.Announce(CounterBtn.Text);
-	}
->>>>>>> fb7b8b1 (firts)
+    private async void OnLanguageClicked(object sender, EventArgs e)
+    {
+        string action = await DisplayActionSheet("Ngôn ngữ", "Hủy", null, "Tiếng Việt", "English");
+        if (action == "Tiếng Việt") _languageService.ChangeLanguage("vi");
+        else if (action == "English") _languageService.ChangeLanguage("en");
+    }
 }

@@ -1,7 +1,7 @@
-﻿using Microsoft.Maui;
+using Microsoft.Maui;
 using Microsoft.Maui.Hosting;
 
-namespace VinhKhanhFoodTour_Clean.WinUI;
+namespace DoAnCSharp.WinUI;
 
 public partial class App : MauiWinUIApplication
 {

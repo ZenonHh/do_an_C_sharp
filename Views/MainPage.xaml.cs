@@ -1,4 +1,4 @@
-namespace VinhKhanhFoodTour.Views;
+namespace DoAnCSharp.Views;
 
 public partial class MainPage : Shell
 {

@@ -1,9 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using VinhKhanhFoodTour.Services;
-using VinhKhanhFoodTour_Clean;
+using DoAnCSharp.Services;
+using DoAnCSharp;
 
-namespace VinhKhanhFoodTour.ViewModels;
+namespace DoAnCSharp.ViewModels;
 
 public partial class AuthViewModel : ObservableObject
 {

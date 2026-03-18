@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace VinhKhanhFoodTour.Services;
+namespace DoAnCSharp.Services;
 
 public interface ILanguageService : INotifyPropertyChanged
 {

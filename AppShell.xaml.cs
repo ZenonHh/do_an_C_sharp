@@ -1,4 +1,4 @@
-﻿namespace VinhKhanhFoodTour_Clean;
+namespace DoAnCSharp;
 
 public partial class AppShell : Shell
 {

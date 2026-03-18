@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace VinhKhanhFoodTour.ViewModels;
+namespace DoAnCSharp.ViewModels;
 
 // Phải kế thừa ObservableObject và dùng partial class theo chuẩn MVVM Toolkit
 public partial class HomeViewModel : ObservableObject

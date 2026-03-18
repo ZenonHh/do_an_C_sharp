@@ -1,13 +1,13 @@
 using System.Text.RegularExpressions;
-using VinhKhanhFoodTour.Models;
+using DoAnCSharp.Models;
 
-namespace VinhKhanhFoodTour.Services
+namespace DoAnCSharp.Services
 {
     public interface IAudioService
     {
         bool IsPlaying { get; }
         bool IsPaused { get; }
-        Task PlayPoiAsync(PoiModel poi);
+        Task PlayPoiAsync(POI poi);
         void Pause();
         void Resume();
         void Stop();
@@ -21,7 +21,7 @@ namespace VinhKhanhFoodTour.Services
         private CancellationTokenSource? _cts;
         private List<string> _sentences = new();
         private int _currentIndex = 0;
-        private PoiModel? _lastPlayedPoi;
+        private POI? _lastPlayedPoi;
         private string? _lastLang;
 
         public bool IsPlaying { get; private set; }
@@ -33,7 +33,7 @@ namespace VinhKhanhFoodTour.Services
             _languageService = languageService;
         }
 
-        public async Task PlayPoiAsync(PoiModel poi)
+        public async Task PlayPoiAsync(POI poi)
         {
             string currentLang = _languageService.CurrentLocale;
 

@@ -1,25 +1,28 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <Shell
-<<<<<<< HEAD
     x:Class="DoAnCSharp.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:DoAnCSharp"
-=======
-    x:Class="VinhKhanhFoodTour_Clean.AppShell"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:VinhKhanhFoodTour_Clean"
->>>>>>> fb7b8b1 (firts)
+    xmlns:views="clr-namespace:DoAnCSharp.Views"
     Shell.FlyoutBehavior="Disabled">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
-
-<<<<<<< HEAD
+    <TabBar Shell.TabBarBackgroundColor="{StaticResource White}"
+            Shell.TabBarForegroundColor="{StaticResource Primary}"
+            Shell.TabBarTitleColor="{StaticResource Primary}"
+            Shell.TabBarUnselectedColor="{StaticResource Gray500}">
+        
+        <Tab Title="Trang chủ">
+            <ShellContent ContentTemplate="{DataTemplate local:MainPage}" />
+        </Tab>
+        
+        <Tab Title="Bản đồ">
+            <ShellContent ContentTemplate="{DataTemplate views:MapPage}" />
+        </Tab>
+        
+        <Tab Title="Cá nhân">
+            <ShellContent ContentTemplate="{DataTemplate views:ProfilePage}" />
+        </Tab>
+        
+    </TabBar>
 </Shell>
-=======
-</Shell>
->>>>>>> fb7b8b1 (firts)

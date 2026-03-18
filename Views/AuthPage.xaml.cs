@@ -1,6 +1,6 @@
-using VinhKhanhFoodTour.ViewModels;
+using DoAnCSharp.ViewModels;
 
-namespace VinhKhanhFoodTour.Views;
+namespace DoAnCSharp.Views;
 
 public partial class AuthPage : ContentPage
 {

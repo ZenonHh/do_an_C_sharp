@@ -1,34 +1,34 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Maui.Devices; // Thư viện để tính khoảng cách Location
-using VinhKhanhFoodTour.Models;
+using DoAnCSharp.Models;
 
-namespace VinhKhanhFoodTour.Services;
+namespace DoAnCSharp.Services;
 
 public interface IGeofenceService
 {
-    PoiModel? CheckPois(Location userLocation);
+    POI? CheckPois(Location userLocation);
     void ResetHistory();
 }
 
 public class GeofenceService : IGeofenceService
 {
-    private readonly List<PoiModel> _pois;
+    private readonly List<POI> _pois;
     private readonly Dictionary<string, DateTime> _history = new();
     private readonly TimeSpan _cooldown;
 
     // SỬA: Inject IPoiRepository vào để lấy danh sách quán, giúp DI không bị lỗi Code 3
     public GeofenceService(IPoiRepository poiRepo)
     {
-        _pois = poiRepo.GetTourPoints() ?? new List<PoiModel>();
+        _pois = poiRepo.GetTourPoints() ?? new List<POI>();
         _cooldown = TimeSpan.FromMinutes(5);
     }
 
-    public PoiModel? CheckPois(Location userLocation)
+    public POI? CheckPois(Location userLocation)
     {
         if (userLocation == null || _pois == null) return null;
 
-        PoiModel? bestPoi = null;
+        POI? bestPoi = null;
         double minDistance = double.MaxValue;
 
         foreach (var poi in _pois)

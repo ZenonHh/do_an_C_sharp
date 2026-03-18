@@ -1,4 +1,4 @@
-namespace VinhKhanhFoodTour.Models;
+namespace DoAnCSharp.Models;
 
 public enum NarrationType
 {
@@ -6,7 +6,7 @@ public enum NarrationType
     Audio
 }
 
-public class PoiModel
+public class POI
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;

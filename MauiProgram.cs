@@ -1,25 +1,45 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
+using CommunityToolkit.Maui;
+using DoAnCSharp.Services;
+using DoAnCSharp.Views;
+using DoAnCSharp.ViewModels;
+using SkiaSharp.Views.Maui.Controls.Hosting;
 
-namespace DoAnCSharp
+namespace DoAnCSharp;
+
+public static class MauiProgram
 {
-    public static class MauiProgram
+    public static MauiApp CreateMauiApp()
     {
-        public static MauiApp CreateMauiApp()
-        {
-            var builder = MauiApp.CreateBuilder();
-            builder
-                .UseMauiApp<App>()
-                .ConfigureFonts(fonts =>
-                {
-                    fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-                    fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
-                });
+        var builder = MauiApp.CreateBuilder();
+        builder
+            .UseMauiApp<App>()
+            .UseSkiaSharp() // Dòng này cực kỳ quan trọng để chạy bản đồ OpenStreetMap
+            .UseMauiCommunityToolkit()
+            .ConfigureFonts(fonts =>
+            {
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+            });
+
+        // 1. ĐĂNG KÝ CÁC DỊCH VỤ (Services)
+        builder.Services.AddSingleton<ILanguageService, LanguageService>();
+        builder.Services.AddSingleton<IPoiRepository, PoiRepository>();
+        builder.Services.AddSingleton<LocationService>(); // Tên phải đúng với class của bạn
+
+        // 2. ĐĂNG KÝ VIEWMODELS (Quan trọng: Giúp App không bị văng khi mở trang Bản đồ)
+        builder.Services.AddSingleton<MapViewModel>();
+
+        // 3. ĐĂNG KÝ CÁC TRANG (Pages)
+        builder.Services.AddSingleton<MainPage>();
+        builder.Services.AddSingleton<MapPage>();
+        builder.Services.AddSingleton<ProfilePage>();
+        builder.Services.AddSingleton<AppShell>();
 
 #if DEBUG
-    		builder.Logging.AddDebug();
+        //builder.Logging.AddDebug();
 #endif
 
-            return builder.Build();
-        }
+        return builder.Build();
     }
 }

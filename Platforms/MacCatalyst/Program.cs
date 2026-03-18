@@ -1,7 +1,7 @@
-﻿using ObjCRuntime;
+using ObjCRuntime;
 using UIKit;
 
-namespace VinhKhanhFoodTour_Clean;
+namespace DoAnCSharp;
 
 public class Program
 {

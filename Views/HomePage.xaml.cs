@@ -1,7 +1,7 @@
-using VinhKhanhFoodTour.Services;
-using VinhKhanhFoodTour.Models;
+using DoAnCSharp.Services;
+using DoAnCSharp.Models;
 
-namespace VinhKhanhFoodTour.Views;
+namespace DoAnCSharp.Views;
 
 public partial class HomePage : ContentPage
 {
