@@ -28,14 +28,23 @@ public static class MauiProgram
         builder.Services.AddSingleton<LocationService>(); // Tên phải đúng với class của bạn
 
         // 2. ĐĂNG KÝ VIEWMODELS (Quan trọng: Giúp App không bị văng khi mở trang Bản đồ)
+        builder.Services.AddSingleton<ILocationService, LocationService>();
+        builder.Services.AddSingleton<IGeofenceService, GeofenceService>();
+        
+        builder.Services.AddTransient<AuthViewModel>(); // Rất quan trọng
         builder.Services.AddSingleton<MapViewModel>();
-
+        builder.Services.AddSingleton<HomeViewModel>();
         // 3. ĐĂNG KÝ CÁC TRANG (Pages)
-        builder.Services.AddSingleton<MainPage>();
-        builder.Services.AddSingleton<MapPage>();
-        builder.Services.AddSingleton<ProfilePage>();
+        builder.Services.AddTransient<Views.AuthPage>(); // Rất quan trọng để chạy Bước 1
+        builder.Services.AddSingleton<Views.HomePage>();
+        builder.Services.AddSingleton<Views.MapPage>();
         builder.Services.AddSingleton<AppShell>();
 
+        //builder.Services.AddSingleton<HomePage>();
+        //builder.Services.AddSingleton<MapPage>();
+        //builder.Services.AddSingleton<ProfilePage>();
+        //builder.Services.AddSingleton<AppShell>();
+        builder.Services.AddSingleton<IAuthService, AuthService>();
 #if DEBUG
         //builder.Logging.AddDebug();
 #endif

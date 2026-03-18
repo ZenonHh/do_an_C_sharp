@@ -2,11 +2,11 @@ namespace DoAnCSharp;
 
 public partial class App : Application
 {
-    public App()
+    public App(Views.AuthPage authPage)
     {
         InitializeComponent();
 
-        // PHẢI GỌI APPSHELL Ở ĐÂY ĐỂ HIỆN THANH MENU
-        MainPage = new AppShell(); 
+        // Khởi động bằng màn hình Đăng nhập
+        MainPage = authPage;
     }
 }

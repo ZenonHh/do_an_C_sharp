@@ -29,19 +29,31 @@ public partial class AuthViewModel : ObservableObject
     [RelayCommand]
     private async Task Login()
     {
-        // Trong logic, bạn dùng tên VIẾT HOA (do bộ Toolkit tạo ra)
+        // 1. Kiểm tra dữ liệu rỗng
         if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
         {
-            await Shell.Current.DisplayAlert("Thông báo", "Vui lòng nhập email và mật khẩu!", "OK");
+            // Chú ý: Đang ở AuthPage (không có Shell) nên phải dùng Application.Current.MainPage để hiện thông báo
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlert("Thông báo", "Vui lòng nhập email và mật khẩu!", "OK");
+            }
             return;
         }
 
-        await _authService.SetLoggedInAsync(true);
-        
-        // Chuyển sang AppShell (Trang chính có TabBar)
+        // 2. Lưu trạng thái đăng nhập (nếu có dùng AuthService)
+        if (_authService != null)
+        {
+            await _authService.SetLoggedInAsync(true);
+        }
+
+        // 3. CHUYỂN GIAO DIỆN: Nạp khung AppShell (có chứa TabBar)
         if (Application.Current != null)
         {
             Application.Current.MainPage = new AppShell();
+
+            // 4. Ép thanh TabBar tự động nhảy sang Tab Bản đồ ngay lập tức
+            // Lưu ý phải có "//" ở trước tên Route để nó nhảy đúng cấp độ Tab
+            await Shell.Current.GoToAsync("//MapTab");
         }
     }
 }

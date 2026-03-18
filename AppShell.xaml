@@ -13,10 +13,10 @@
             Shell.TabBarUnselectedColor="{StaticResource Gray500}">
         
         <Tab Title="Trang chủ">
-            <ShellContent ContentTemplate="{DataTemplate local:MainPage}" />
+            <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
         </Tab>
-        
-        <Tab Title="Bản đồ">
+
+        <Tab Title="Bản đồ" Route="MapTab">
             <ShellContent ContentTemplate="{DataTemplate views:MapPage}" />
         </Tab>
         
