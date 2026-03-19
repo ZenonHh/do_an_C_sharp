@@ -21,6 +21,9 @@ public class AudioPOI
     public double Lng { get; set; }
     public double Radius { get; set; }
     public int Priority { get; set; }
+
+    // THÊM DÒNG NÀY: Khai báo tên hình ảnh
+    public string ImageAsset { get; set; } = string.Empty;
 }
 
 public partial class MapPage : ContentPage
@@ -37,8 +40,9 @@ public partial class MapPage : ContentPage
 
         // Gọi thẳng SetupMap thay vì CreateMap
         SetupMap();
-
         SetupPOIs();
+        LoadPinsToMap();
+
         StartRadar();
     }
 
@@ -69,11 +73,29 @@ public partial class MapPage : ContentPage
                 Lat = 10.7600,
                 Lng = 106.7000,
                 Radius = 50,
-                Priority = 1
+                Priority = 1,
+                ImageAsset = "oc_oanh,jpg" // Gán tên ảnh vào đây
+            },
+            new AudioPOI {
+                Name = "Ốc Đào 2",
+                Description = "Chi nhánh nổi tiếng của Ốc Đào, hương vị đậm đà đặc trưng Sài Gòn.",
+                Lat = 10.7581,
+                Lng = 106.7061,
+                Radius = 50,
+                Priority = 1,
+                ImageAsset = "oc_dao2.webp" // Gán tên ảnh vào đây
+            },
+            new AudioPOI {
+                Name = "Ốc Vũ",
+                Description = "Quán ăn yêu thích của giới trẻ, nổi bật với món ốc mỡ xào bơ.",
+                Lat = 10.7578,
+                Lng = 106.7058,
+                Radius = 50,
+                Priority = 2,
+                ImageAsset = "dotnet_bot.png" // Gán tên ảnh vào đây
             }
         };
     }
-
     private void StartRadar()
     {
         _radarTimer = Dispatcher.CreateTimer();
@@ -160,6 +182,68 @@ public partial class MapPage : ContentPage
         else if (_currentPoi != null)
         {
             PlayAudioAlert(_currentPoi);
+        }
+    }
+
+    private void LoadPinsToMap()
+    {
+        if (foodMapView == null) return;
+        foodMapView.Pins.Clear();
+
+        foreach (var poi in _pois)
+        {
+            var pin = new Mapsui.UI.Maui.Pin(foodMapView)
+            {
+                Label = poi.Name,
+                Position = new Mapsui.UI.Maui.Position(poi.Lat, poi.Lng),
+                Type = Mapsui.UI.Maui.PinType.Pin,
+                Color = Microsoft.Maui.Graphics.Colors.Red,
+                Scale = 0.8f,
+                Tag = poi // Lưu toàn bộ thông tin POI vào Tag để dùng sau
+            };
+
+            foodMapView.Pins.Add(pin);
+        }
+
+        // Bắt sự kiện khi người dùng click vào bất kỳ Pin nào trên bản đồ
+        foodMapView.PinClicked -= OnMapPinClicked; // Xóa event cũ tránh bị lặp
+        foodMapView.PinClicked += OnMapPinClicked;
+    }
+    // Xử lý khi nhấn vào Pin
+    private void OnMapPinClicked(object? sender, Mapsui.UI.Maui.PinClickedEventArgs e)
+    {
+        if (e.Pin?.Tag is AudioPOI clickedPoi)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                // Cập nhật chữ
+                DetailName.Text = clickedPoi.Name;
+                DetailDescription.Text = clickedPoi.Description;
+
+                // THÊM DÒNG NÀY: Cập nhật hình ảnh
+                DetailImage.Source = clickedPoi.ImageAsset;
+
+                _currentPoi = clickedPoi;
+                PoiDetailCard.IsVisible = true;
+                AudioPlayerUI.IsVisible = false;
+            });
+        }
+        e.Handled = true;
+    }
+
+    // Xử lý khi bấm nút "X" trên Card
+    private void CloseDetailClicked(object sender, EventArgs e)
+    {
+        PoiDetailCard.IsVisible = false;
+    }
+
+    // Xử lý khi bấm nút "Nghe Review" bên trong Card
+    private void PlayReviewFromDetailClicked(object sender, EventArgs e)
+    {
+        if (_currentPoi != null)
+        {
+            PoiDetailCard.IsVisible = false; // Tắt Card chi tiết
+            PlayAudioAlert(_currentPoi);     // Gọi hàm phát âm thanh có sẵn của bạn
         }
     }
 }

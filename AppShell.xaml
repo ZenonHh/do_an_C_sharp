@@ -7,22 +7,21 @@
     xmlns:views="clr-namespace:DoAnCSharp.Views"
     Shell.FlyoutBehavior="Disabled">
 
-    <TabBar Shell.TabBarBackgroundColor="{StaticResource White}"
-            Shell.TabBarForegroundColor="{StaticResource Primary}"
-            Shell.TabBarTitleColor="{StaticResource Primary}"
-            Shell.TabBarUnselectedColor="{StaticResource Gray500}">
-        
-        <Tab Title="Trang chủ">
+    <TabBar Shell.TabBarBackgroundColor="White"
+            Shell.TabBarForegroundColor="#FF4757"
+            Shell.TabBarTitleColor="#FF4757"
+            Shell.TabBarUnselectedColor="#95A5A6">
+
+        <Tab Title="🏠 Trang chủ">
             <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
         </Tab>
 
-        <Tab Title="Bản đồ" Route="MapTab">
+        <Tab Title="🗺️ Bản đồ" Route="MapTab">
             <ShellContent ContentTemplate="{DataTemplate views:MapPage}" />
         </Tab>
-        
-        <Tab Title="Cá nhân">
+
+        <Tab Title="👤 Cá nhân">
             <ShellContent ContentTemplate="{DataTemplate views:ProfilePage}" />
         </Tab>
-        
     </TabBar>
 </Shell>
