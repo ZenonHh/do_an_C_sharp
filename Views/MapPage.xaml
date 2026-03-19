@@ -3,11 +3,80 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:map="clr-namespace:Mapsui.UI.Maui;assembly=Mapsui.UI.Maui"
              x:Class="DoAnCSharp.Views.MapPage"
-             Title="Bản đồ Vĩnh Khánh Food Tour">
+             Title="Bản đồ Vĩnh Khánh">
     
     <Grid>
         <map:MapView x:Name="foodMapView" 
-                    VerticalOptions="Fill" 
-                    HorizontalOptions="Fill" />
+                     VerticalOptions="Fill" 
+                     HorizontalOptions="Fill" 
+                     IsZoomButtonVisible="False"
+                     IsMyLocationButtonVisible="False"
+                     IsNorthingButtonVisible="False"/>
+
+        <VerticalStackLayout VerticalOptions="Start" 
+                             HorizontalOptions="End" 
+                             Margin="0, 50, 20, 0" 
+                             Spacing="15">
+            
+            <Button Text="🎯"
+                    FontSize="24"
+                    Clicked="CustomMyLocationClicked"
+                    BackgroundColor="White"
+                    CornerRadius="25"
+                    WidthRequest="50"
+                    HeightRequest="50"
+                    Shadow="{Shadow Brush=Black, Offset='0,3', Opacity=0.3}" />
+
+            <Button Text="🌐"
+                    FontSize="24"
+                    Clicked="OnLanguageClicked"
+                    BackgroundColor="White"
+                    CornerRadius="25"
+                    WidthRequest="50"
+                    HeightRequest="50"
+                    Shadow="{Shadow Brush=Black, Offset='0,3', Opacity=0.3}" />
+        </VerticalStackLayout>
+
+        <Border x:Name="AudioPlayerUI" 
+                IsVisible="False"
+                VerticalOptions="End" 
+                HorizontalOptions="Fill"
+                Margin="20, 0, 20, 20" 
+                Padding="15, 12"
+                BackgroundColor="#EB1A1A1A" 
+                StrokeThickness="0"
+                StrokeShape="RoundRectangle 20">
+            
+            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="15">
+                <Label Grid.Column="0" Text="🔊" FontSize="32" VerticalOptions="Center"/>
+                
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="0">
+                    <Label x:Name="AudioStatusLabel" 
+                           Text="Đang phát review:" 
+                           TextColor="{StaticResource Gray300}" 
+                           FontSize="12"/>
+                    <Label x:Name="AudioText" 
+                           Text="Ốc Oanh" 
+                           TextColor="White" 
+                           FontAttributes="Bold"
+                           FontSize="18"
+                           MaxLines="1"
+                           LineBreakMode="TailTruncation"/>
+                </VerticalStackLayout>
+                
+                <Button x:Name="PlayStopButton"
+                        Grid.Column="2"
+                        Text="⏹" 
+                        Clicked="ToggleAudioClicked" 
+                        BackgroundColor="#FF4444"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        CornerRadius="25"
+                        WidthRequest="50"
+                        HeightRequest="50"
+                        Padding="0"
+                        VerticalOptions="Center"/>
+            </Grid>
+        </Border>
     </Grid>
 </ContentPage>
