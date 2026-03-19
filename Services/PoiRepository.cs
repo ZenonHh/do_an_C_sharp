@@ -39,7 +39,7 @@ public class PoiRepository : IPoiRepository
                 Longitude = 106.7061,
                 Radius = 15,
                 Priority = 1,
-                Description = "Chi nhánh nổi tiếng của Ốc Đào, hương vị đậm đà đặc trưng Sài Gòn.",
+                Description = " Chi nhánh nổi tiếng của Ốc Đào.",
                 DescriptionEn = "A famous branch of Oc Dao with authentic Saigon flavors.",
                 ImageAsset = "oc_dao.jpg",
                 MapLink = "https://maps.app.goo.gl/oc_dao_link",

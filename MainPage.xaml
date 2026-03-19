@@ -2,12 +2,90 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="DoAnCSharp.MainPage"
-             Title="Trang chủ">
-    
-    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center">
-        <Label Text="🎉 TRANG CHỦ ĐÃ SỐNG!" 
-               FontSize="24" 
-               TextColor="{StaticResource Primary}" 
-               FontAttributes="Bold"/>
-    </VerticalStackLayout>
+             Title="Vĩnh Khánh Food Tour">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="25">
+            
+            <Grid ColumnDefinitions="*, Auto">
+                <VerticalStackLayout Grid.Column="0">
+                    <Label Text="Chào mừng bạn! 👋" 
+                           FontSize="24" 
+                           FontAttributes="Bold" 
+                           TextColor="{StaticResource Primary}" />
+                    <Label Text="Khám phá thiên đường ẩm thực" 
+                           FontSize="14" 
+                           TextColor="{StaticResource Gray500}" />
+                </VerticalStackLayout>
+
+                <Button Grid.Column="1" 
+                        Text="🌐 Ngôn ngữ" 
+                        Clicked="OnLanguageClicked" 
+                        BackgroundColor="{StaticResource Gray200}"
+                        TextColor="{StaticResource PrimaryText}"
+                        CornerRadius="8"
+                        Padding="10,5"
+                        HeightRequest="40"/>
+            </Grid>
+
+            <VerticalStackLayout Spacing="10">
+                <Label Text="🔥 Đáng Thử Nhất" 
+                       FontSize="18" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource PrimaryText}"/>
+                
+                <CollectionView ItemsSource="{Binding RecommendedPois}" HeightRequest="130">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="15" />
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border StrokeShape="RoundRectangle 12" 
+                                    BackgroundColor="{StaticResource Primary}" 
+                                    StrokeThickness="0"
+                                    WidthRequest="220"
+                                    Padding="15">
+                                <VerticalStackLayout Spacing="5" VerticalOptions="Center">
+                                    <Label Text="🍲" FontSize="24"/>
+                                    <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource White}" />
+                                    <Label Text="{Binding Description}" FontSize="12" TextColor="{StaticResource White}" MaxLines="2" LineBreakMode="TailTruncation" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="10">
+                <Label Text="📍 Tất Cả Địa Điểm" 
+                       FontSize="18" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource PrimaryText}"/>
+
+                <CollectionView ItemsSource="{Binding AllPois}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,15" 
+                                    Padding="10"
+                                    StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="{StaticResource Gray100}"
+                                    StrokeThickness="0">
+                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="15">
+                                    <Border WidthRequest="60" HeightRequest="60" StrokeShape="RoundRectangle 8" BackgroundColor="{StaticResource Gray200}" StrokeThickness="0">
+                                        <Label Text="📌" HorizontalOptions="Center" VerticalOptions="Center" FontSize="24"/>
+                                    </Border>
+                                    
+                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                        <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryText}" />
+                                        <Label Text="{Binding Description}" FontSize="12" TextColor="{StaticResource SecondaryText}" MaxLines="2" LineBreakMode="TailTruncation" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
