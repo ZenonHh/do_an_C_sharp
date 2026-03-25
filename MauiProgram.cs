@@ -41,6 +41,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<AppShell>();
 
         builder.Services.AddTransient<ProfileViewModel>();
+        builder.Services.AddTransient<RegisterViewModel>();
+builder.Services.AddTransient<Views.RegisterPage>();
 
 #if DEBUG
         //builder.Logging.AddDebug();

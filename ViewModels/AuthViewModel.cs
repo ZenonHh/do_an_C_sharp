@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DoAnCSharp.Services;
 using DoAnCSharp;
+using System; // Bắt buộc phải có using System để dùng IServiceProvider
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 
@@ -11,9 +12,10 @@ public partial class AuthViewModel : ObservableObject
 {
     private readonly IAuthService _authService;
     private readonly DatabaseService _dbService;
+    private readonly IServiceProvider _serviceProvider; // Khai báo công cụ chuyển trang
 
     [ObservableProperty]
-#pragma warning disable MVVMTK0045 // Using [ObservableProperty] on fields is not AOT compatible for WinRT
+#pragma warning disable MVVMTK0045
     private string _email = string.Empty;
 #pragma warning restore MVVMTK0045
 
@@ -22,10 +24,12 @@ public partial class AuthViewModel : ObservableObject
     private string _password = string.Empty;
 #pragma warning restore MVVMTK0045
 
-    public AuthViewModel(IAuthService authService, DatabaseService dbService)
+    // SỬA: Phải nhận cả 3 công cụ vào Constructor
+    public AuthViewModel(IAuthService authService, DatabaseService dbService, IServiceProvider serviceProvider)
     {
         _authService = authService;
         _dbService = dbService; 
+        _serviceProvider = serviceProvider;
     }
 
     [RelayCommand]
@@ -39,23 +43,46 @@ public partial class AuthViewModel : ObservableObject
             return;
         }
 
-        // 2. Lưu Email người dùng vừa nhập vào bộ nhớ cục bộ của điện thoại
-        Microsoft.Maui.Storage.Preferences.Default.Set("CurrentUserEmail", Email);
+        // 2. GỌI HÀM KIỂM TRA ĐĂNG NHẬP (Kiểm tra khớp cả Email lẫn Password trong SQLite)
+        var user = await _dbService.LoginUserAsync(Email, Password);
 
-        // 3. Chạy xuống SQLite kiểm tra xem có tài khoản này chưa, chưa thì tạo
-        await _dbService.GetOrCreateUserAsync(Email);
-
-        // 4. Lưu trạng thái đăng nhập
-        if (_authService != null)
+        if (user != null) // Nếu đúng tài khoản & Mật khẩu
         {
-            await _authService.SetLoggedInAsync(true);
-        }
+            // Lưu Email vào bộ nhớ để trang Cá nhân lấy được
+            Microsoft.Maui.Storage.Preferences.Default.Set("CurrentUserEmail", Email);
 
-        // 5. CHUYỂN GIAO DIỆN: Nạp khung AppShell và nhảy sang Tab Bản đồ
+            // Lưu phiên đăng nhập
+            if (_authService != null)
+            {
+                await _authService.SetLoggedInAsync(true);
+            }
+
+            // CHUYỂN GIAO DIỆN: Vào App chính
+            if (Application.Current != null)
+            {
+                Application.Current.MainPage = new AppShell();
+                await Shell.Current.GoToAsync("//MapTab");
+            }
+        }
+        else // Nếu sai Email hoặc Mật khẩu
+        {
+            if (Application.Current?.MainPage != null)
+                await Application.Current.MainPage.DisplayAlert("Lỗi", "Sai Email hoặc Mật khẩu!\nVui lòng kiểm tra lại.", "OK");
+        }
+    }
+
+    // THÊM: Hàm để bấm nút "Đăng ký ngay" chuyển sang trang RegisterPage
+    [RelayCommand]
+    private void GoToRegister()
+    {
         if (Application.Current != null)
         {
-            Application.Current.MainPage = new AppShell();
-            await Shell.Current.GoToAsync("//MapTab");
+            // Lấy trang RegisterPage ra và chuyển qua
+            var registerPage = _serviceProvider.GetService(typeof(Views.RegisterPage)) as Views.RegisterPage;
+            if (registerPage != null)
+            {
+                Application.Current.MainPage = registerPage;
+            }
         }
     }
 }

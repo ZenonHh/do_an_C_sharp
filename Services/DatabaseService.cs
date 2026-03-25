@@ -104,4 +104,37 @@ public class DatabaseService
         
         return await _connection!.Table<User>().Where(u => u.Email == currentEmail).FirstOrDefaultAsync(); 
     }
+    // 1. HÀM ĐĂNG KÝ (Tạo tài khoản mới)
+    public async Task<bool> RegisterUserAsync(string fullName, string email, string password)
+    {
+        await InitAsync();
+        
+        // Kiểm tra xem Email đã có ai đăng ký chưa
+        var existingUser = await _connection!.Table<User>().Where(u => u.Email == email).FirstOrDefaultAsync();
+        if (existingUser != null)
+            return false; // Trùng email -> Thất bại
+
+        // Chưa có thì tạo mới
+        var newUser = new User 
+        { 
+            FullName = fullName, 
+            Email = email, 
+            Password = password, // Lưu mật khẩu
+            Avatar = "dotnet_bot.png",
+            Phone = "Đang cập nhật"
+        };
+        
+        var result = await _connection.InsertAsync(newUser);
+        return result > 0; // Trả về true nếu thêm thành công
+    }
+
+    // 2. HÀM ĐĂNG NHẬP (Kiểm tra đúng Email và Mật khẩu)
+    public async Task<User?> LoginUserAsync(string email, string password)
+    {
+        await InitAsync();
+        // Tìm user có cả Email VÀ Password trùng khớp
+        return await _connection!.Table<User>()
+                             .Where(u => u.Email == email && u.Password == password)
+                             .FirstOrDefaultAsync();
+    }
 }

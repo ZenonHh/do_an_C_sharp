@@ -53,11 +53,15 @@
                         FontAttributes="Bold" FontSize="18"
                         Command="{Binding LoginCommand}" />
 
-                <Grid ColumnDefinitions="*, *">
-                    <Button Text="Đăng ký tài khoản" TextColor="White" BackgroundColor="Transparent" FontSize="11" />
-                    <Button Grid.Column="1" Text="Quên mật khẩu?" TextColor="White" BackgroundColor="Transparent" FontSize="11" />
-                </Grid>
-                
+                <Button Text="Chưa có tài khoản? Đăng ký ngay" 
+                        Command="{Binding GoToRegisterCommand}" 
+                        BackgroundColor="Transparent" 
+                        TextColor="White" 
+                        FontAttributes="Bold"
+                        FontSize="14"
+                        HorizontalOptions="Center"
+                        Margin="0, 10, 0, 0"/>
+
             </VerticalStackLayout>
         </ScrollView>
     </Grid>

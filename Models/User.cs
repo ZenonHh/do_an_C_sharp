@@ -9,10 +9,12 @@ public class User
     
     public string FullName { get; set; } = string.Empty;
     
-    [Unique] // Mỗi email chỉ được đăng ký 1 tài khoản
+    [Unique] 
     public string Email { get; set; } = string.Empty;
     
-    public string Avatar { get; set; } = "dotnet_bot.png"; // Ảnh mặc định
+    // THÊM DÒNG NÀY ĐỂ LƯU MẬT KHẨU
+    public string Password { get; set; } = string.Empty;
     
+    public string Avatar { get; set; } = "dotnet_bot.png"; 
     public string Phone { get; set; } = string.Empty;
 }
