@@ -1,7 +1,15 @@
-using Microsoft.Maui.Controls;
+using BruTile.Predefined;
+using BruTile.Web;
+using DoAnCSharp.Models;
+using DoAnCSharp.Services;
 using Mapsui;
-using Mapsui.Tiling;
 using Mapsui.Projections;
+using Mapsui.Tiling;
+using Mapsui.Tiling.Layers;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.Devices.Sensors;
+using Microsoft.Maui.Media;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,17 +17,11 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Maui.ApplicationModel;
-using Microsoft.Maui.Devices.Sensors;
-using Microsoft.Maui.Media;
-using DoAnCSharp.Models;
-using DoAnCSharp.Services;
 
 namespace DoAnCSharp.Views;
 
 public partial class MapPage : ContentPage
 {
-    // Dùng readonly và nhận qua Constructor (Dependency Injection)
     private readonly DatabaseService _dbService;
     private List<AudioPOI> _pois = new();
 
@@ -27,15 +29,14 @@ public partial class MapPage : ContentPage
     private CancellationTokenSource? _ttsCancellationTokenSource;
     private AudioPOI? _currentPoi;
     private bool _isPlaying = false;
-    private bool _isManualSelection = false; 
-    private string _targetLang = "vi"; 
+    private bool _isManualSelection = false;
+    private string _targetLang = "vi";
 
-    // Constructor nhận DatabaseService từ hệ thống cung cấp
     public MapPage(DatabaseService dbService)
     {
         _dbService = dbService;
 
-        try 
+        try
         {
             InitializeComponent();
             SetupMap();
@@ -57,35 +58,42 @@ public partial class MapPage : ContentPage
     {
         try
         {
-            // Sử dụng dịch vụ được tiêm vào thay vì tạo mới
             _pois = await _dbService.GetPOIsAsync();
             LoadPinsToMap();
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Lỗi Dữ Liệu", "Không thể tải dữ liệu quán ăn: " + ex.Message, "OK");
+            await DisplayAlert("Lỗi", "Không thể tải dữ liệu quán ăn: " + ex.Message, "OK");
         }
     }
 
+    // ĐÃ FIX: Thêm User-Agent để Google Translate API không chặn
     private async Task<string> TranslateTextAsync(string text, string toLang)
     {
         if (string.IsNullOrEmpty(text) || toLang == "vi") return text;
-        try {
+        try
+        {
             string url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl={toLang}&dt=t&q={Uri.EscapeDataString(text)}";
             using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
             var response = await client.GetStringAsync(url);
             var json = JsonDocument.Parse(response);
             return json.RootElement[0][0][0].GetString() ?? text;
-        } catch { return text; }
+        }
+        catch { return text; }
     }
 
     private void SetupMap()
     {
-        if (foodMapView.Map != null) {
-            foodMapView.Map.Layers.Add(OpenStreetMap.CreateTileLayer("VTour"));
-            var center = SphericalMercator.FromLonLat(106.7000, 10.7600);
-            foodMapView.Map.Home = n => n.CenterOnAndZoomTo(new MPoint(center.x, center.y), 2);
+        if (foodMapView.Map == null)
+        {
+            foodMapView.Map = new Mapsui.Map();
         }
+        foodMapView.Map.Layers.Clear();
+        var tileSource = new HttpTileSource(new GlobalSphericalMercator(), "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", new[] { "a", "b", "c", "d" }, name: "CartoPositron");
+        foodMapView.Map.Layers.Add(new TileLayer(tileSource));
+        var center = SphericalMercator.FromLonLat(106.7000, 10.7600);
+        foodMapView.Map.Home = n => n.CenterOnAndZoomTo(new MPoint(center.x, center.y), 2);
         foodMapView.MyLocationEnabled = true;
     }
 
@@ -99,13 +107,14 @@ public partial class MapPage : ContentPage
 
     private async Task CheckGeofenceAndPlayAudio()
     {
-        try {
+        try
+        {
             if (_isManualSelection) return;
 
             var request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(2));
             var userLoc = await Geolocation.Default.GetLocationAsync(request);
 
-            if (userLoc == null) return; 
+            if (userLoc == null) return;
 
             MainThread.BeginInvokeOnMainThread(() => {
                 foodMapView.MyLocationLayer?.UpdateMyLocation(new Mapsui.UI.Maui.Position(userLoc.Latitude, userLoc.Longitude));
@@ -113,17 +122,23 @@ public partial class MapPage : ContentPage
 
             var poi = _pois.FirstOrDefault(p => Location.CalculateDistance(userLoc, new Location(p.Lat, p.Lng), DistanceUnits.Kilometers) * 1000 <= p.Radius);
 
-            if (poi != null) {
-                if (_currentPoi != poi) {
+            if (poi != null)
+            {
+                if (_currentPoi != poi)
+                {
                     PlayAudioAlert(poi);
                 }
-            } else {
-                if (_currentPoi != null && !_isManualSelection) {
+            }
+            else
+            {
+                if (_currentPoi != null && !_isManualSelection)
+                {
                     StopAudio();
                     _currentPoi = null;
                 }
             }
-        } catch { }
+        }
+        catch { }
     }
 
     private void StopAudio()
@@ -147,7 +162,18 @@ public partial class MapPage : ContentPage
         else if (action == "日本語") _targetLang = "ja";
         else if (action == "한국어") _targetLang = "ko";
 
-        if (_currentPoi != null) PlayAudioAlert(_currentPoi);
+        if (_currentPoi != null)
+        {
+            // Nếu đang mở thẻ chi tiết thì dịch thẻ chi tiết, nếu đang phát audio thì dịch audio
+            if (PoiDetailCard.IsVisible)
+            {
+                _ = UpdateDetailCardAsync(_currentPoi);
+            }
+            else
+            {
+                PlayAudioAlert(_currentPoi);
+            }
+        }
     }
 
     private async void PlayAudioAlert(AudioPOI poi)
@@ -160,24 +186,25 @@ public partial class MapPage : ContentPage
             TranslationLoader.IsRunning = true;
             AudioText.Text = _targetLang == "vi" ? poi.Name : "Translating...";
             AudioPlayerUI.IsVisible = true;
-            PoiDetailCard.IsVisible = false; 
+            PoiDetailCard.IsVisible = false;
             PlayStopButton.Text = "⏹";
         });
 
         string tName = await TranslateTextAsync(poi.Name, _targetLang);
         string tDesc = await TranslateTextAsync(poi.Description, _targetLang);
 
-        MainThread.BeginInvokeOnMainThread(() => { 
+        MainThread.BeginInvokeOnMainThread(() => {
             TranslationLoader.IsRunning = false;
             TranslationLoader.IsVisible = false;
-            AudioText.Text = tName; 
-            AudioStatusLabel.Text = _targetLang == "vi" ? "Đang phát review:" : "Playing review:"; 
+            AudioText.Text = tName;
+            AudioStatusLabel.Text = _targetLang == "vi" ? "Đang phát review:" : "Playing review:";
         });
 
         _ttsCancellationTokenSource?.Cancel();
         _ttsCancellationTokenSource = new CancellationTokenSource();
 
-        try {
+        try
+        {
             var locales = await TextToSpeech.Default.GetLocalesAsync();
             Locale? locale = null;
 
@@ -187,8 +214,10 @@ public partial class MapPage : ContentPage
             else locale = locales.FirstOrDefault(l => l.Language.Equals("vi-VN", StringComparison.OrdinalIgnoreCase)) ?? locales.FirstOrDefault(l => l.Language.StartsWith("vi", StringComparison.OrdinalIgnoreCase));
 
             await TextToSpeech.Default.SpeakAsync(tDesc, new SpeechOptions { Locale = locale }, _ttsCancellationTokenSource.Token);
-        } catch { }
-        finally {
+        }
+        catch { }
+        finally
+        {
             _isPlaying = false;
             MainThread.BeginInvokeOnMainThread(() => { PlayStopButton.Text = "▶️"; });
         }
@@ -199,20 +228,20 @@ public partial class MapPage : ContentPage
         if (e.Pin?.Tag is AudioPOI clickedPoi)
         {
             _isManualSelection = true;
-            StopAudio(); 
-            _ = UpdateDetailCardAsync(clickedPoi); 
+            StopAudio();
+            _ = UpdateDetailCardAsync(clickedPoi);
         }
         e.Handled = true;
     }
 
     private async Task UpdateDetailCardAsync(AudioPOI poi)
     {
-        _currentPoi = poi; 
+        _currentPoi = poi;
 
         MainThread.BeginInvokeOnMainThread(() => {
             DetailName.Text = "Translating...";
             PoiDetailCard.IsVisible = true;
-            AudioPlayerUI.IsVisible = false; 
+            AudioPlayerUI.IsVisible = false;
         });
 
         string tName = await TranslateTextAsync(poi.Name, _targetLang);
@@ -228,9 +257,10 @@ public partial class MapPage : ContentPage
     private void LoadPinsToMap()
     {
         if (foodMapView == null) return;
-        
+
         foodMapView.Pins.Clear();
-        foreach (var poi in _pois) {
+        foreach (var poi in _pois)
+        {
             foodMapView.Pins.Add(new Mapsui.UI.Maui.Pin(foodMapView) { Label = poi.Name, Position = new Mapsui.UI.Maui.Position(poi.Lat, poi.Lng), Tag = poi, Color = Microsoft.Maui.Graphics.Colors.Red });
         }
         foodMapView.PinClicked -= OnMapPinClicked;
@@ -243,21 +273,71 @@ public partial class MapPage : ContentPage
         foodMapView.Map?.Navigator.CenterOnAndZoomTo(new MPoint(center.x, center.y), 2);
     }
 
-    private void ToggleAudioClicked(object? sender, EventArgs e) {
-        if (_isPlaying) StopAudio(); 
+    private void ToggleAudioClicked(object? sender, EventArgs e)
+    {
+        if (_isPlaying) StopAudio();
         else if (_currentPoi != null) PlayAudioAlert(_currentPoi);
     }
 
-    private void CloseDetailClicked(object? sender, EventArgs e) {
+    private void CloseDetailClicked(object? sender, EventArgs e)
+    {
         PoiDetailCard.IsVisible = false;
-        _isManualSelection = false; 
+        _isManualSelection = false;
     }
 
-    private void PlayReviewFromDetailClicked(object? sender, EventArgs e) {
-        if (_currentPoi != null) { 
+    private void PlayReviewFromDetailClicked(object? sender, EventArgs e)
+    {
+        if (_currentPoi != null)
+        {
             _isManualSelection = true;
-            PoiDetailCard.IsVisible = false; 
-            PlayAudioAlert(_currentPoi); 
+            PoiDetailCard.IsVisible = false;
+            PlayAudioAlert(_currentPoi);
+        }
+    }
+
+    private void OnSearchTextChanged(object sender, Microsoft.Maui.Controls.TextChangedEventArgs e)
+    {
+        string searchText = e.NewTextValue?.ToLower() ?? "";
+
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            LoadPinsToMap();
+            SearchSuggestionsContainer.IsVisible = false;
+            return;
+        }
+
+        var matchingPois = _pois.Where(p => p.Name != null && p.Name.ToLower().Contains(searchText)).Take(3).ToList();
+
+        if (matchingPois.Any())
+        {
+            SuggestionsList.ItemsSource = matchingPois;
+            SearchSuggestionsContainer.IsVisible = true;
+        }
+        else
+        {
+            SearchSuggestionsContainer.IsVisible = false;
+        }
+    }
+
+    private void OnSuggestionSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is AudioPOI selectedPoi)
+        {
+            SearchSuggestionsContainer.IsVisible = false;
+            SearchEntry.Unfocus();
+            LoadPinsToMap();
+
+            if (foodMapView.Map != null)
+            {
+                var point = SphericalMercator.FromLonLat(selectedPoi.Lng, selectedPoi.Lat);
+                foodMapView.Map.Navigator.CenterOnAndZoomTo(new MPoint(point.x, point.y), 2);
+            }
+
+            _isManualSelection = true;
+            StopAudio();
+            _ = UpdateDetailCardAsync(selectedPoi);
+
+            ((CollectionView)sender).SelectedItem = null;
         }
     }
 }

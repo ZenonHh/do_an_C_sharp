@@ -70,4 +70,6 @@ public partial class MainPage : ContentPage
             await DisplayAlert("Lỗi Text-to-Speech", ex.Message, "OK");
         }
     }
+
+
 }
