@@ -19,4 +19,8 @@ public partial class ProfilePage : ContentPage
         base.OnAppearing();
         await _viewModel.LoadUserProfileAsync();
     }
+    private async void OnHistoryTapped(object sender, TappedEventArgs e)
+    {
+        await Shell.Current.GoToAsync("HistoryPage");
+    }
 }

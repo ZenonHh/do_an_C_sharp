@@ -11,5 +11,6 @@ public partial class AppShell : Shell
         
         // Gán LanguageService làm nguồn dữ liệu cho giao diện
         BindingContext = langService;
+        Routing.RegisterRoute("HistoryPage", typeof(Views.HistoryPage));
     }
 }

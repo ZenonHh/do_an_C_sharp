@@ -33,6 +33,8 @@ public static class MauiProgram
         builder.Services.AddTransient<AuthViewModel>();
         builder.Services.AddSingleton<HomeViewModel>();
         builder.Services.AddSingleton<MapViewModel>();
+        builder.Services.AddTransient<DoAnCSharp.ViewModels.HistoryViewModel>();
+        builder.Services.AddTransient<DoAnCSharp.Views.HistoryPage>();
 
         // 3. ĐĂNG KÝ CÁC TRANG (Đã XÓA SẠCH chữ "Views." và thêm ProfilePage)
         builder.Services.AddTransient<AuthPage>();

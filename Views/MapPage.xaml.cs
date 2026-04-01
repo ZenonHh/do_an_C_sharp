@@ -202,6 +202,8 @@ public partial class MapPage : ContentPage, IQueryAttributable
         _currentPoi = poi;
         _isPlaying = true;
 
+        _dbService.SavePlayHistoryAsync(poi);
+
         MainThread.BeginInvokeOnMainThread(() => {
             TranslationLoader.IsVisible = true;
             TranslationLoader.IsRunning = true;

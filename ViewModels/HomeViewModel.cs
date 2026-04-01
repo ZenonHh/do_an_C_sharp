@@ -117,4 +117,28 @@ public partial class HomeViewModel : ObservableObject
             foreach (var item in filtered) AllPois.Add(item);
         }
     }
+    public ObservableCollection<string> SearchHistory { get; set; } = new();
+
+    [ObservableProperty]
+    private bool _isSearchHistoryVisible = false;
+
+    public void LoadSearchHistory()
+    {
+        var historyStr = Microsoft.Maui.Storage.Preferences.Default.Get("SearchHistoryLog", "");
+        var list = historyStr.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
+        SearchHistory.Clear();
+        foreach (var item in list) SearchHistory.Add(item);
+    }
+
+    public void AddSearchHistory(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return;
+        var list = SearchHistory.ToList();
+        list.Remove(query);
+        list.Insert(0, query); // Đưa lên đầu
+        if (list.Count > 5) list = list.Take(5).ToList(); // Lưu tối đa 5 từ khóa
+
+        Microsoft.Maui.Storage.Preferences.Default.Set("SearchHistoryLog", string.Join("|", list));
+        LoadSearchHistory();
+    }
 }

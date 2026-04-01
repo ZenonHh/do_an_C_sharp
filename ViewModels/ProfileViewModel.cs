@@ -77,4 +77,16 @@ public partial class ProfileViewModel : ObservableObject
             await Application.Current.MainPage.DisplayAlert("Thông báo", "Tính năng Cài đặt chung đang được phát triển!", "OK");
         }
     }
+
+    public System.Collections.ObjectModel.ObservableCollection<PlayHistory> AudioHistoryList { get; set; } = new();
+
+    public async Task LoadHistoryAsync()
+    {
+        var list = await _dbService.GetRecentPlayHistoryAsync();
+        AudioHistoryList.Clear();
+        foreach (var item in list)
+        {
+            AudioHistoryList.Add(item);
+        }
+    }
 }
