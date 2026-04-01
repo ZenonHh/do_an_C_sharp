@@ -13,5 +13,6 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(ScanQRPage), typeof(ScanQRPage));
 
         BindingContext = langService;
+        Routing.RegisterRoute("HistoryPage", typeof(Views.HistoryPage));
     }
 }

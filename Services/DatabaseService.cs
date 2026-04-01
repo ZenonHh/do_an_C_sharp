@@ -158,4 +158,30 @@ public class DatabaseService
                              .Where(u => u.Email == email && u.Password == password)
                              .FirstOrDefaultAsync();
     }
+    public async Task SavePlayHistoryAsync(AudioPOI poi)
+    {
+        await InitAsync();
+        var history = new PlayHistory
+        {
+            PoiName = poi.Name,
+            ImageAsset = poi.ImageAsset,
+            PlayedAt = DateTime.Now
+        };
+        await _connection!.InsertAsync(history);
+    }
+
+    public async Task<List<PlayHistory>> GetRecentPlayHistoryAsync()
+    {
+        await InitAsync();
+        return await _connection!.Table<PlayHistory>().OrderByDescending(x => x.PlayedAt).Take(10).ToListAsync();
+    }
+
+    // Lấy TOÀN BỘ lịch sử để hiển thị trên trang Lịch sử riêng
+    public async Task<List<PlayHistory>> GetAllPlayHistoryAsync()
+    {
+        await InitAsync();
+        return await _connection!.Table<PlayHistory>().OrderByDescending(x => x.PlayedAt).ToListAsync();
+    }
+
+
 }

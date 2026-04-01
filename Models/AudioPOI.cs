@@ -18,4 +18,7 @@ public class AudioPOI
     public int Radius { get; set; } = 50; 
     public int Priority { get; set; } = 1;
     public string ImageAsset { get; set; } = "dotnet_bot.png";
+
+    [Ignore]
+    public string DistanceInfo { get; set; } = "";
 }

@@ -6,6 +6,7 @@ using DoAnCSharp.ViewModels;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 using ZXing.Net.Maui.Controls; // Thư viện quét mã vạch
 
+
 namespace DoAnCSharp;
 
 public static class MauiProgram
@@ -34,6 +35,8 @@ public static class MauiProgram
         builder.Services.AddTransient<AuthViewModel>();
         builder.Services.AddSingleton<HomeViewModel>();
         builder.Services.AddSingleton<MapViewModel>();
+        builder.Services.AddTransient<DoAnCSharp.ViewModels.HistoryViewModel>();
+        builder.Services.AddTransient<DoAnCSharp.Views.HistoryPage>();
 
         // 3. ĐĂNG KÝ CÁC TRANG 
         builder.Services.AddTransient<ScanQRPage>();
