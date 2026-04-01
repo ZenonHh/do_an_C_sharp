@@ -20,23 +20,21 @@ using System.Threading.Tasks;
 
 namespace DoAnCSharp.Views;
 
-public partial class MapPage : ContentPage
+public partial class MapPage : ContentPage, IQueryAttributable
 {
-    // --- KHAI BÁO BIẾN ---
     private readonly DatabaseService _dbService;
-    private readonly ILanguageService _langService; // Cung cấp khả năng đổi ngôn ngữ toàn App
     private List<AudioPOI> _pois = new();
+
     private IDispatcherTimer? _radarTimer;
     private CancellationTokenSource? _ttsCancellationTokenSource;
     private AudioPOI? _currentPoi;
     private bool _isPlaying = false;
     private bool _isManualSelection = false;
+    private string _targetLang = "vi";
 
-    // --- CONSTRUCTOR ---
-    public MapPage(DatabaseService dbService, ILanguageService langService)
+    public MapPage(DatabaseService dbService)
     {
         _dbService = dbService;
-        _langService = langService; // ĐÃ FIX CS8618: Gán giá trị cho _langService
 
         try
         {
@@ -56,17 +54,39 @@ public partial class MapPage : ContentPage
         await LoadDataFromDatabaseAsync();
     }
 
-    // --- LOGIC DỮ LIỆU & DỊCH THUẬT ---
     private async Task LoadDataFromDatabaseAsync()
     {
         try
         {
             _pois = await _dbService.GetPOIsAsync();
+
+            // [ĐÃ FIX ĐỒNG BỘ]: Tính khoảng cách ngay lúc Load Bản đồ cho tất cả Marker
+            try
+            {
+                var userLoc = await Geolocation.Default.GetLastKnownLocationAsync() ??
+                              await Geolocation.Default.GetLocationAsync(new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(2)));
+
+                if (userLoc != null)
+                {
+                    foreach (var poi in _pois)
+                    {
+                        double distanceKm = Location.CalculateDistance(userLoc, poi.Lat, poi.Lng, DistanceUnits.Kilometers);
+                        string distStr = distanceKm < 1 ? $"{(int)(distanceKm * 1000)}m" : $"{Math.Round(distanceKm, 1)}km";
+                        int walkMinutes = Math.Max(1, (int)(distanceKm * 12));
+                        poi.DistanceInfo = $"📍 {distStr}  •  🚶 {walkMinutes} phút";
+                    }
+                }
+            }
+            catch
+            {
+                foreach (var poi in _pois) poi.DistanceInfo = "📍 Chưa có định vị";
+            }
+
             LoadPinsToMap();
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Lỗi", "Không thể tải dữ liệu quán ăn: " + ex.Message, "OK");
+            await DisplayAlert("Lỗi", "Không thể tải dữ liệu: " + ex.Message, "OK");
         }
     }
 
@@ -85,7 +105,6 @@ public partial class MapPage : ContentPage
         catch { return text; }
     }
 
-    // --- LOGIC BẢN ĐỒ & RADAR ---
     private void SetupMap()
     {
         if (foodMapView.Map == null)
@@ -93,14 +112,7 @@ public partial class MapPage : ContentPage
             foodMapView.Map = new Mapsui.Map();
         }
         foodMapView.Map.Layers.Clear();
-        
-        // ĐÃ SỬA: Đổi sang link OpenStreetMap để bản đồ có màu
-        var tileSource = new HttpTileSource(
-            new GlobalSphericalMercator(), 
-            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", 
-            new[] { "a", "b", "c" }, 
-            name: "OpenStreetMap");
-            
+        var tileSource = new HttpTileSource(new GlobalSphericalMercator(), "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", new[] { "a", "b", "c", "d" }, name: "CartoPositron");
         foodMapView.Map.Layers.Add(new TileLayer(tileSource));
         var center = SphericalMercator.FromLonLat(106.7000, 10.7600);
         foodMapView.Map.Home = n => n.CenterOnAndZoomTo(new MPoint(center.x, center.y), 2);
@@ -120,6 +132,7 @@ public partial class MapPage : ContentPage
         try
         {
             if (_isManualSelection) return;
+
             var request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(2));
             var userLoc = await Geolocation.Default.GetLocationAsync(request);
 
@@ -150,7 +163,6 @@ public partial class MapPage : ContentPage
         catch { }
     }
 
-    // --- LOGIC ÂM THANH & NGÔN NGỮ ---
     private void StopAudio()
     {
         _ttsCancellationTokenSource?.Cancel();
@@ -162,19 +174,15 @@ public partial class MapPage : ContentPage
         });
     }
 
-    // ĐÃ FIX CS0111: Đây là hàm OnLanguageClicked duy nhất
-    private async void OnLanguageClicked(object? sender, EventArgs e)
+    private async void OnLanguageClicked(object sender, EventArgs e)
     {
         string action = await DisplayActionSheet("Ngôn ngữ / Language", "Hủy", null, "Tiếng Việt", "English", "日本語", "한국어");
         if (string.IsNullOrEmpty(action) || action == "Hủy") return;
 
-        string targetLang = "vi";
-        if (action == "English") targetLang = "en";
-        else if (action == "日本語") targetLang = "ja";
-        else if (action == "한국어") targetLang = "ko";
-
-        // GỌI LỆNH DỊCH TOÀN BỘ APP TỨC THÌ
-        _langService.ChangeLanguage(targetLang);
+        if (action == "Tiếng Việt") _targetLang = "vi";
+        else if (action == "English") _targetLang = "en";
+        else if (action == "日本語") _targetLang = "ja";
+        else if (action == "한국어") _targetLang = "ko";
 
         if (_currentPoi != null)
         {
@@ -197,20 +205,20 @@ public partial class MapPage : ContentPage
         MainThread.BeginInvokeOnMainThread(() => {
             TranslationLoader.IsVisible = true;
             TranslationLoader.IsRunning = true;
-            AudioText.Text = "Translating..."; 
+            AudioText.Text = _targetLang == "vi" ? poi.Name : "Đang dịch...";
             AudioPlayerUI.IsVisible = true;
             PoiDetailCard.IsVisible = false;
             PlayStopButton.Text = "⏹";
         });
 
-        string tName = await TranslateTextAsync(poi.Name, _langService.CurrentLocale);
-        string tDesc = await TranslateTextAsync(poi.Description, _langService.CurrentLocale);
+        string tName = await TranslateTextAsync(poi.Name, _targetLang);
+        string tDesc = await TranslateTextAsync(poi.Description, _targetLang);
 
         MainThread.BeginInvokeOnMainThread(() => {
             TranslationLoader.IsRunning = false;
             TranslationLoader.IsVisible = false;
             AudioText.Text = tName;
-            AudioStatusLabel.Text = _langService.CurrentLocale == "vi" ? "Đang phát review:" : "Playing review:";
+            AudioStatusLabel.Text = _targetLang == "vi" ? "Đang phát review:" : "Playing review:";
         });
 
         _ttsCancellationTokenSource?.Cancel();
@@ -221,19 +229,10 @@ public partial class MapPage : ContentPage
             var locales = await TextToSpeech.Default.GetLocalesAsync();
             Locale? locale = null;
 
-            if (_langService.CurrentLocale == "en") {
-                locale = locales.FirstOrDefault(l => l.Language.Equals("en-US", StringComparison.OrdinalIgnoreCase)) 
-                         ?? locales.FirstOrDefault(l => l.Language.Contains("en", StringComparison.OrdinalIgnoreCase));
-            }
-            else if (_langService.CurrentLocale == "ja") {
-                locale = locales.FirstOrDefault(l => l.Language.Contains("ja", StringComparison.OrdinalIgnoreCase));
-            }
-            else if (_langService.CurrentLocale == "ko") {
-                locale = locales.FirstOrDefault(l => l.Language.Contains("ko", StringComparison.OrdinalIgnoreCase));
-            }
-            else {
-                locale = locales.FirstOrDefault(l => l.Language.Contains("vi", StringComparison.OrdinalIgnoreCase));
-            }
+            if (_targetLang == "en") locale = locales.FirstOrDefault(l => l.Language.Equals("en-US", StringComparison.OrdinalIgnoreCase)) ?? locales.FirstOrDefault(l => l.Language.StartsWith("en", StringComparison.OrdinalIgnoreCase));
+            else if (_targetLang == "ja") locale = locales.FirstOrDefault(l => l.Language.Equals("ja-JP", StringComparison.OrdinalIgnoreCase)) ?? locales.FirstOrDefault(l => l.Language.StartsWith("ja", StringComparison.OrdinalIgnoreCase));
+            else if (_targetLang == "ko") locale = locales.FirstOrDefault(l => l.Language.Equals("ko-KR", StringComparison.OrdinalIgnoreCase)) ?? locales.FirstOrDefault(l => l.Language.StartsWith("ko", StringComparison.OrdinalIgnoreCase));
+            else locale = locales.FirstOrDefault(l => l.Language.Equals("vi-VN", StringComparison.OrdinalIgnoreCase)) ?? locales.FirstOrDefault(l => l.Language.StartsWith("vi", StringComparison.OrdinalIgnoreCase));
 
             await TextToSpeech.Default.SpeakAsync(tDesc, new SpeechOptions { Locale = locale }, _ttsCancellationTokenSource.Token);
         }
@@ -261,20 +260,41 @@ public partial class MapPage : ContentPage
         _currentPoi = poi;
 
         MainThread.BeginInvokeOnMainThread(() => {
-            DetailName.Text = "Translating...";
+            DetailName.Text = "Đang tải...";
+            if (DetailDistance != null) DetailDistance.Text = "📍 Đang đo khoảng cách...";
             PoiDetailCard.IsVisible = true;
             AudioPlayerUI.IsVisible = false;
         });
 
-        string tName = await TranslateTextAsync(poi.Name, _langService.CurrentLocale);
-        string tDesc = await TranslateTextAsync(poi.Description, _langService.CurrentLocale);
+        string tName = await TranslateTextAsync(poi.Name, _targetLang);
+        string tDesc = await TranslateTextAsync(poi.Description, _targetLang);
+
+        // [ĐÃ FIX ĐỒNG BỘ]: Cập nhật lại khoảng cách thực tế ngay khi ấn vào Popup
+        string currentDistance = poi.DistanceInfo;
+        try
+        {
+            var userLoc = await Geolocation.Default.GetLastKnownLocationAsync();
+            if (userLoc != null)
+            {
+                double distanceKm = Location.CalculateDistance(userLoc, poi.Lat, poi.Lng, DistanceUnits.Kilometers);
+                string distStr = distanceKm < 1 ? $"{(int)(distanceKm * 1000)}m" : $"{Math.Round(distanceKm, 1)}km";
+                int walkMinutes = Math.Max(1, (int)(distanceKm * 12));
+                currentDistance = $"📍 {distStr}  •  🚶 {walkMinutes} phút";
+                poi.DistanceInfo = currentDistance; // Lưu lại để không bị lệch
+            }
+        }
+        catch { }
 
         MainThread.BeginInvokeOnMainThread(() => {
-            DetailName.Text = tName; 
-            DetailDescription.Text = tDesc; 
+            DetailName.Text = tName;
+            DetailDescription.Text = tDesc;
             DetailImage.Source = poi.ImageAsset;
+
+            if (DetailDistance != null)
+                DetailDistance.Text = string.IsNullOrEmpty(currentDistance) ? "📍 Chưa xác định" : currentDistance;
+
             if (PlayReviewButton != null)
-                PlayReviewButton.Text = _langService.CurrentLocale == "vi" ? "🔊 Nghe Review" : "🔊 Listen Review";
+                PlayReviewButton.Text = _targetLang == "vi" ? "🔊 Nghe Review" : "🔊 Listen Review";
         });
     }
 
@@ -285,12 +305,7 @@ public partial class MapPage : ContentPage
         foodMapView.Pins.Clear();
         foreach (var poi in _pois)
         {
-            foodMapView.Pins.Add(new Mapsui.UI.Maui.Pin(foodMapView) { 
-                Label = poi.Name, 
-                Position = new Mapsui.UI.Maui.Position(poi.Lat, poi.Lng), 
-                Tag = poi, 
-                Color = Microsoft.Maui.Graphics.Colors.Red 
-            });
+            foodMapView.Pins.Add(new Mapsui.UI.Maui.Pin(foodMapView) { Label = poi.Name, Position = new Mapsui.UI.Maui.Position(poi.Lat, poi.Lng), Tag = poi, Color = Microsoft.Maui.Graphics.Colors.Red });
         }
         foodMapView.PinClicked -= OnMapPinClicked;
         foodMapView.PinClicked += OnMapPinClicked;
@@ -367,6 +382,31 @@ public partial class MapPage : ContentPage
             _ = UpdateDetailCardAsync(selectedPoi);
 
             ((CollectionView)sender).SelectedItem = null;
+        }
+    }
+
+    public async void ApplyQueryAttributes(IDictionary<string, object> query)
+    {
+        if (query.ContainsKey("SelectedPOI") && query["SelectedPOI"] is AudioPOI poi)
+        {
+            query.Remove("SelectedPOI");
+
+            await Task.Delay(500);
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (foodMapView.Map != null)
+                {
+                    var point = SphericalMercator.FromLonLat(poi.Lng, poi.Lat);
+                    foodMapView.Map.Navigator.CenterOnAndZoomTo(new MPoint(point.x, point.y), 2);
+                }
+
+                _isManualSelection = true;
+                StopAudio();
+
+                _ = UpdateDetailCardAsync(poi);
+                PlayAudioAlert(poi);
+            });
         }
     }
 }

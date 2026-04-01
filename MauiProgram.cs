@@ -5,6 +5,7 @@ using DoAnCSharp.Views;
 using DoAnCSharp.ViewModels;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 
+
 namespace DoAnCSharp;
 
 public static class MauiProgram

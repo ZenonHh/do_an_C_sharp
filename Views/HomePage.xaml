@@ -8,63 +8,101 @@
              NavigationPage.HasNavigationBar="False">
 
     <ScrollView>
-        <VerticalStackLayout Spacing="20" Padding="0,40,0,30">
+        <VerticalStackLayout Spacing="0" Padding="0,0,0,30">
 
-            <Grid ColumnDefinitions="*, Auto" Padding="20,0">
-                <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
-                    <Label Text="📍 Phố Ẩm Thực Vĩnh Khánh" FontSize="14" TextColor="#7F8C8D" FontAttributes="Bold" />
-                    <Label x:Name="WelcomeLabel" Text="{Binding Lang[welcome]}" FontSize="24" FontAttributes="Bold" TextColor="#2C3E50" Margin="0,5,0,0" />
+            <Border BackgroundColor="#FF6B6B" StrokeThickness="0" Margin="0,0,0,15">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="0,0,30,30" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Padding="20,50,20,30" Spacing="15">
+
+                    <Grid ColumnDefinitions="*, Auto">
+                        <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                            <Label Text="📍 Phố Ẩm Thực Vĩnh Khánh" FontSize="13" TextColor="#FFEAEA" FontAttributes="Bold" TextTransform="Uppercase" CharacterSpacing="1" />
+                            <Label x:Name="WelcomeLabel" Text="{Binding WelcomeMessage}" FontSize="28" FontAttributes="Bold" TextColor="White" Margin="0,5,0,0" />
+                        </VerticalStackLayout>
+
+                        <Border Grid.Column="1" StrokeShape="RoundRectangle 25" HeightRequest="50" WidthRequest="50" StrokeThickness="0" BackgroundColor="#E65A5A">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnChangeLangClicked"/>
+                            </Border.GestureRecognizers>
+                            <Image Source="{Binding UserImage}" Aspect="AspectFill" />
+                        </Border>
+                    </Grid>
+
+                    <Border StrokeShape="RoundRectangle 16" BackgroundColor="White" StrokeThickness="0" HeightRequest="55" Margin="0,10,0,0">
+                        <Grid ColumnDefinitions="Auto, *" Padding="15,0">
+                            <Label Grid.Column="0" Text="🔍" VerticalOptions="Center" FontSize="20" TextColor="#95A5A6" />
+                            <Entry x:Name="SearchEntry" Grid.Column="1" Placeholder="Tìm tên quán, lẩu, ốc..." 
+                                   TextColor="#2C3E50" PlaceholderColor="#95A5A6" VerticalOptions="Center" Margin="10,0,0,0" FontSize="15"
+                                   TextChanged="OnSearchTextChanged" BackgroundColor="Transparent" ClearButtonVisibility="WhileEditing"/>
+                        </Grid>
+                    </Border>
                 </VerticalStackLayout>
-            </Grid>
-
-            <Border Margin="20,0" StrokeShape="RoundRectangle 15" BackgroundColor="White" StrokeThickness="0" HeightRequest="55">
-                <Border.Shadow>
-                    <Shadow Brush="Black" Offset="0,4" Radius="10" Opacity="0.05" />
-                </Border.Shadow>
-                <Grid ColumnDefinitions="Auto, *" Padding="15,0">
-                    <Label Grid.Column="0" Text="🔍" VerticalOptions="Center" FontSize="20" />
-                    <Entry x:Name="SearchEntry" Grid.Column="1" Placeholder="Tìm quán ốc, lẩu, nướng..." 
-                           TextColor="#2C3E50" VerticalOptions="Center" Margin="10,0,0,0" FontSize="15"
-                           TextChanged="OnSearchTextChanged" BackgroundColor="Transparent" ClearButtonVisibility="WhileEditing"/>
-                </Grid>
             </Border>
 
-            <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
-                <HorizontalStackLayout Spacing="15" Padding="20,5,20,15">
-                    <Button x:Name="BtnPhoBien" Text="🔥 Phổ biến" Clicked="OnCategoryClicked" BackgroundColor="#FF6B6B" TextColor="White" CornerRadius="20" FontAttributes="Bold" HeightRequest="45" Padding="20,0"/>
-                    <Button x:Name="BtnQuanOc" Text="🐌 Quán Ốc" Clicked="OnCategoryClicked" BackgroundColor="White" TextColor="#2C3E50" CornerRadius="20" FontAttributes="Bold" HeightRequest="45" Padding="20,0"/>
-                    <Button x:Name="BtnLauNuong" Text="🍲 Lẩu &amp; Nướng" Clicked="OnCategoryClicked" BackgroundColor="White" TextColor="#2C3E50" CornerRadius="20" FontAttributes="Bold" HeightRequest="45" Padding="20,0"/>
+            <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,0,0,10">
+                <HorizontalStackLayout Spacing="12" Padding="20,5,20,15">
+                    <Button x:Name="BtnPhoBien" Text="🔥 Phổ biến" Clicked="OnCategoryClicked" BackgroundColor="#FF6B6B" TextColor="White" CornerRadius="22" FontAttributes="Bold" HeightRequest="44" Padding="20,0">
+                        <Button.Shadow>
+                            <Shadow Brush="#FF6B6B" Offset="0,4" Radius="10" Opacity="0.3"/>
+                        </Button.Shadow>
+                    </Button>
+                    <Button x:Name="BtnQuanOc" Text="🐌 Quán Ốc" Clicked="OnCategoryClicked" BackgroundColor="White" TextColor="#2C3E50" CornerRadius="22" FontAttributes="Bold" HeightRequest="44" Padding="20,0">
+                        <Button.Shadow>
+                            <Shadow Brush="Black" Offset="0,4" Radius="8" Opacity="0.05"/>
+                        </Button.Shadow>
+                    </Button>
+                    <Button x:Name="BtnLauNuong" Text="🍲 Lẩu &amp; Nướng" Clicked="OnCategoryClicked" BackgroundColor="White" TextColor="#2C3E50" CornerRadius="22" FontAttributes="Bold" HeightRequest="44" Padding="20,0">
+                        <Button.Shadow>
+                            <Shadow Brush="Black" Offset="0,4" Radius="8" Opacity="0.05"/>
+                        </Button.Shadow>
+                    </Button>
                 </HorizontalStackLayout>
             </ScrollView>
 
             <VerticalStackLayout IsVisible="{Binding IsRecommendedVisible}">
-                <Grid ColumnDefinitions="*, Auto" Margin="20,10,20,5">
-                    <Label Grid.Column="0" Text="{Binding Lang[recommend]}" FontSize="20" FontAttributes="Bold" TextColor="#2C3E50" VerticalOptions="End" />
+                <Grid ColumnDefinitions="*, Auto" Margin="20,5,20,10">
+                    <Label Grid.Column="0" Text="{Binding Lang.T[recommend]}" FontSize="20" FontAttributes="Bold" TextColor="#2C3E50" VerticalOptions="End" />
                 </Grid>
 
-                <VerticalStackLayout BindableLayout.ItemsSource="{Binding RecommendedPois}" Spacing="15" Padding="20,10">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding RecommendedPois}" Spacing="15" Padding="20,5,20,15">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="models:AudioPOI">
                             <Border BackgroundColor="White" StrokeThickness="0">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnPoiTapped"/>
+                                    <TapGestureRecognizer Tapped="OnPoiTapped" CommandParameter="{Binding .}"/>
                                 </Border.GestureRecognizers>
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="20" />
                                 </Border.StrokeShape>
                                 <Border.Shadow>
-                                    <Shadow Brush="Black" Offset="0,4" Radius="10" Opacity="0.05" />
+                                    <Shadow Brush="#2C3E50" Offset="0,6" Radius="12" Opacity="0.08" />
                                 </Border.Shadow>
-                                <Grid ColumnDefinitions="100, *" Padding="10">
-                                    <Image Grid.Column="0" Source="{Binding ImageAsset}" Aspect="AspectFill" HeightRequest="90">
+
+                                <Grid ColumnDefinitions="110, *, 40" Padding="12">
+                                    <Image Grid.Column="0" Source="{Binding ImageAsset}" Aspect="AspectFill" HeightRequest="110">
                                         <Image.Clip>
-                                            <RoundRectangleGeometry CornerRadius="10" Rect="0,0,100,90"/>
+                                            <RoundRectangleGeometry CornerRadius="15" Rect="0,0,110,110"/>
                                         </Image.Clip>
                                     </Image>
-                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="15,0,0,0">
-                                        <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" TextColor="#2C3E50"/>
-                                        <Label Text="{Binding Description}" FontSize="12" TextColor="#7F8C8D" MaxLines="2" LineBreakMode="TailTruncation" Margin="0,5,0,0"/>
+                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="15,0,0,0" Spacing="4">
+                                        <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="17" TextColor="#2C3E50"/>
+                                        <HorizontalStackLayout Spacing="8">
+                                            <Label Text="⭐ 4.8" FontSize="13" TextColor="#FF6B6B" FontAttributes="Bold" VerticalOptions="Center"/>
+                                            <Label Text="{Binding DistanceInfo}" FontSize="12" TextColor="#16A085" FontAttributes="Bold" VerticalOptions="Center"/>
+                                        </HorizontalStackLayout>
+                                        <Label Text="{Binding Description}" FontSize="13" TextColor="#7F8C8D" MaxLines="2" LineBreakMode="TailTruncation" />
                                     </VerticalStackLayout>
+                                    <Border Grid.Column="2" BackgroundColor="#F4F7F9" StrokeThickness="0" HeightRequest="32" WidthRequest="32" VerticalOptions="Start" HorizontalOptions="End">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnPoiTapped" CommandParameter="{Binding .}"/>
+                                        </Border.GestureRecognizers>
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="16"/>
+                                        </Border.StrokeShape>
+                                        <Label Text="🎧" HorizontalOptions="Center" VerticalOptions="Center" FontSize="14"/>
+                                    </Border>
                                 </Grid>
                             </Border>
                         </DataTemplate>
@@ -72,30 +110,45 @@
                 </VerticalStackLayout>
             </VerticalStackLayout>
 
-            <Label Text="{Binding SearchResultTitle}" FontSize="20" FontAttributes="Bold" TextColor="#2C3E50" Margin="20,10,20,5" />
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding AllPois}" Spacing="15" Padding="20,10">
+            <Label Text="{Binding SearchResultTitle}" FontSize="20" FontAttributes="Bold" TextColor="#2C3E50" Margin="20,10,20,10" />
+
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding AllPois}" Spacing="15" Padding="20,5,20,15">
                 <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="models:AudioPOI">
                         <Border BackgroundColor="White" StrokeThickness="0">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Tapped="OnPoiTapped"/>
+                                <TapGestureRecognizer Tapped="OnPoiTapped" CommandParameter="{Binding .}"/>
                             </Border.GestureRecognizers>
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="20" />
                             </Border.StrokeShape>
                             <Border.Shadow>
-                                <Shadow Brush="Black" Offset="0,4" Radius="10" Opacity="0.05" />
+                                <Shadow Brush="#2C3E50" Offset="0,6" Radius="12" Opacity="0.08" />
                             </Border.Shadow>
-                            <Grid ColumnDefinitions="100, *" Padding="10">
-                                <Image Grid.Column="0" Source="{Binding ImageAsset}" Aspect="AspectFill" HeightRequest="90">
+
+                            <Grid ColumnDefinitions="110, *, 40" Padding="12">
+                                <Image Grid.Column="0" Source="{Binding ImageAsset}" Aspect="AspectFill" HeightRequest="110">
                                     <Image.Clip>
-                                        <RoundRectangleGeometry CornerRadius="10" Rect="0,0,100,90"/>
+                                        <RoundRectangleGeometry CornerRadius="15" Rect="0,0,110,110"/>
                                     </Image.Clip>
                                 </Image>
-                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="15,0,0,0">
-                                    <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" TextColor="#2C3E50"/>
-                                    <Label Text="{Binding Description}" FontSize="12" TextColor="#7F8C8D" MaxLines="2" LineBreakMode="TailTruncation" Margin="0,5,0,0"/>
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="15,0,0,0" Spacing="4">
+                                    <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="17" TextColor="#2C3E50"/>
+                                    <HorizontalStackLayout Spacing="8">
+                                        <Label Text="⭐ 4.8" FontSize="13" TextColor="#FF6B6B" FontAttributes="Bold" VerticalOptions="Center"/>
+                                        <Label Text="{Binding DistanceInfo}" FontSize="12" TextColor="#16A085" FontAttributes="Bold" VerticalOptions="Center"/>
+                                    </HorizontalStackLayout>
+                                    <Label Text="{Binding Description}" FontSize="13" TextColor="#7F8C8D" MaxLines="2" LineBreakMode="TailTruncation" />
                                 </VerticalStackLayout>
+                                <Border Grid.Column="2" BackgroundColor="#F4F7F9" StrokeThickness="0" HeightRequest="32" WidthRequest="32" VerticalOptions="Start" HorizontalOptions="End">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnPoiTapped" CommandParameter="{Binding .}"/>
+                                    </Border.GestureRecognizers>
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="16"/>
+                                    </Border.StrokeShape>
+                                    <Label Text="🎧" HorizontalOptions="Center" VerticalOptions="Center" FontSize="14"/>
+                                </Border>
                             </Grid>
                         </Border>
                     </DataTemplate>
