@@ -24,8 +24,8 @@ namespace DoAnCSharp.Views;
 public partial class MapPage : ContentPage, IQueryAttributable
 {
     private readonly DatabaseService _dbService;
+    private readonly ILanguageService _langService;
     private List<AudioPOI> _pois = new();
-private readonly ILanguageService _langService; // Thêm dòng này
     private IDispatcherTimer? _radarTimer;
     private CancellationTokenSource? _ttsCancellationTokenSource;
     private AudioPOI? _currentPoi;
@@ -37,53 +37,42 @@ private readonly ILanguageService _langService; // Thêm dòng này
     public MapPage(DatabaseService dbService, ILanguageService langService)
     {
         _dbService = dbService;
-        _langService = langService; // ĐÃ FIX CS8618: Gán giá trị cho _langService
+        _langService = langService; 
 
-    try
-    {
-        InitializeComponent();
-        SetupMap();
-        StartRadar();
-
-        // --- Đăng ký nhận dữ liệu từ QR bằng WeakReferenceMessenger ---
-        // Đăng ký Messenger trong Constructor của MapPage
-WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
-{
-    string scannedName = m.Value;
-
-    // Tìm quán trong danh sách _pois dựa trên tên quét được
-    var foundPoi = _pois.FirstOrDefault(p => p.Name != null && 
-                                       p.Name.Equals(scannedName, StringComparison.OrdinalIgnoreCase));
-
-    if (foundPoi != null)
-    {
-        MainThread.BeginInvokeOnMainThread(async () =>
+        try
         {
-            // Tắt chế độ tự động của Radar để không bị âm thanh ghi đè
-            _isManualSelection = true;
-            StopAudio(); 
-            
-            // Hiển thị card thông tin và nạp ảnh/mô tả của quán đó
-            await UpdateDetailCardAsync(foundPoi);
-            
-            // TỰ ĐỘNG PHÁT REVIEW (Nếu bạn muốn quét xong là nghe luôn)
-            // PlayAudioAlert(foundPoi); 
-        });
+            InitializeComponent();
+            SetupMap();
+            StartRadar();
+
+            // Đăng ký nhận dữ liệu từ QR
+            WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
+            {
+                string qrValue = m.Value;
+                var foundPoi = _pois.FirstOrDefault(p => p.Name != null && p.Name.ToLower() == qrValue.ToLower());
+
+                if (foundPoi != null)
+                {
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        _isManualSelection = true; // Chặn Radar
+                        StopAudio(); 
+                        PlayAudioAlert(foundPoi); // Chỉ gọi Audio để tránh xung đột UI
+                    });
+                }
+                else
+                {
+                    MainThread.BeginInvokeOnMainThread(async () => {
+                        await DisplayAlert("Thông báo", $"Không tìm thấy thông tin cho mã: {qrValue}", "OK");
+                    });
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Dispatcher.Dispatch(async () => await DisplayAlert("Lỗi khởi tạo", ex.Message, "OK"));
+        }
     }
-    else
-    {
-        MainThread.BeginInvokeOnMainThread(async () => {
-            await DisplayAlert("Thông báo", $"Quán '{scannedName}' chưa có trong hệ thống Food Tour.", "OK");
-        });
-    }
-});
-        // -----------------------------------------------------------
-    }
-    catch (Exception ex)
-    {
-        Dispatcher.Dispatch(async () => await DisplayAlert("Lỗi khởi tạo", ex.Message, "OK"));
-    }
-}
 
     protected override async void OnAppearing()
     {
@@ -97,7 +86,6 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
         {
             _pois = await _dbService.GetPOIsAsync();
 
-            // [ĐÃ FIX ĐỒNG BỘ]: Tính khoảng cách ngay lúc Load Bản đồ cho tất cả Marker
             try
             {
                 var userLoc = await Geolocation.Default.GetLastKnownLocationAsync() ??
@@ -127,30 +115,48 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
         }
     }
 
+    // --- FIX LỖI ĐỌC 1 CÂU ---
     private async Task<string> TranslateTextAsync(string text, string toLang)
+{
+    // Cắt dấu nháy để tránh lỗi ngắt âm TTS
+    if (string.IsNullOrEmpty(text) || toLang == "vi") 
+        return text.Replace("'", "").Replace("\"", ""); 
+
+    try
     {
-        if (string.IsNullOrEmpty(text) || toLang == "vi") return text;
-        try
+        string url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl={toLang}&dt=t&q={Uri.EscapeDataString(text)}";
+        using var client = new HttpClient();
+        
+        // ĐÃ KHÔI PHỤC: Khai báo đầy đủ User-Agent để Google không chặn
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+        
+        var response = await client.GetStringAsync(url);
+        var json = JsonDocument.Parse(response);
+
+        string fullText = "";
+        foreach (var element in json.RootElement[0].EnumerateArray())
         {
-            string url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl={toLang}&dt=t&q={Uri.EscapeDataString(text)}";
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-            var response = await client.GetStringAsync(url);
-            var json = JsonDocument.Parse(response);
-            return json.RootElement[0][0][0].GetString() ?? text;
+            // Kiểm tra an toàn trước khi lấy chuỗi
+            if (element[0].ValueKind == JsonValueKind.String)
+            {
+                fullText += element[0].GetString();
+            }
         }
-        catch { return text; }
+
+        return fullText.Replace("'", "").Replace("\"", "");
     }
+    catch 
+    { 
+        // Nếu kẹt mạng, trả về tiếng Việt gốc
+        return text.Replace("'", "").Replace("\"", ""); 
+    }
+}
 
     private void SetupMap()
     {
-        if (foodMapView.Map == null)
-        {
-            foodMapView.Map = new Mapsui.Map();
-        }
+        if (foodMapView.Map == null) foodMapView.Map = new Mapsui.Map();
         foodMapView.Map.Layers.Clear();
         
-        // ĐÃ SỬA: Đổi sang link OpenStreetMap để bản đồ có màu
         var tileSource = new HttpTileSource(
             new GlobalSphericalMercator(), 
             "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", 
@@ -190,10 +196,7 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
 
             if (poi != null)
             {
-                if (_currentPoi != poi)
-                {
-                    PlayAudioAlert(poi);
-                }
+                if (_currentPoi != poi) PlayAudioAlert(poi);
             }
             else
             {
@@ -211,7 +214,7 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
     {
         _ttsCancellationTokenSource?.Cancel();
         _isPlaying = false;
-        _isManualSelection = false;
+        // Đã xóa dòng _isManualSelection = false; để tránh xung đột Radar
         MainThread.BeginInvokeOnMainThread(() => {
             AudioPlayerUI.IsVisible = false;
             PlayStopButton.Text = "▶️";
@@ -230,14 +233,8 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
 
         if (_currentPoi != null)
         {
-            if (PoiDetailCard.IsVisible)
-            {
-                _ = UpdateDetailCardAsync(_currentPoi);
-            }
-            else
-            {
-                PlayAudioAlert(_currentPoi);
-            }
+            if (PoiDetailCard.IsVisible) _ = UpdateDetailCardAsync(_currentPoi);
+            else PlayAudioAlert(_currentPoi);
         }
     }
 
@@ -280,7 +277,16 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
             else if (_targetLang == "ko") locale = locales.FirstOrDefault(l => l.Language.Equals("ko-KR", StringComparison.OrdinalIgnoreCase)) ?? locales.FirstOrDefault(l => l.Language.StartsWith("ko", StringComparison.OrdinalIgnoreCase));
             else locale = locales.FirstOrDefault(l => l.Language.Equals("vi-VN", StringComparison.OrdinalIgnoreCase)) ?? locales.FirstOrDefault(l => l.Language.StartsWith("vi", StringComparison.OrdinalIgnoreCase));
 
-            await TextToSpeech.Default.SpeakAsync(tDesc, new SpeechOptions { Locale = locale }, _ttsCancellationTokenSource.Token);
+            // --- CHIA ĐỂ TRỊ (ĐỌC TỪNG CÂU) ---
+            string cleanText = tDesc.Replace("'", "").Replace("\"", "").Replace("\n", " ");
+            var sentences = cleanText.Split(new[] { '.', ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var sentence in sentences)
+            {
+                if (_ttsCancellationTokenSource.Token.IsCancellationRequested) break;
+                if (string.IsNullOrWhiteSpace(sentence)) continue;
+                await TextToSpeech.Default.SpeakAsync(sentence.Trim(), new SpeechOptions { Locale = locale }, _ttsCancellationTokenSource.Token);
+            }
         }
         catch { }
         finally
@@ -307,7 +313,6 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
 
         MainThread.BeginInvokeOnMainThread(() => {
             DetailName.Text = "Đang tải...";
-            if (DetailDistance != null) DetailDistance.Text = "📍 Đang đo khoảng cách...";
             PoiDetailCard.IsVisible = true;
             AudioPlayerUI.IsVisible = false;
         });
@@ -315,7 +320,6 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
         string tName = await TranslateTextAsync(poi.Name, _targetLang);
         string tDesc = await TranslateTextAsync(poi.Description, _targetLang);
 
-        // [ĐÃ FIX ĐỒNG BỘ]: Cập nhật lại khoảng cách thực tế ngay khi ấn vào Popup
         string currentDistance = poi.DistanceInfo;
         try
         {
@@ -326,54 +330,45 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
                 string distStr = distanceKm < 1 ? $"{(int)(distanceKm * 1000)}m" : $"{Math.Round(distanceKm, 1)}km";
                 int walkMinutes = Math.Max(1, (int)(distanceKm * 12));
                 currentDistance = $"📍 {distStr}  •  🚶 {walkMinutes} phút";
-                poi.DistanceInfo = currentDistance; // Lưu lại để không bị lệch
+                poi.DistanceInfo = currentDistance; 
             }
         }
         catch { }
 
         MainThread.BeginInvokeOnMainThread(() => {
             DetailName.Text = tName;
-            DetailDescription.Text = tDesc;
+            // Gộp Distance vào Description, KHÔNG dùng DetailDistance để tránh lỗi CS0103
+            DetailDescription.Text = string.IsNullOrEmpty(currentDistance) ? tDesc : $"{currentDistance}\n\n{tDesc}";
             DetailImage.Source = poi.ImageAsset;
-
-            if (DetailDistance != null)
-                DetailDistance.Text = string.IsNullOrEmpty(currentDistance) ? "📍 Chưa xác định" : currentDistance;
 
             if (PlayReviewButton != null)
                 PlayReviewButton.Text = _targetLang == "vi" ? "🔊 Nghe Review" : "🔊 Listen Review";
         });
     }
 
-   private void LoadPinsToMap()
-{
-    // kiểm tra an toàn để tránh app bị văng (crash)
-    if (foodMapView == null || _pois == null) return;
-
-    // dùng dispatcher để đảm bảo việc vẽ ghim diễn ra trên luồng giao diện (ui thread)
-    Dispatcher.Dispatch(() =>
+    private void LoadPinsToMap()
     {
-        // 1. xóa sạch ghim cũ trước khi nạp mới để tránh bị trùng lặp
-        foodMapView.Pins.Clear();
+        if (foodMapView == null || _pois == null) return;
 
-        // 2. bắt đầu nạp từng quán ăn từ danh sách _pois
-        foreach (var poi in _pois)
+        Dispatcher.Dispatch(() =>
         {
-            foodMapView.Pins.Add(new Mapsui.UI.Maui.Pin(foodMapView) { 
-                Label = poi.Name, 
-                Position = new Mapsui.UI.Maui.Position(poi.Lat, poi.Lng), 
-                Tag = poi, 
-                Color = Microsoft.Maui.Graphics.Colors.Red 
-            });
-        }
+            foodMapView.Pins.Clear();
 
-        // 3. giữ nguyên chức năng click: xóa đăng ký cũ và nạp lại để không bị gọi 2 lần
-        foodMapView.PinClicked -= OnMapPinClicked;
-        foodMapView.PinClicked += OnMapPinClicked;
+            foreach (var poi in _pois)
+            {
+                foodMapView.Pins.Add(new Mapsui.UI.Maui.Pin(foodMapView) { 
+                    Label = poi.Name, 
+                    Position = new Mapsui.UI.Maui.Position(poi.Lat, poi.Lng), 
+                    Tag = poi, 
+                    Color = Microsoft.Maui.Graphics.Colors.Red 
+                });
+            }
 
-        // 4. lệnh "thần thánh" để ép bản đồ phải vẽ lại toàn bộ ghim lên màn hình
-        foodMapView.Refresh();
-    });
-}
+            foodMapView.PinClicked -= OnMapPinClicked;
+            foodMapView.PinClicked += OnMapPinClicked;
+            foodMapView.Refresh();
+        });
+    }
 
     private void CustomMyLocationClicked(object? sender, EventArgs e)
     {
@@ -444,7 +439,6 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
             _isManualSelection = true;
             StopAudio();
             _ = UpdateDetailCardAsync(selectedPoi);
-
             ((CollectionView)sender).SelectedItem = null;
         }
     }
@@ -454,7 +448,6 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
         if (query.ContainsKey("SelectedPOI") && query["SelectedPOI"] is AudioPOI poi)
         {
             query.Remove("SelectedPOI");
-
             await Task.Delay(500);
 
             MainThread.BeginInvokeOnMainThread(() =>
@@ -467,22 +460,21 @@ WeakReferenceMessenger.Default.Register<QrScannedMessage>(this, (r, m) =>
 
                 _isManualSelection = true;
                 StopAudio();
-
                 _ = UpdateDetailCardAsync(poi);
                 PlayAudioAlert(poi);
             });
         }
     }
-    // Đảm bảo chữ C trong Clicked phải VIẾT HOA
-private async void OnScanQRClicked(object sender, EventArgs e) 
-{
-    try 
+
+    private async void OnScanQRClicked(object sender, EventArgs e) 
     {
-        await Navigation.PushAsync(new ScanQRPage()); 
+        try 
+        {
+            await Navigation.PushAsync(new ScanQRPage()); 
+        }
+        catch (Exception ex) 
+        {
+            await DisplayAlert("Lỗi", "Không thể mở camera: " + ex.Message, "OK"); 
+        }
     }
-    catch (Exception ex) 
-    {
-        await DisplayAlert("Lỗi", "Không thể mở camera: " + ex.Message, "OK"); 
-    }
-}
 }
