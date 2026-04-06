@@ -14,7 +14,7 @@
         <AcceptAndroidSDKLicenses>true</AcceptAndroidSDKLicenses>
 
         <ApplicationTitle>VinhKhanhFoodTour</ApplicationTitle>
-        <ApplicationId>com.companyname.doancsharp</ApplicationId>
+        <ApplicationId>com.companyname.doancsharp_clean</ApplicationId>
         <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
         <ApplicationVersion>1</ApplicationVersion>
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>

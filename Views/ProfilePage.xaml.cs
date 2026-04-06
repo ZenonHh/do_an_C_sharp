@@ -23,4 +23,9 @@ public partial class ProfilePage : ContentPage
     {
         await Shell.Current.GoToAsync("HistoryPage");
     }
+    private async void OnEditProfileTapped(object sender, TappedEventArgs e)
+    {
+    // Mở trang chỉnh sửa thông tin
+        await Navigation.PushAsync(new EditProfilePage());
+    }
 }

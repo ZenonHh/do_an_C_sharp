@@ -182,6 +182,24 @@ public class DatabaseService
         await InitAsync();
         return await _connection!.Table<PlayHistory>().OrderByDescending(x => x.PlayedAt).ToListAsync();
     }
-
+// 8. HÀM CẬP NHẬT THÔNG TIN NGƯỜI DÙNG
+public async Task<bool> UpdateUserAsync(string email, string newFullName, string newPassword, string newAvatarPath)
+{
+    await InitAsync();
+    // Tìm user đang đăng nhập
+    var user = await _connection!.Table<User>().Where(u => u.Email == email).FirstOrDefaultAsync();
+    
+    if (user != null)
+    {
+        // Cập nhật các trường nếu người dùng có nhập mới
+        if (!string.IsNullOrWhiteSpace(newFullName)) user.FullName = newFullName;
+        if (!string.IsNullOrWhiteSpace(newPassword)) user.Password = newPassword;
+        if (!string.IsNullOrWhiteSpace(newAvatarPath)) user.Avatar = newAvatarPath;
+        
+        var result = await _connection.UpdateAsync(user);
+        return result > 0; // Trả về true nếu update thành công
+    }
+    return false;
+}
 
 }
