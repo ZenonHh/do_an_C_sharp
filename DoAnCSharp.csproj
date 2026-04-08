@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
         <TargetFrameworks>net8.0-android</TargetFrameworks>
         <OutputType>Exe</OutputType>
         <UseMaui>true</UseMaui>
