@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell x:Class="DoAnCSharp.Views.MainPage"
+       xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:DoAnCSharp.Views"
+       Shell.FlyoutBehavior="Disabled">
+
+    <TabBar>
+        <Tab Title="Trang chủ" Icon="home_icon.png">
+            <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+        </Tab>
+        <Tab Title="Bản đồ" Icon="map_icon.png">
+            <ShellContent ContentTemplate="{DataTemplate views:MapPage}" />
+        </Tab>
+        <Tab Title="Tôi" Icon="person_icon.png">
+            <!-- <ShellContent ContentTemplate="{DataTemplate views:ProfilePage}" /> -->
+        </Tab>
+    </TabBar>
+</Shell>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:DoAnCSharp.ViewModels"
+             x:Class="DoAnCSharp.Views.AuthPage"
+             BackgroundColor="#63B4FF"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid>
+        <Label Text="⛱️" FontSize="180" Opacity="0.3" 
+               VerticalOptions="End" HorizontalOptions="Center" Margin="0,0,0,30" />
+
+        <ScrollView Padding="35,0">
+            <VerticalStackLayout Spacing="15" VerticalOptions="Start">
+                
+                <BoxView HeightRequest="80" Color="Transparent"/>
+                
+                <Label Text="🌊" FontSize="70" HorizontalOptions="Center" />
+                
+                <Label Text="VĨNH KHÁNH TOUR" FontSize="26" FontAttributes="Bold"
+                       TextColor="White" HorizontalOptions="Center" CharacterSpacing="1.2" />
+
+                <BoxView HeightRequest="40" Color="Transparent"/>
+
+                <Border StrokeShape="RoundRectangle 12" StrokeThickness="0" BackgroundColor="White" HeightRequest="55">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Offset="0,3" Radius="5" Opacity="0.1" />
+                    </Border.Shadow>
+                    <Grid ColumnDefinitions="50, *">
+                        <Label Text="📱" VerticalOptions="Center" HorizontalOptions="Center" />
+                        <Entry Grid.Column="1" Placeholder="Nhập số điện thoại/email"
+                               Text="{Binding Email}" VerticalOptions="Center" 
+                               PlaceholderColor="Gray" TextColor="Black"/>
+                    </Grid>
+                </Border>
+
+                <Border StrokeShape="RoundRectangle 12" StrokeThickness="0" BackgroundColor="White" HeightRequest="55">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Offset="0,3" Radius="5" Opacity="0.1" />
+                    </Border.Shadow>
+                    <Grid ColumnDefinitions="50, *">
+                        <Label Text="🔒" VerticalOptions="Center" HorizontalOptions="Center" />
+                        <Entry Grid.Column="1" Placeholder="Nhập mật khẩu" IsPassword="True"
+                               Text="{Binding Password}" VerticalOptions="Center"
+                               PlaceholderColor="Gray" TextColor="Black"/>
+                    </Grid>
+                </Border>
+
+                <BoxView HeightRequest="10" Color="Transparent"/>
+
+                <Button Text="ĐĂNG NHẬP" HeightRequest="55" CornerRadius="12"
+                        BackgroundColor="#3F8CFF" TextColor="White" 
+                        FontAttributes="Bold" FontSize="18"
+                        Command="{Binding LoginCommand}" />
+                <Label Text="Quên mật khẩu?" 
+                       TextColor="White" 
+                       FontAttributes="Bold" 
+                       HorizontalOptions="Center" 
+                       Margin="0, 15, 0, 0"
+                       TextDecorations="Underline">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnForgotPasswordTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+
+                <Button Text="Chưa có tài khoản? Đăng ký ngay" 
+                        Command="{Binding GoToRegisterCommand}" 
+                        BackgroundColor="Transparent" 
+                        TextColor="White" 
+                        FontAttributes="Bold"
+                        FontSize="14"
+                        HorizontalOptions="Center"
+                        Margin="0, 10, 0, 0"/>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

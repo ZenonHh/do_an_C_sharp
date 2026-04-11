@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.MAUI.Controls"
+             x:Class="DoAnCSharp.Views.ScanQRPage"
+             Title="quét mã qr">
+             
+    <Grid>
+        <zxing:CameraBarcodeReaderView
+            x:Name="cameraBarcodeReaderView"
+            BarcodesDetected="CameraBarcodeReaderView_BarcodesDetected" />
+            
+        <Frame HorizontalOptions="Center" 
+               VerticalOptions="Center" 
+               WidthRequest="250" 
+               HeightRequest="250" 
+               BackgroundColor="Transparent" 
+               BorderColor="White" 
+               CornerRadius="10"
+               InputTransparent="True" />
+               
+        <Label Text="đưa mã qr của quán ăn vào khung hình" 
+               TextColor="White" 
+               HorizontalOptions="Center" 
+               VerticalOptions="End" 
+               Margin="0,0,0,50" 
+               FontSize="16" 
+               FontAttributes="Bold"/>
+    </Grid>
+
+</ContentPage>
