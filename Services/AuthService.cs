@@ -29,7 +29,7 @@ public class AuthService : IAuthService
             return;
 
         // Dùng chung một Database để tránh lỗi đăng nhập
-        string dbPath = Path.Combine(FileSystem.AppDataDirectory, "VinhKhanhTour_Full.db3");
+        string dbPath = Path.Combine(FileSystem.AppDataDirectory, "VinhKhanhTour_V5.db3");
 
         _connection = new SQLiteAsyncConnection(dbPath);
         await _connection.CreateTableAsync<User>();
