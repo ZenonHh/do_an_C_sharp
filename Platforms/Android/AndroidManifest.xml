@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -16,7 +16,12 @@
         android:icon="@mipmap/appicon"
         android:supportsRtl="true"
         android:label="VinhKhanhFoodTour"
-        android:usesCleartextTraffic="true">
-	</application>
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true">
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="DÁN_MÃ_API_KEY_CỦA_BẠN_VÀO_ĐÂY" />
+    </application>
 
 </manifest>

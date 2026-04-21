@@ -38,7 +38,9 @@ public static class MauiProgram
             builder.Services.AddSingleton<LocationService>(); 
             System.Diagnostics.Debug.WriteLine("✓ LocationService registered");
             
+            builder.Services.AddSingleton<AdminSyncService>();
             builder.Services.AddSingleton<IAuthService, AuthService>();
+            builder.Services.AddSingleton<ScanQuotaService>();
             System.Diagnostics.Debug.WriteLine("✓ AuthService registered");
 
             // 2. ĐĂNG KÝ VIEWMODELS
@@ -58,6 +60,7 @@ public static class MauiProgram
             System.Diagnostics.Debug.WriteLine("✓ ProfileViewModel registered");
             
             builder.Services.AddTransient<HistoryViewModel>();
+            builder.Services.AddTransient<PaymentViewModel>();
             System.Diagnostics.Debug.WriteLine("✓ HistoryViewModel registered");
 
             // 3. ĐĂNG KÝ CÁC TRANG 
@@ -88,9 +91,12 @@ public static class MauiProgram
             
             builder.Services.AddTransient<EditProfilePage>();
             System.Diagnostics.Debug.WriteLine("✓ EditProfilePage registered");
-            
+
             builder.Services.AddTransient<ForgotPasswordPage>();
             System.Diagnostics.Debug.WriteLine("✓ ForgotPasswordPage registered");
+
+            builder.Services.AddTransient<PaymentPage>();
+            System.Diagnostics.Debug.WriteLine("✓ PaymentPage registered");
 
             System.Diagnostics.Debug.WriteLine("=== All services registered successfully ===");
             

@@ -1,21 +1,24 @@
 using DoAnCSharp.ViewModels;
+using DoAnCSharp.Services;
 
 namespace DoAnCSharp.Views;
 
 public partial class AuthPage : ContentPage
 {
-    public AuthPage(AuthViewModel viewModel)
+    private readonly DatabaseService _dbService;
+
+    public AuthPage(AuthViewModel viewModel, DatabaseService dbService)
     {
         InitializeComponent();
         BindingContext = viewModel;
+        _dbService = dbService;
     }
-    
+
     private async void OnForgotPasswordTapped(object sender, TappedEventArgs e)
     {
         try
         {
-            // Dùng Modal để tránh lỗi Navigation Stack khi chưa vào AppShell
-            await Navigation.PushModalAsync(new NavigationPage(new ForgotPasswordPage()));
+            await Navigation.PushModalAsync(new NavigationPage(new ForgotPasswordPage(_dbService)));
         }
         catch (Exception ex)
         {

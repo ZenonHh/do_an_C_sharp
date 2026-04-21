@@ -5,19 +5,20 @@ using System.IO;
 using System.Threading.Tasks;
 using DoAnCSharp.Services;
 using DoAnCSharp.Models;
+using DoAnCSharp.Helpers;
 
 namespace DoAnCSharp.Views;
 
 public partial class EditProfilePage : ContentPage
 {
     private string _newAvatarPath = "";
-    private DatabaseService _dbService;
+    private readonly DatabaseService _dbService;
     private User? _currentUser;
 
-    public EditProfilePage()
+    public EditProfilePage(DatabaseService dbService)
     {
         InitializeComponent();
-        _dbService = new DatabaseService();
+        _dbService = dbService;
     }
 
     protected override async void OnAppearing()
@@ -69,8 +70,8 @@ public partial class EditProfilePage : ContentPage
 
             if (_currentUser == null) return;
 
-            // Bắt buộc nhập mật khẩu cũ để xác minh
-            if (oldPass != _currentUser.Password)
+            // Bắt buộc nhập mật khẩu cũ để xác minh (so sánh hash)
+            if (PasswordHelper.Hash(oldPass) != _currentUser.Password)
             {
                 await DisplayAlert("Lỗi", "Mật khẩu hiện tại không đúng!", "OK");
                 return;

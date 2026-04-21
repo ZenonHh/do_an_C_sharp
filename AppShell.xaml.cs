@@ -1,6 +1,5 @@
 using DoAnCSharp.Services;
 using DoAnCSharp.Views; 
-
 namespace DoAnCSharp;
 
 public partial class AppShell : Shell
@@ -20,6 +19,7 @@ public partial class AppShell : Shell
             Routing.RegisterRoute(nameof(ScanQRPage), typeof(ScanQRPage));
             Routing.RegisterRoute("HistoryPage", typeof(HistoryPage));
             Routing.RegisterRoute("EditProfilePage", typeof(EditProfilePage));
+            Routing.RegisterRoute("PaymentPage", typeof(PaymentPage));
 
             // Set initial tab titles
             UpdateTabTitles();

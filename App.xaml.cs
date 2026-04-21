@@ -3,23 +3,25 @@ using DoAnCSharp.Services;
 
 namespace DoAnCSharp;
 
+using System; // For Uri
+
 public partial class App : Application
 {
     private readonly ILanguageService _langService;
     private readonly DatabaseService _dbService;
+    private readonly AdminSyncService _syncService;
     private bool _isInitialized = false;
 
-    public App(AuthPage authPage, ILanguageService langService, DatabaseService dbService)
+    public App(AppShell appShell, ILanguageService langService, DatabaseService dbService, AdminSyncService syncService)
     {
-        InitializeComponent(); 
-        
+        InitializeComponent();
+
         _langService = langService;
         _dbService = dbService;
+        _syncService = syncService;
 
-        // Trang khởi đầu là AuthPage (hiện lên ngay lập tức để không bị màn hình trắng)
-        MainPage = new NavigationPage(authPage);
-        
-        // Khởi tạo các dịch vụ NGẦM ở Background Thread để không làm đơ App
+        MainPage = appShell;
+
         InitializeServicesInBackground();
     }
 
@@ -60,6 +62,10 @@ public partial class App : Application
 
                 _isInitialized = true;
                 System.Diagnostics.Debug.WriteLine("=== App Initialization Complete ===");
+
+                // Bắt đầu gửi heartbeat để server biết thiết bị này đang online
+                string userId = Microsoft.Maui.Storage.Preferences.Default.Get("CurrentUserEmail", "guest");
+                _syncService.StartHeartbeat(userId);
             }
             catch (Exception ex)
             {
@@ -80,5 +86,45 @@ public partial class App : Application
                 });
             }
         });
+    }
+
+    // Xử lý Deep Link khi ứng dụng được mở từ bên ngoài
+    protected override async void OnAppLinkRequestReceived(Uri uri)
+    {
+        base.OnAppLinkRequestReceived(uri);
+
+        // Kiểm tra scheme và host của deep link
+        if (uri.Scheme == "vinhkhanhtour" && uri.Host == "play_audio")
+        {
+            string? poiName = null; // Sử dụng string? để xử lý nullability
+            if (!string.IsNullOrEmpty(uri.Query))
+                poiName = GetQueryParamFromUri(uri, "poi_name");
+            
+            if (!string.IsNullOrEmpty(poiName))
+            {
+                // Điều hướng đến MapTab và truyền poi_name như một query attribute
+                // MapPage (đã implement IQueryAttributable) sẽ xử lý tham số này.
+                await Shell.Current.GoToAsync($"//MapTab?poi_name={Uri.EscapeDataString(poiName)}");
+            }
+        }
+    }
+
+    // Helper method to parse query parameters from a Uri object
+    private string? GetQueryParamFromUri(Uri uri, string paramName) // Kiểu trả về là string?
+    {
+        if (uri == null || string.IsNullOrEmpty(uri.Query))
+        {
+            return null;
+        }
+
+        string query = uri.Query.TrimStart('?');
+        var pairs = query.Split('&');
+        foreach (var pair in pairs)
+        {
+            var parts = pair.Split('=');
+            if (parts.Length == 2 && Uri.UnescapeDataString(parts[0]) == paramName)
+                return Uri.UnescapeDataString(parts[1]);
+        }
+        return null;
     }
 }

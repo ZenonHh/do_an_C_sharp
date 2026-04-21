@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"d:/C_Sharp/do_an_C_sharp-main/AdminServer/wwwroot\")",
+      "Bash(mkdir -p \"d:/C_Sharp/do_an_C_sharp-main/AdminServer/Properties\")",
+      "Bash(dotnet build *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

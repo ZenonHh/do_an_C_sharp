@@ -47,4 +47,12 @@
 	  </MauiXaml>
 	</ItemGroup>
 
+    <!-- Loại trừ AdminServer ra khỏi MAUI build -->
+    <ItemGroup>
+        <Compile Remove="AdminServer\**" />
+        <Content Remove="AdminServer\**" />
+        <EmbeddedResource Remove="AdminServer\**" />
+        <None Remove="AdminServer\**" />
+    </ItemGroup>
+
 </Project>

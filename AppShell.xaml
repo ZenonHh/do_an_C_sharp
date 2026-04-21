@@ -8,21 +8,21 @@
     Shell.FlyoutBehavior="Disabled">
 
     <TabBar Shell.TabBarBackgroundColor="White"
-        Shell.TabBarForegroundColor="#FF4757"
-        Shell.TabBarTitleColor="#FF4757"
-        Shell.TabBarUnselectedColor="#95A5A6">
+            Shell.TabBarForegroundColor="#FF4757"
+            Shell.TabBarTitleColor="#FF4757"
+            Shell.TabBarUnselectedColor="#95A5A6">
 
-    <Tab x:Name="TabHome" Route="HomeTab" Title="Trang Chủ" Icon="home_icon.png"> 
-        <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
-    </Tab>
+        <Tab x:Name="TabMap" Route="MapTab" Title="Bản Đồ" Icon="map_icon.png">
+            <ShellContent ContentTemplate="{DataTemplate views:MapPage}" />
+        </Tab>
 
-    <Tab x:Name="TabMap" Route="MapTab" Title="Bản Đồ" Icon="map_icon.png">
-        <ShellContent ContentTemplate="{DataTemplate views:MapPage}" />
-    </Tab>
+        <Tab x:Name="TabHome" Route="HomeTab" Title="Trang Chủ" Icon="home_icon.png"> 
+            <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+        </Tab>
 
-    <Tab x:Name="TabProfile" Route="ProfileTab" Title="Tôi" Icon="profile_icon.png">
-        <ShellContent ContentTemplate="{DataTemplate views:ProfilePage}" />
-    </Tab>
-    
-</TabBar>
+        <Tab x:Name="TabProfile" Route="ProfileTab" Title="Tôi" Icon="profile_icon.png">
+            <ShellContent ContentTemplate="{DataTemplate views:ProfilePage}" />
+        </Tab>
+        
+    </TabBar>
 </Shell>

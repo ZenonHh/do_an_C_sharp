@@ -1,38 +1,25 @@
 #nullable disable
-using SQLite;
-using DoAnCSharp.Models;
 using Microsoft.Maui.Storage;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace DoAnCSharp.Services;
 
-// ĐÂY LÀ PHẦN INTERFACE ĐÃ ĐƯỢC KHAI BÁO REGISTER_ASYNC
 public interface IAuthService
 {
     Task SetLoggedInAsync(bool status);
     Task<bool> IsLoggedInAsync();
     void Logout();
-
-    // Khai báo hàm đăng ký
     Task<bool> RegisterAsync(string email, string password, string fullName, string avatar = "dotnet_bot.png");
 }
 
 public class AuthService : IAuthService
 {
     private const string LoginKey = "isLoggedIn";
-    private SQLiteAsyncConnection _connection;
+    private readonly DatabaseService _dbService;
 
-    private async Task InitAsync()
+    public AuthService(DatabaseService dbService)
     {
-        if (_connection != null)
-            return;
-
-        // Dùng chung một Database để tránh lỗi đăng nhập
-        string dbPath = Path.Combine(FileSystem.AppDataDirectory, "VinhKhanhTour_V5.db3");
-
-        _connection = new SQLiteAsyncConnection(dbPath);
-        await _connection.CreateTableAsync<User>();
+        _dbService = dbService;
     }
 
     public Task SetLoggedInAsync(bool status)
@@ -53,27 +40,9 @@ public class AuthService : IAuthService
         Preferences.Default.Remove("CurrentUserEmail");
     }
 
-    // THỰC THI HÀM ĐĂNG KÝ Ở ĐÂY
+    // Delegate hoàn toàn sang DatabaseService để dùng chung 1 DB và 1 logic hash
     public async Task<bool> RegisterAsync(string email, string password, string fullName, string avatar = "dotnet_bot.png")
     {
-        await InitAsync();
-
-        var existingUser = await _connection.Table<User>().Where(u => u.Email == email).FirstOrDefaultAsync();
-
-        if (existingUser != null)
-        {
-            return false;
-        }
-
-        var newUser = new User
-        {
-            Email = email,
-            Password = password,
-            FullName = fullName,
-            Avatar = avatar
-        };
-
-        await _connection.InsertAsync(newUser);
-        return true;
+        return await _dbService.RegisterUserAsync(fullName, email, password);
     }
 }

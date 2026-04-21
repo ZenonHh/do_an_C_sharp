@@ -1,5 +1,6 @@
 using SQLite;
 using DoAnCSharp.Models;
+using DoAnCSharp.Helpers;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -11,9 +12,15 @@ namespace DoAnCSharp.Services;
 public class DatabaseService
 {
     // Đã đổi tên file để hệ thống tạo DB mới chứa 15 quán ăn
-    private const string DbFileName = "VinhKhanhTour_V5.db3";
+    private const string DbFileName = "VinhKhanhTour_V6.db3";
     private SQLiteAsyncConnection? _connection;
     private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+    private readonly AdminSyncService _sync;
+
+    public DatabaseService(AdminSyncService sync)
+    {
+        _sync = sync;
+    }
 
     // 1. HÀM KHỞI TẠO CƠ BẢN (Tạo bảng và nạp User)
     private async Task InitAsync()
@@ -50,12 +57,12 @@ public class DatabaseService
                 
                 if (userCount == 0)
                 {
-                    var defaultUser = new User 
-                    { 
-                        FullName = "Gastronome Vĩnh Khánh", 
+                    var defaultUser = new User
+                    {
+                        FullName = "Gastronome Vĩnh Khánh",
                         Email = "admin@vinhkhanh.com",
                         Phone = "0909 123 456",
-                        Password = "123456",
+                        Password = PasswordHelper.Hash("123456"),
                         Avatar = "dotnet_bot.png"
                     };
                     await _connection.InsertAsync(defaultUser);
@@ -81,14 +88,20 @@ public class DatabaseService
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine("=== DatabaseService.SeedDataAsync Starting ===");
+            
             await InitAsync(); // Đảm bảo đã khởi tạo kết nối
 
             if (_connection == null)
                 throw new InvalidOperationException("Database connection not initialized");
 
             var count = await _connection.Table<AudioPOI>().CountAsync();
+            System.Diagnostics.Debug.WriteLine($"Current POI count in database: {count}");
+            
             if (count == 0)
             {
+                System.Diagnostics.Debug.WriteLine("Seeding 15 restaurants into database...");
+                
                 var initialData = new List<AudioPOI>
 {
     // ---- THẾ GIỚI ỐC ----
@@ -103,7 +116,7 @@ public class DatabaseService
     // ---- LẨU & NƯỚNG ----
     new AudioPOI { Name = "Quán Nướng Chilli", Address = "232 Vĩnh Khánh, Q.4", Description = "Thiên đường hàu nướng với hơn 20 loại sốt khác nhau, hải sản nướng ngói thơm lừng.", Lat = 10.7586, Lng = 106.7055, Radius = 50, Priority = 2, ImageAsset = "nuong_chilli.jpg" },
     new AudioPOI { Name = "Lẩu Bò Khu Nhà Cháy", Address = "Chung cư Đoàn Văn Bơ (Gần Vĩnh Khánh)", Description = "Lẩu bò gia truyền nước dùng ngọt thanh từ xương, bò viên tự làm dai giòn sừn sựt.", Lat = 10.7590, Lng = 106.7025, Radius = 50, Priority = 2, ImageAsset = "lau_bo.jpg" },
-    new AudioPOI { Name = "Sườn Nướng Muối Ớt", Address = "Dọc đường Vĩnh Khánh, Q.4", Description = "Sườn heo nướng tảng tẩm ớt cay nồng, ăn kèm đồ chua giải ngấy cực kỳ bắt bia.", Lat = 10.7588, Lng = 106.7040, Radius = 40, Priority = 2, ImageAsset = "suon_nuong.jpg" },
+    new AudioPOI { Name = "Sườn Nướng Muối Ớt", Address = "Dọc đường Vĩnh Khánh, Q.4", Description = "Sườn heo nướng tẩm ớt cay nồng, ăn kèm đồ chua giải ngấy cực kỳ bắt bia.", Lat = 10.7588, Lng = 106.7040, Radius = 40, Priority = 2, ImageAsset = "suon_nuong.jpg" },
     new AudioPOI { Name = "Khèn BBQ - Nướng Ngói", Address = "165 Vĩnh Khánh, Q.4", Description = "Thịt được nướng trên ngói đỏ giúp giữ độ ngọt, không bị ám khói than, tẩm ướp chuẩn vị Tây Bắc.", Lat = 10.7592, Lng = 106.7038, Radius = 40, Priority = 2, ImageAsset = "khen_bbq.jpg" },
     new AudioPOI { Name = "Lẩu Dê Dũng Mập", Address = "Đầu đường Vĩnh Khánh", Description = "Lẩu dê nấu chao thơm phức, thịt dê núi mềm ngọt, không bị hôi, ăn kèm rau rừng.", Lat = 10.7602, Lng = 106.7049, Radius = 50, Priority = 2, ImageAsset = "lau_de.jpg" },
 
@@ -112,12 +125,25 @@ public class DatabaseService
     new AudioPOI { Name = "Sushi Viên Vĩnh Khánh", Address = "Dọc vỉa hè Vĩnh Khánh", Description = "Sushi lề đường giá học sinh sinh viên nhưng cá hồi, trứng cuộn rất tươi và sạch sẽ.", Lat = 10.7598, Lng = 106.7042, Radius = 30, Priority = 3, ImageAsset = "sushi_vien.jpg" },
     new AudioPOI { Name = "Trái Cây Tô & Chè", Address = "Giữa phố Vĩnh Khánh", Description = "Tráng miệng mát lạnh giải nhiệt sau khi ăn đồ nướng cay nóng, trái cây xô ngập tràn sữa chua.", Lat = 10.7584, Lng = 106.7050, Radius = 30, Priority = 3, ImageAsset = "trai_cay_to.jpg" }
 };
-                await _connection.InsertAllAsync(initialData);
+                
+                int inserted = await _connection.InsertAllAsync(initialData);
+                System.Diagnostics.Debug.WriteLine($"✓ Successfully inserted {inserted} POIs into database");
             }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"ℹ Database already has {count} POIs, skipping seed");
+            }
+            
+            // Verify the final count
+            var finalCount = await _connection.Table<AudioPOI>().CountAsync();
+            System.Diagnostics.Debug.WriteLine($"✓ Final POI count: {finalCount}");
+            
+            System.Diagnostics.Debug.WriteLine("=== DatabaseService.SeedDataAsync Complete ===");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"ERROR in SeedDataAsync: {ex}");
+            System.Diagnostics.Debug.WriteLine($"✗ ERROR in SeedDataAsync: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"✗ Stack Trace: {ex.StackTrace}");
             throw;
         }
     }
@@ -125,8 +151,24 @@ public class DatabaseService
     // 3. HÀM LẤY DANH SÁCH QUÁN ĂN (Cho Trang chủ và Bản đồ)
     public async Task<List<AudioPOI>> GetPOIsAsync()
     {
-        await InitAsync();
-        return await _connection!.Table<AudioPOI>().ToListAsync();
+        try
+        {
+            await InitAsync();
+            
+            if (_connection == null)
+                throw new InvalidOperationException("Database connection not initialized");
+            
+            var pois = await _connection.Table<AudioPOI>().ToListAsync();
+            System.Diagnostics.Debug.WriteLine($"✓ GetPOIsAsync returned {pois.Count} POIs");
+            
+            return pois;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"✗ ERROR in GetPOIsAsync: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"✗ Stack Trace: {ex.StackTrace}");
+            return new List<AudioPOI>();
+        }
     }
 
     // 4. HÀM LẤY THÔNG TIN NGƯỜI DÙNG (Cho trang Cá nhân)
@@ -179,11 +221,11 @@ public class DatabaseService
             return false; // Trùng email -> Thất bại
 
         // Chưa có thì tạo mới
-        var newUser = new User 
-        { 
-            FullName = fullName, 
-            Email = email, 
-            Password = password, // Lưu mật khẩu
+        var newUser = new User
+        {
+            FullName = fullName,
+            Email = email,
+            Password = PasswordHelper.Hash(password),
             Avatar = "dotnet_bot.png",
             Phone = "Đang cập nhật"
         };
@@ -197,20 +239,28 @@ public class DatabaseService
     {
         await InitAsync();
         // Tìm user có cả Email VÀ Password trùng khớp
+        string hashed = PasswordHelper.Hash(password);
         return await _connection!.Table<User>()
-                             .Where(u => u.Email == email && u.Password == password)
+                             .Where(u => u.Email == email && u.Password == hashed)
                              .FirstOrDefaultAsync();
     }
     public async Task SavePlayHistoryAsync(AudioPOI poi)
     {
         await InitAsync();
+        string userId = Microsoft.Maui.Storage.Preferences.Default.Get("CurrentUserEmail", "guest");
+        var playedAt = DateTime.Now;
         var history = new PlayHistory
         {
             PoiName = poi.Name,
             ImageAsset = poi.ImageAsset,
-            PlayedAt = DateTime.Now
+            PlayedAt = playedAt,
+            UserId = userId,
+            IsSynced = false
         };
         await _connection!.InsertAsync(history);
+
+        // Sync lên admin server (fire and forget — không ảnh hưởng nếu server tắt)
+        _ = _sync.SyncPlayHistoryAsync(userId, poi.Name, playedAt);
     }
 
     public async Task<List<PlayHistory>> GetRecentPlayHistoryAsync()
@@ -225,7 +275,29 @@ public class DatabaseService
         await InitAsync();
         return await _connection!.Table<PlayHistory>().OrderByDescending(x => x.PlayedAt).ToListAsync();
     }
-// 8. HÀM CẬP NHẬT THÔNG TIN NGƯỜI DÙNG
+// 8. HÀM LẤY WEIGHT HEATMAP = ĐỘ NỔI TIẾNG (Priority) + SỐ LƯỢT NGHE
+    public async Task<List<(double Lat, double Lng, int Weight)>> GetPOIPlayCountsAsync()
+    {
+        await InitAsync();
+        var pois = await _connection!.Table<AudioPOI>().ToListAsync();
+        var histories = await _connection!.Table<PlayHistory>().ToListAsync();
+
+        var counts = histories
+            .GroupBy(h => h.PoiName)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var result = new List<(double, double, int)>();
+        foreach (var poi in pois)
+        {
+            // Priority 1→base 6, Priority 2→base 3, Priority 3→base 1
+            int baseWeight = poi.Priority switch { 1 => 6, 2 => 3, _ => 1 };
+            int playCount = counts.TryGetValue(poi.Name, out var c) ? c : 0;
+            result.Add((poi.Lat, poi.Lng, baseWeight + playCount));
+        }
+        return result;
+    }
+
+    // 9. HÀM CẬP NHẬT THÔNG TIN NGƯỜI DÙNG
 public async Task<bool> UpdateUserAsync(string email, string newFullName, string newPassword, string newAvatarPath)
 {
     await InitAsync();
@@ -236,7 +308,7 @@ public async Task<bool> UpdateUserAsync(string email, string newFullName, string
     {
         // Cập nhật các trường nếu người dùng có nhập mới
         if (!string.IsNullOrWhiteSpace(newFullName)) user.FullName = newFullName;
-        if (!string.IsNullOrWhiteSpace(newPassword)) user.Password = newPassword;
+        if (!string.IsNullOrWhiteSpace(newPassword)) user.Password = PasswordHelper.Hash(newPassword);
         if (!string.IsNullOrWhiteSpace(newAvatarPath)) user.Avatar = newAvatarPath;
         
         var result = await _connection.UpdateAsync(user);

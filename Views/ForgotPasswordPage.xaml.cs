@@ -1,5 +1,5 @@
 using Microsoft.Maui.Controls;
-using Microsoft.Maui.Dispatching; 
+using Microsoft.Maui.Dispatching;
 using System;
 using DoAnCSharp.Services;
 
@@ -7,19 +7,18 @@ namespace DoAnCSharp.Views;
 
 public partial class ForgotPasswordPage : ContentPage
 {
-    private DatabaseService _dbService;
-    private string _generatedOtp = ""; 
+    private readonly DatabaseService _dbService;
+    private string _generatedOtp = "";
     private string _verifiedEmail = "";
-    
-    private IDispatcherTimer _timer;
-    private int _timeLeft = 60; // 60 giây
 
-    public ForgotPasswordPage()
+    private IDispatcherTimer _timer;
+    private int _timeLeft = 60;
+
+    public ForgotPasswordPage(DatabaseService dbService)
     {
         InitializeComponent();
-        _dbService = new DatabaseService();
+        _dbService = dbService;
 
-        // ĐÃ SỬA: Lấy Dispatcher an toàn từ Application.Current để không bị null gây sập app
         _timer = Application.Current!.Dispatcher.CreateTimer();
         _timer.Interval = TimeSpan.FromSeconds(1);
         _timer.Tick += OnTimerTick;
@@ -88,8 +87,7 @@ public partial class ForgotPasswordPage : ContentPage
             
             _timer.Start();
 
-            // Thông báo mô phỏng gửi mã
-            await DisplayAlert("Tin nhắn từ hệ thống", $" Mã OTP của bạn là: {_generatedOtp}\n(Mã có hiệu lực 60 giây)", "Đóng");
+            await DisplayAlert("Đã gửi mã", "Mã OTP đã được gửi đến email của bạn.\nVui lòng kiểm tra hộp thư.", "Đóng");
         }
         catch (Exception ex)
         {

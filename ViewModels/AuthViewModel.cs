@@ -64,16 +64,16 @@ public partial class AuthViewModel : ObservableObject
                 // 3. CHUYỂN GIAO DIỆN: Vào App chính
                 if (Application.Current != null)
                 {
-                    var appShell = _serviceProvider.GetService(typeof(AppShell)) as AppShell;
-
-                    if (appShell != null)
+                    // BẮT BUỘC: Ép hệ thống quay về Luồng chính (UI Thread) để vẽ giao diện
+                    MainThread.BeginInvokeOnMainThread(() =>
                     {
-                        Application.Current.MainPage = appShell;
-                        await Task.Delay(100);
-                        
-                        // ĐÃ SỬA: Dùng trực tiếp biến appShell để điều hướng cho an toàn
-                        await appShell.GoToAsync("//MapTab"); 
-                    }
+                        var appShell = _serviceProvider.GetService(typeof(AppShell)) as AppShell;
+
+                        if (appShell != null)
+                        {
+                            Application.Current.MainPage = appShell;
+                        }
+                    });
                 }
             }
             else // Nếu sai Email hoặc Mật khẩu
@@ -114,4 +114,21 @@ public partial class AuthViewModel : ObservableObject
             System.Diagnostics.Debug.WriteLine($"ERROR in GoToRegister: {ex}");
         }
     }
+    // Lệnh để quay lại giao diện chính (Bản đồ)
+    [RelayCommand]
+private void GoBackToApp()
+{
+    if (Application.Current != null)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // Lấy lại bộ khung AppShell đã đăng ký trong hệ thống
+            var appShell = _serviceProvider.GetService(typeof(AppShell)) as AppShell;
+            if (appShell != null)
+            {
+                Application.Current.MainPage = appShell;
+            }
+        });
+    }
+}
 }

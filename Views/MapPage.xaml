@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:map="clr-namespace:Mapsui.UI.Maui;assembly=Mapsui.UI.Maui"
              xmlns:views="clr-namespace:DoAnCSharp.Views"
              x:Class="DoAnCSharp.Views.MapPage"
              Title="{Binding Lang[tab_map], Source={RelativeSource AncestorType={x:Type views:MapPage}}}">
 
     <Grid>
-        <map:MapView x:Name="foodMapView" ZIndex="0" VerticalOptions="Fill" HorizontalOptions="Fill" 
-                      IsZoomButtonVisible="False" IsMyLocationButtonVisible="False" IsNorthingButtonVisible="False"/>
+        <WebView x:Name="foodMapView" ZIndex="0" VerticalOptions="Fill" HorizontalOptions="Fill"/>
 
         <Border VerticalOptions="Start" HorizontalOptions="Fill" Margin="15, 40, 15, 0" BackgroundColor="White" StrokeThickness="0" HeightRequest="50" ZIndex="2">
             <Border.StrokeShape>
@@ -67,6 +65,15 @@
             </Button>
 
             <Button Text="🎯" FontSize="16" Clicked="CustomMyLocationClicked" BackgroundColor="White" CornerRadius="19" WidthRequest="38" HeightRequest="38" Padding="0">
+                <Button.Shadow>
+                    <Shadow Brush="Black" Offset="0,2" Opacity="0.2" />
+                </Button.Shadow>
+            </Button>
+
+            <Button x:Name="HeatmapToggleButton" Text="🔥" FontSize="16"
+                    Clicked="OnHeatmapToggleClicked"
+                    BackgroundColor="White" CornerRadius="19"
+                    WidthRequest="38" HeightRequest="38" Padding="0">
                 <Button.Shadow>
                     <Shadow Brush="Black" Offset="0,2" Opacity="0.2" />
                 </Button.Shadow>

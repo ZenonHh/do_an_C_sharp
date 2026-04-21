@@ -163,4 +163,22 @@ public partial class RegisterViewModel : ObservableObject
             Error = $"Không thể lưu ảnh: {ex.Message}";
         }
     }
+    // Lệnh để quay lại giao diện chính (Bản đồ)
+    [RelayCommand]
+    private void GoBackToApp()
+    {
+        if (Application.Current != null)
+        {
+            // Ép chạy trên luồng giao diện để tránh crash
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                // Lấy lại AppShell từ hệ thống
+                var appShell = _serviceProvider.GetService(typeof(AppShell)) as AppShell;
+                if (appShell != null)
+                {
+                    Application.Current.MainPage = appShell;
+                }
+            });
+        }
+    }
 }

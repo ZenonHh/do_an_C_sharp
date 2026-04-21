@@ -6,77 +6,84 @@ namespace DoAnCSharp.Views;
 public partial class ProfilePage : ContentPage
 {
     public ILanguageService Lang { get; }
+    private readonly ScanQuotaService _quotaService;
 
-    public ProfilePage(ProfileViewModel viewModel, ILanguageService langService)
+    public ProfilePage(ProfileViewModel viewModel, ILanguageService langService, ScanQuotaService quotaService)
     {
         InitializeComponent();
         Lang = langService;
+        _quotaService = quotaService;
         BindingContext = viewModel;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        
         try
         {
-            // Cập nhật lại từ điển Lang để đồng bộ ngôn ngữ
             OnPropertyChanged(nameof(Lang));
-
-            // Tải lại dữ liệu người dùng để tránh bị mất thông tin khi chuyển trang/đổi ngôn ngữ
             if (BindingContext is ProfileViewModel viewModel)
-            {
                 await viewModel.LoadUserProfileAsync();
-            }
+
+            // Cập nhật số lượt quét còn lại
+            int remaining = _quotaService.GetRemaining();
+            QuotaLabel.Text = remaining > 900
+                ? "Không giới hạn lượt quét"
+                : $"Còn {remaining} lượt quét QR";
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"ERROR in ProfilePage.OnAppearing: {ex}");
-            await DisplayAlert("Lỗi", "Không thể tải thông tin người dùng", "OK");
         }
+    }
+
+    private async void OnPaymentTapped(object sender, TappedEventArgs e)
+    {
+        await Shell.Current.GoToAsync("PaymentPage");
     }
 
     private async void OnHistoryTapped(object sender, TappedEventArgs e)
     {
-        try
-        {
-            await Shell.Current.GoToAsync("HistoryPage");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"ERROR in OnHistoryTapped: {ex}");
-            await DisplayAlert("Lỗi", "Không thể mở lịch sử", "OK");
-        }
+        await Shell.Current.GoToAsync("HistoryPage");
     }
 
     private async void OnEditProfileTapped(object sender, TappedEventArgs e)
     {
-        try
-        {
-            await Shell.Current.GoToAsync("EditProfilePage");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"ERROR in OnEditProfileTapped: {ex}");
-            await DisplayAlert("Lỗi", "Không thể mở trang chỉnh sửa", "OK");
-        }
+        await Shell.Current.GoToAsync("EditProfilePage");
     }
 
-    private async void OnLogoutTapped(object sender, TappedEventArgs e)
+    private async void OnLogoutTapped(object sender, EventArgs e)
     {
         try
         {
-            bool confirm = await DisplayAlert(Lang["logout"], "Confirm logout?", "Yes", "No");
+            bool confirm = await DisplayAlert(Lang["logout"] ?? "Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", "Đồng ý", "Hủy");
             if (confirm)
             {
+                // Xóa phiên đăng nhập
                 Preferences.Default.Remove("CurrentUserEmail");
-                await Shell.Current.GoToAsync("//AuthPage");
+                
+                // Load lại thông tin -> ViewModel sẽ chuyển sang trạng thái "Chưa đăng nhập" ngay lập tức
+                if (BindingContext is ProfileViewModel viewModel)
+                {
+                    await viewModel.LoadUserProfileAsync();
+                }
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"ERROR in OnLogoutTapped: {ex}");
-            await DisplayAlert("Lỗi", "Không thể đăng xuất", "OK");
         }
     }
+    private async void OnLogoutClicked(object sender, EventArgs e)
+{
+    bool confirm = await DisplayAlert("Đăng xuất", "Bạn có chắc muốn đăng xuất?", "Có", "Không");
+    if (confirm)
+    {
+        Preferences.Default.Remove("CurrentUserEmail");
+        if (BindingContext is ProfileViewModel viewModel)
+        {
+            await viewModel.LoadUserProfileAsync(); // Lệnh này sẽ ẩn profile và hiện nút Login
+        }
+    }
+}
 }

@@ -29,4 +29,8 @@ public partial class AudioPOI : ObservableObject
     [ObservableProperty]
     [property: Ignore]
     private string _displayDescription = "";
+
+    // Cache weight cho thuật toán ưu tiên: priority base + số lượt nghe
+    [Ignore]
+    public int HeatWeight { get; set; } = 1;
 }
