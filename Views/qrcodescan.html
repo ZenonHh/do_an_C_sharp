@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vinh Khanh Food Tour</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #fff5f5, #ffe0e0);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: #fff;
+            margin: auto;
+            padding: 36px 28px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            max-width: 420px;
+            width: 100%;
+        }
+        .app-logo {
+            width: 90px;
+            height: 90px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            object-fit: cover;
+        }
+        h1 { color: #FF4757; font-size: 1.6rem; margin-bottom: 8px; }
+        .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 24px; }
+        #status {
+            font-size: 1rem;
+            color: #444;
+            margin-bottom: 12px;
+            min-height: 24px;
+        }
+        #fallbackMessage {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 4px solid #f0f0f0;
+            border-top-color: #FF4757;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 16px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #appLinks { display: none; flex-direction: column; gap: 12px; margin-top: 16px; }
+        .btn {
+            display: block;
+            padding: 14px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: #FF4757; color: #fff; }
+        .btn-secondary {
+            background: #f1f1f1;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-secondary img { width: 22px; height: 22px; }
+        .divider { color: #bbb; font-size: 0.85rem; }
+    </style>
+    <script>
+        function getParam(name) {
+            return new URLSearchParams(window.location.search).get(name);
+        }
+
+        function tryOpenApp() {
+            const poiName = getParam('poi_name');
+            if (poiName) {
+                window.location.href = `vinhkhanhtour://play_audio?poi_name=${encodeURIComponent(poiName)}`;
+            }
+        }
+
+        window.onload = function () {
+            const poiName = getParam('poi_name');
+            const spinner = document.getElementById('spinner');
+
+            if (!poiName) {
+                spinner.style.display = 'none';
+                document.getElementById('status').innerText = 'Không tìm thấy thông tin địa điểm.';
+                document.getElementById('fallbackMessage').innerText = 'Vui lòng quét lại mã QR hợp lệ.';
+                document.getElementById('fallbackMessage').style.display = 'block';
+                document.getElementById('appLinks').style.display = 'flex';
+                return;
+            }
+
+            document.getElementById('status').innerText = 'Đang mở ứng dụng Vinh Khanh Food Tour...';
+            tryOpenApp();
+
+            // Nếu sau 2.5s app không mở được → hiện nút tải về
+            setTimeout(function () {
+                spinner.style.display = 'none';
+                document.getElementById('status').innerText = 'Không thể mở ứng dụng.';
+                document.getElementById('fallbackMessage').innerText =
+                    'Hãy tải ứng dụng Vinh Khanh Food Tour để nghe thuyết minh audio tại các địa điểm ẩm thực!';
+                document.getElementById('fallbackMessage').style.display = 'block';
+                document.getElementById('appLinks').style.display = 'flex';
+            }, 2500);
+        };
+    </script>
+</head>
+<body>
+    <div class="container">
+        <img src="https://raw.githubusercontent.com/ZenonHh/VinhKhanhFoodTour_QR/main/app_logo.png"
+             onerror="this.style.display='none'"
+             alt="Vinh Khanh Food Tour" class="app-logo">
+        <h1>Vinh Khanh Food Tour</h1>
+        <p class="subtitle">Thuyết minh audio ẩm thực Vĩnh Khánh</p>
+        <div id="spinner" class="spinner"></div>
+        <p id="status"></p>
+        <p id="fallbackMessage" style="display:none;"></p>
+
+        <div id="appLinks">
+            <button onclick="tryOpenApp()" class="btn btn-primary">Mở ứng dụng</button>
+            <div class="divider">— Hoặc tải về nếu chưa có —</div>
+            <a href="https://play.google.com/store/apps/details?id=com.companyname.doancsharp_clean"
+               target="_blank" class="btn btn-secondary">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="">
+                Tải trên Google Play
+            </a>
+        </div>
+    </div>
+</body>
+</html>

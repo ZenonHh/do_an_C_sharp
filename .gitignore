@@ -404,3 +404,7 @@ FodyWeavers.xsd
 /build/
 /.dart_tool/
 /.packages
+
+# Local databases
+AdminServer/admin.db
+*.db3

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:DoAnCSharp.ViewModels"
+             xmlns:views="clr-namespace:DoAnCSharp.Views"
+             x:Class="DoAnCSharp.Views.PaymentPage"
+             x:DataType="vm:PaymentViewModel"
+             Title="{Binding Lang[payment_title], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+             BackgroundColor="#F4F6F8">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+
+            <!-- Lượt còn lại -->
+            <Border StrokeShape="RoundRectangle 16" StrokeThickness="0" BackgroundColor="#3F8CFF" Padding="20">
+                <Border.Shadow>
+                    <Shadow Brush="#3F8CFF" Offset="0,4" Radius="12" Opacity="0.3"/>
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+                    <Label Text="{Binding Lang[scans_remaining], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                           FontSize="14" TextColor="#DDEEFF" HorizontalOptions="Center"/>
+                    <Label Text="{Binding RemainingScans}" FontSize="56" FontAttributes="Bold"
+                           TextColor="White" HorizontalOptions="Center"/>
+                    <Label Text="{Binding Lang[scans_unit], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                           FontSize="14" TextColor="#DDEEFF" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Loading -->
+            <Border IsVisible="{Binding IsProcessing}" StrokeShape="RoundRectangle 12"
+                    BackgroundColor="#F0F4FF" StrokeThickness="0" Padding="20">
+                <HorizontalStackLayout Spacing="15" HorizontalOptions="Center">
+                    <ActivityIndicator IsRunning="{Binding IsProcessing}" Color="#3F8CFF"
+                                       WidthRequest="28" HeightRequest="28"/>
+                    <Label Text="{Binding Lang[processing_payment], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                           FontSize="15" TextColor="#3F8CFF" VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+            </Border>
+
+            <Label Text="{Binding Lang[choose_package], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                   FontSize="18" FontAttributes="Bold" TextColor="#2C3E50" Margin="0,8,0,0"/>
+
+            <!-- Gói Cơ Bản -->
+            <Border StrokeShape="RoundRectangle 16" StrokeThickness="0" BackgroundColor="White" Padding="0">
+                <Border.Shadow><Shadow Brush="Black" Offset="0,3" Radius="8" Opacity="0.06"/></Border.Shadow>
+                <Grid ColumnDefinitions="Auto,*,Auto" Padding="18" ColumnSpacing="14">
+                    <Label Grid.Column="0" Text="🥉" FontSize="36" VerticalOptions="Center"/>
+                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                        <Label Text="{Binding Lang[pkg_basic_name], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                               FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"/>
+                        <Label Text="{Binding Lang[pkg_basic_desc], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                               FontSize="13" TextColor="#7F8C8D"/>
+                        <Label Text="5.000đ" FontSize="15" FontAttributes="Bold" TextColor="#3F8CFF"/>
+                    </VerticalStackLayout>
+                    <Button Grid.Column="2"
+                            Text="{Binding Lang[buy_btn], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                            Command="{Binding BuyPackageCommand}" CommandParameter="basic"
+                            BackgroundColor="#3F8CFF" TextColor="White"
+                            CornerRadius="10" WidthRequest="70" HeightRequest="38"
+                            FontAttributes="Bold" FontSize="14"
+                            IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"/>
+                </Grid>
+            </Border>
+
+            <!-- Gói Cao Cấp -->
+            <Border StrokeShape="RoundRectangle 16" StrokeThickness="2" Stroke="#FF6B35" BackgroundColor="White" Padding="0">
+                <Border.Shadow><Shadow Brush="#FF6B35" Offset="0,3" Radius="10" Opacity="0.15"/></Border.Shadow>
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto" Padding="18" ColumnSpacing="14" RowSpacing="0">
+                    <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
+                            BackgroundColor="#FF6B35" StrokeThickness="0" Padding="8,3"
+                            HorizontalOptions="End" Margin="0,0,0,8">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="6"/></Border.StrokeShape>
+                        <Label Text="{Binding Lang[popular_badge], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                               FontSize="11" FontAttributes="Bold" TextColor="White"/>
+                    </Border>
+                    <Label Grid.Row="1" Grid.Column="0" Text="🥇" FontSize="36" VerticalOptions="Center"/>
+                    <VerticalStackLayout Grid.Row="1" Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                        <Label Text="{Binding Lang[pkg_premium_name], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                               FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"/>
+                        <Label Text="{Binding Lang[pkg_premium_desc], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                               FontSize="13" TextColor="#7F8C8D"/>
+                        <Label Text="15.000đ" FontSize="15" FontAttributes="Bold" TextColor="#FF6B35"/>
+                    </VerticalStackLayout>
+                    <Button Grid.Row="1" Grid.Column="2"
+                            Text="{Binding Lang[buy_btn], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                            Command="{Binding BuyPackageCommand}" CommandParameter="premium"
+                            BackgroundColor="#FF6B35" TextColor="White"
+                            CornerRadius="10" WidthRequest="70" HeightRequest="38"
+                            FontAttributes="Bold" FontSize="14"
+                            IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"/>
+                </Grid>
+            </Border>
+
+            <!-- Gói VIP -->
+            <Border StrokeShape="RoundRectangle 16" StrokeThickness="0" BackgroundColor="White" Padding="0">
+                <Border.Shadow><Shadow Brush="Black" Offset="0,3" Radius="8" Opacity="0.06"/></Border.Shadow>
+                <Grid ColumnDefinitions="Auto,*,Auto" Padding="18" ColumnSpacing="14">
+                    <Label Grid.Column="0" Text="♾️" FontSize="36" VerticalOptions="Center"/>
+                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                        <Label Text="{Binding Lang[pkg_vip_name], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                               FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"/>
+                        <Label Text="{Binding Lang[pkg_vip_desc], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                               FontSize="13" TextColor="#7F8C8D"/>
+                        <Label Text="50.000đ" FontSize="15" FontAttributes="Bold" TextColor="#8E44AD"/>
+                    </VerticalStackLayout>
+                    <Button Grid.Column="2"
+                            Text="{Binding Lang[buy_btn], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
+                            Command="{Binding BuyPackageCommand}" CommandParameter="vip"
+                            BackgroundColor="#8E44AD" TextColor="White"
+                            CornerRadius="10" WidthRequest="70" HeightRequest="38"
+                            FontAttributes="Bold" FontSize="14"
+                            IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"/>
+                </Grid>
+            </Border>
+
+            <!-- Nút reset Dev (IsVisible set từ code-behind #if DEBUG) -->
+            <Button x:Name="DevResetButton"
+                    Text="🔧 Reset về 3 lượt (Dev only)"
+                    Command="{Binding DevResetCommand}"
+                    BackgroundColor="#95A5A6" TextColor="White"
+                    CornerRadius="10" HeightRequest="44"
+                    FontSize="13" Margin="0,10,0,0"
+                    IsVisible="False"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vinh Khánh Tour — Admin</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --orange: #ff6b35;
+      --orange-light: #fff3ee;
+      --green: #22c55e;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, var(--orange), #f7931e);
+      color: white; padding: 18px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(255,107,53,.3);
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-left .logo { font-size: 28px; }
+    .header-left h1 { font-size: 18px; font-weight: 700; }
+    .header-left p { font-size: 12px; opacity: .8; margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .refresh-info { font-size: 12px; opacity: .8; }
+    .btn-refresh {
+      background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.4);
+      color: white; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+      font-size: 13px; transition: background .2s;
+    }
+    .btn-refresh:hover { background: rgba(255,255,255,.35); }
+
+    /* ── Main ── */
+    main { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+    /* ── Stats cards ── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media(max-width:900px){ .stats-grid{ grid-template-columns: repeat(2,1fr); } }
+    @media(max-width:500px){ .stats-grid{ grid-template-columns: 1fr; } }
+
+    .stat-card {
+      background: var(--card); border-radius: 14px; padding: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+      display: flex; align-items: center; gap: 16px;
+    }
+    .stat-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .stat-icon.green  { background: #dcfce7; }
+    .stat-icon.orange { background: var(--orange-light); }
+    .stat-icon.blue   { background: #dbeafe; }
+    .stat-icon.purple { background: #ede9fe; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-value.green  { color: var(--green); }
+    .stat-value.orange { color: var(--orange); }
+    .stat-value.blue   { color: var(--blue); }
+    .stat-value.purple { color: var(--purple); }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    /* Online badge */
+    .online-row { display: flex; gap: 12px; margin-top: 6px; }
+    .badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; padding: 3px 8px; border-radius: 20px;
+    }
+    .badge.on  { background: #dcfce7; color: #15803d; }
+    .badge.off { background: #fee2e2; color: #b91c1c; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot.on  { background: var(--green); }
+    .dot.off { background: var(--red); }
+
+    /* ── Charts row ── */
+    .charts-row {
+      display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media(max-width:800px){ .charts-row{ grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: var(--card); border-radius: 14px; padding: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+    .chart-title {
+      font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .chart-wrap { position: relative; }
+
+    /* ── Tables row ── */
+    .tables-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    @media(max-width:700px){ .tables-row{ grid-template-columns: 1fr; } }
+
+    .table-card {
+      background: var(--card); border-radius: 14px; padding: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+    .table-title {
+      font-size: 14px; font-weight: 600; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 11px; color: var(--muted);
+         text-transform: uppercase; letter-spacing: .05em;
+         padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 8px; font-size: 13px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .rank { color: var(--muted); font-size: 12px; width: 28px; }
+    .count-pill {
+      background: var(--orange-light); color: var(--orange);
+      font-size: 12px; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+    }
+    .user-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Skeleton loader */
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px; height: 20px; margin: 6px 0;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* Last updated */
+    .last-updated {
+      text-align: right; font-size: 11px; color: var(--muted);
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="logo">🦪</span>
+    <div>
+      <h1>Vinh Khánh Tour — Admin</h1>
+      <p>Quản lý hoạt động người dùng</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="refresh-info" id="refreshInfo">Tự cập nhật sau <span id="countdown">30</span>s</span>
+    <button class="btn-refresh" onclick="loadAll()">🔄 Làm mới</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon green">🟢</div>
+      <div>
+        <div class="stat-label">Trạng thái người dùng</div>
+        <div class="online-row">
+          <span class="badge on"><span class="dot on"></span><span id="onlineCount">—</span> Online</span>
+          <span class="badge off"><span class="dot off"></span><span id="offlineCount">—</span> Offline</span>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon orange">🎵</div>
+      <div>
+        <div class="stat-label">Lượt nghe hôm nay</div>
+        <div class="stat-value orange" id="todayCount">—</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue">📅</div>
+      <div>
+        <div class="stat-label">Lượt nghe tuần này</div>
+        <div class="stat-value blue" id="weekCount">—</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple">👥</div>
+      <div>
+        <div class="stat-label">Tài khoản đã sử dụng</div>
+        <div class="stat-value purple" id="userCount">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">📊 Giờ cao điểm trong ngày</div>
+      <div class="chart-wrap"><canvas id="peakChart" height="200"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">📈 Lịch sử 7 ngày qua</div>
+      <div class="chart-wrap"><canvas id="weeklyChart" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Tables -->
+  <div class="tables-row">
+    <div class="table-card">
+      <div class="table-title">🏆 Top tài khoản nghe nhiều nhất</div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Tài khoản</th><th>Lượt nghe</th></tr>
+        </thead>
+        <tbody id="topUsersBody">
+          <tr><td colspan="3"><div class="skeleton"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-card">
+      <div class="table-title">📍 Địa điểm được nghe nhiều nhất</div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Địa điểm</th><th>Lượt nghe</th></tr>
+        </thead>
+        <tbody id="topPoisBody">
+          <tr><td colspan="3"><div class="skeleton"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="last-updated">Cập nhật lúc: <span id="lastUpdated">—</span></div>
+</main>
+
+<script>
+  const API = '';  // same origin
+
+  let peakChart, weeklyChart;
+  let countdown = 30;
+
+  // ── Chart init ──────────────────────────────────────────────────────────
+  function initCharts() {
+    const peakCtx = document.getElementById('peakChart').getContext('2d');
+    peakChart = new Chart(peakCtx, {
+      type: 'bar',
+      data: {
+        labels: Array.from({length:24}, (_,i) => i + 'h'),
+        datasets: [{
+          label: 'Lượt nghe',
+          data: new Array(24).fill(0),
+          backgroundColor: 'rgba(255,107,53,0.7)',
+          borderColor: '#ff6b35',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 },
+               grid: { color: '#f1f5f9' } },
+          x: { grid: { display: false },
+               ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+
+    const weekCtx = document.getElementById('weeklyChart').getContext('2d');
+    weeklyChart = new Chart(weekCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Lượt nghe',
+          data: [],
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.1)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#3b82f6',
+          fill: true,
+          tension: 0.35,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 },
+               grid: { color: '#f1f5f9' } },
+          x: { grid: { display: false },
+               ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // ── Fetch helpers ───────────────────────────────────────────────────────
+  async function fetchJson(url) {
+    const res = await fetch(API + url);
+    return res.json();
+  }
+
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+
+  // ── Load all data ────────────────────────────────────────────────────────
+  async function loadAll() {
+    try {
+      const [online, summary, peakHours, weekly, topUsers, topPois] = await Promise.all([
+        fetchJson('/api/stats/online'),
+        fetchJson('/api/stats/summary'),
+        fetchJson('/api/stats/peak-hours'),
+        fetchJson('/api/stats/weekly'),
+        fetchJson('/api/stats/top-users'),
+        fetchJson('/api/stats/top-pois'),
+      ]);
+
+      // Online stats
+      setText('onlineCount', online.online);
+      setText('offlineCount', online.offline);
+
+      // Summary
+      setText('todayCount', summary.todayCount);
+      setText('weekCount', summary.weekCount);
+      setText('userCount', summary.userCount);
+
+      // Peak hours chart
+      peakChart.data.datasets[0].data = peakHours;
+      peakChart.update();
+
+      // Weekly chart
+      weeklyChart.data.labels = weekly.map(d => {
+        const parts = d.date.split('-');
+        return parts[2] + '/' + parts[1];
+      });
+      weeklyChart.data.datasets[0].data = weekly.map(d => d.count);
+      weeklyChart.update();
+
+      // Top users table
+      const usersBody = document.getElementById('topUsersBody');
+      if (topUsers.length === 0) {
+        usersBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;padding:16px">Chưa có dữ liệu</td></tr>';
+      } else {
+        usersBody.innerHTML = topUsers.map((u, i) => `
+          <tr>
+            <td class="rank">${i + 1}</td>
+            <td><span class="user-name" title="${u.userId}">${u.userId}</span></td>
+            <td><span class="count-pill">${u.count} lượt</span></td>
+          </tr>`).join('');
+      }
+
+      // Top POIs table
+      const poisBody = document.getElementById('topPoisBody');
+      if (topPois.length === 0) {
+        poisBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;padding:16px">Chưa có dữ liệu</td></tr>';
+      } else {
+        poisBody.innerHTML = topPois.map((p, i) => `
+          <tr>
+            <td class="rank">${i + 1}</td>
+            <td>${p.poiName}</td>
+            <td><span class="count-pill">${p.count} lượt</span></td>
+          </tr>`).join('');
+      }
+
+      // Last updated
+      setText('lastUpdated', new Date().toLocaleTimeString('vi-VN'));
+      countdown = 30;
+
+    } catch (e) {
+      console.error('Lỗi tải dữ liệu:', e);
+    }
+  }
+
+  // ── Countdown & auto-refresh ─────────────────────────────────────────────
+  setInterval(() => {
+    countdown--;
+    setText('countdown', countdown);
+    if (countdown <= 0) loadAll();
+  }, 1000);
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  initCharts();
+  loadAll();
+</script>
+</body>
+</html>
