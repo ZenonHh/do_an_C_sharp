@@ -47,12 +47,13 @@
 	  </MauiXaml>
 	</ItemGroup>
 
-    <!-- Loại trừ AdminServer ra khỏi MAUI build -->
+    <!-- Loại trừ Backend ra khỏi MAUI build để App không biên dịch nhầm code của Web/Server -->
     <ItemGroup>
-        <Compile Remove="AdminServer\**" />
-        <Content Remove="AdminServer\**" />
-        <EmbeddedResource Remove="AdminServer\**" />
-        <None Remove="AdminServer\**" />
+        <Compile Remove="DoAnCSharp.AdminWeb\**\*.cs" />
+        <Content Remove="DoAnCSharp.AdminWeb\**\*" />
+        <EmbeddedResource Remove="DoAnCSharp.AdminWeb\**\*" />
+        <None Remove="DoAnCSharp.AdminWeb\**\*" />
+        <MauiAsset Remove="DoAnCSharp.AdminWeb\**\*" />
     </ItemGroup>
 
 </Project>

@@ -88,6 +88,31 @@ public partial class App : Application
         });
     }
 
+    // Bắt sự kiện vòng đời của ứng dụng (Khi thu nhỏ, mở lại hoặc tắt hẳn app)
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        Window window = base.CreateWindow(activationState);
+
+        window.Resumed += (s, e) =>
+        {
+            // Khi người dùng mở lại app từ background, tiếp tục báo Online
+            string userId = Microsoft.Maui.Storage.Preferences.Default.Get("CurrentUserEmail", "guest");
+            _syncService.StartHeartbeat(userId);
+            System.Diagnostics.Debug.WriteLine("App Resumed - Heartbeat Started");
+        };
+
+        window.Deactivated += (s, e) =>
+        {
+            // Khi ẩn app xuống nền hoặc thoát app, dừng báo Online
+            // Server sẽ tự động cho offline sau khoảng 30s do không nhận được heartbeat
+            _syncService.StopHeartbeat(); 
+            
+            System.Diagnostics.Debug.WriteLine("App Deactivated/Closed - Heartbeat Stopped");
+        };
+
+        return window;
+    }
+
     // Xử lý Deep Link khi ứng dụng được mở từ bên ngoài
     protected override async void OnAppLinkRequestReceived(Uri uri)
     {

@@ -1,0 +1,334 @@
+<!-- QR Code Management Modal -->
+<div id="qrCodeModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>📱 QR Code Management</h2>
+      <button class="close-btn" onclick="closeQRModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- QR Info Section -->
+      <div id="qrInfoSection" style="display: none;">
+        <div style="text-align: center; margin: 20px 0;">
+          <h3 id="qrPoiName"></h3>
+          
+          <!-- QR Code Image -->
+          <div style="background: #f0f0f0; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <img id="qrCodeImage" src="" alt="QR Code" style="width: 300px; height: 300px; border-radius: 5px;">
+          </div>
+
+          <!-- QR Code Info -->
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left;">
+            <h4>📋 Thông tin QR Code:</h4>
+            <div style="word-break: break-all; margin: 10px 0;">
+              <strong>Mã QR:</strong> <code id="qrCode"></code>
+            </div>
+            <div style="word-break: break-all; margin: 10px 0;">
+              <strong>URL Web:</strong> <code id="qrWebUrl"></code>
+            </div>
+            <div style="word-break: break-all; margin: 10px 0;">
+              <strong>Deep Link (App):</strong> <code id="qrDeepLink"></code>
+            </div>
+          </div>
+
+          <!-- Instructions -->
+          <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left;">
+            <h4>🎯 Hướng dẫn:</h4>
+            <ol style="margin: 10px 0; padding-left: 20px;">
+              <li><strong>Điện thoại có App:</strong> Quét QR → App tự động mở → Phát audio</li>
+              <li><strong>Điện thoại không App:</strong> Quét QR → Mở website → Phát audio</li>
+              <li><strong>In QR Code:</strong> Click nút "🖨️ In QR Code" để in ở nhà hàng</li>
+            </ol>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0;">
+            <button onclick="downloadQRCode()" style="padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+              💾 Tải Ảnh
+            </button>
+            <button onclick="copyToClipboard()" style="padding: 12px; background: #2196F3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+              📋 Copy URL
+            </button>
+            <button onclick="printQRCode()" style="padding: 12px; background: #FF9800; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+              🖨️ In
+            </button>
+            <button onclick="regenerateQRCode()" style="padding: 12px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+              🔄 Tạo Lại
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="qrLoadingState" style="text-align: center; padding: 40px;">
+        <div style="width: 50px; height: 50px; border: 4px solid #e0e0e0; border-top: 4px solid #667eea; border-radius: 50%; margin: 0 auto; animation: spin 1s linear infinite;"></div>
+        <p style="margin-top: 15px; color: #666;">Đang tải QR code...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="qrErrorState" style="display: none; text-align: center; padding: 20px;">
+        <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
+        <p id="qrErrorMessage" style="color: #d32f2f; font-weight: 600;"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  overflow: auto;
+}
+
+.modal.active {
+  display: block;
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 50px auto;
+  padding: 0;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 90%;
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #999;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 30px;
+}
+
+code {
+  background: #f5f5f5;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: inline-block;
+  margin-top: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+@media (max-width: 600px) {
+  .modal-content {
+    width: 95%;
+    margin: 20px auto;
+  }
+
+  #qrCodeImage {
+    width: 200px !important;
+    height: 200px !important;
+  }
+
+  button {
+    font-size: 14px !important;
+  }
+}
+
+/* Print Style */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .qr-print-content,
+  .qr-print-content * {
+    visibility: visible;
+  }
+
+  .qr-print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}
+</style>
+
+<script>
+let currentQRData = null;
+
+function openQRModal(poiId, poiName) {
+  const modal = document.getElementById('qrCodeModal');
+  modal.classList.add('active');
+  
+  // Show loading
+  document.getElementById('qrLoadingState').style.display = 'block';
+  document.getElementById('qrInfoSection').style.display = 'none';
+  document.getElementById('qrErrorState').style.display = 'none';
+  
+  // Fetch QR data
+  fetchQRData(poiId, poiName);
+}
+
+function closeQRModal() {
+  const modal = document.getElementById('qrCodeModal');
+  modal.classList.remove('active');
+  currentQRData = null;
+}
+
+async function fetchQRData(poiId, poiName) {
+  try {
+    const response = await fetch(`/api/pois/${poiId}/qr-info`);
+    if (!response.ok) throw new Error('Không thể tải QR code');
+    
+    currentQRData = await response.json();
+    
+    // Hiển thị thông tin
+    document.getElementById('qrPoiName').textContent = currentQRData.poiName;
+    document.getElementById('qrCode').textContent = currentQRData.qrCode;
+    document.getElementById('qrWebUrl').textContent = currentQRData.webUrl;
+    document.getElementById('qrDeepLink').textContent = currentQRData.deepLink;
+    document.getElementById('qrCodeImage').src = currentQRData.qrImageUrl;
+    
+    // Show info section
+    document.getElementById('qrLoadingState').style.display = 'none';
+    document.getElementById('qrInfoSection').style.display = 'block';
+    document.getElementById('qrErrorState').style.display = 'none';
+  } catch (error) {
+    console.error('Error loading QR data:', error);
+    document.getElementById('qrLoadingState').style.display = 'none';
+    document.getElementById('qrErrorState').style.display = 'block';
+    document.getElementById('qrErrorMessage').textContent = error.message;
+  }
+}
+
+function copyToClipboard() {
+  if (!currentQRData) return;
+  
+  const text = currentQRData.webUrl;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ Đã copy URL: ' + text);
+  }).catch(() => {
+    alert('❌ Không thể copy');
+  });
+}
+
+function downloadQRCode() {
+  if (!currentQRData) return;
+  
+  const link = document.createElement('a');
+  link.href = currentQRData.qrImageUrl;
+  link.download = `QR_${currentQRData.qrCode}.png`;
+  link.click();
+}
+
+function printQRCode() {
+  if (!currentQRData) return;
+  
+  const printWindow = window.open('', '', 'height=600,width=800');
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>In QR Code</title>
+        <style>
+          body { text-align: center; padding: 40px; font-family: Arial; }
+          .container { max-width: 400px; margin: 0 auto; }
+          h1 { color: #2c3e50; margin-bottom: 20px; }
+          img { max-width: 100%; height: auto; }
+          .info { margin-top: 20px; text-align: left; }
+          .info p { margin: 5px 0; }
+          code { background: #f5f5f5; padding: 5px 10px; border-radius: 3px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>${currentQRData.poiName}</h1>
+          <img src="${currentQRData.qrImageUrl}" alt="QR Code" />
+          <div class="info">
+            <p><strong>Mã QR:</strong> <code>${currentQRData.qrCode}</code></p>
+            <p><strong>URL:</strong> <code>${currentQRData.webUrl}</code></p>
+            <p><small>Quét bằng camera điện thoại để xem thông tin quán ăn</small></p>
+          </div>
+        </div>
+        <script>
+          window.print();
+          setTimeout(() => window.close(), 500);
+        </script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
+async function regenerateQRCode() {
+  if (!currentQRData) return;
+  
+  if (!confirm('Bạn chắc chắn muốn tạo lại QR code? QR code cũ sẽ không còn hoạt động.')) {
+    return;
+  }
+  
+  try {
+    document.getElementById('qrLoadingState').style.display = 'block';
+    document.getElementById('qrInfoSection').style.display = 'none';
+    
+    const response = await fetch(`/api/pois/${currentQRData.poiId}/regenerate-qr`, {
+      method: 'POST'
+    });
+    
+    if (!response.ok) throw new Error('Không thể tạo lại QR code');
+    
+    const data = await response.json();
+    currentQRData = { ...currentQRData, ...data };
+    
+    // Cập nhật hiển thị
+    document.getElementById('qrCode').textContent = currentQRData.qrCode;
+    document.getElementById('qrWebUrl').textContent = currentQRData.webUrl;
+    document.getElementById('qrDeepLink').textContent = currentQRData.deepLink;
+    document.getElementById('qrCodeImage').src = currentQRData.qrImageUrl;
+    
+    document.getElementById('qrLoadingState').style.display = 'none';
+    document.getElementById('qrInfoSection').style.display = 'block';
+    
+    alert('✅ Tạo lại QR code thành công!');
+  } catch (error) {
+    console.error('Error regenerating QR code:', error);
+    document.getElementById('qrLoadingState').style.display = 'none';
+    document.getElementById('qrErrorState').style.display = 'block';
+    document.getElementById('qrErrorMessage').textContent = error.message;
+  }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const modal = document.getElementById('qrCodeModal');
+  if (event.target == modal) {
+    closeQRModal();
+  }
+}
+</script>

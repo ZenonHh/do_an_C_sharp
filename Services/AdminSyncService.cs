@@ -9,7 +9,8 @@ public class AdminSyncService
     // Local (điện thoại): http://192.168.x.x:5000  (cùng WiFi)
     // ngrok:              https://abc123.ngrok-free.app
     // Railway (vĩnh viễn): https://ten-app.railway.app
-    private const string ServerUrl = "http://10.0.2.2:5000";
+    // LƯU Ý: Hãy sửa IP dưới đây thành IP trùng với IP bạn đang chạy Web Admin (VD: 172.20.10.2)
+    private const string ServerUrl = "http://172.20.10.2:5000"; 
 
     private static readonly HttpClient _http = new HttpClient
     {
@@ -69,9 +70,21 @@ public class AdminSyncService
         try
         {
             var payload = new { DeviceId = _deviceId, UserId = _userId };
-            await _http.PostAsJsonAsync($"{ServerUrl}/api/sync/heartbeat", payload);
+            var response = await _http.PostAsJsonAsync($"{ServerUrl}/api/sync/heartbeat", payload);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Heartbeat] Success -> {ServerUrl}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Heartbeat] Failed: {response.StatusCode}");
+            }
         }
-        catch { }
+        catch (Exception ex) 
+        { 
+            System.Diagnostics.Debug.WriteLine($"[Heartbeat] Error connecting to {ServerUrl}: {ex.Message}");
+        }
     }
 
     // Tạo ID duy nhất cho thiết bị, lưu vào Preferences để giữ nguyên qua các lần mở app

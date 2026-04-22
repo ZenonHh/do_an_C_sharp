@@ -2,6 +2,10 @@ using ZXing.Net.Maui;
 using CommunityToolkit.Mvvm.Messaging;
 using DoAnCSharp.Models;
 using DoAnCSharp.Services;
+using System;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace DoAnCSharp.Views
 {
@@ -65,7 +69,7 @@ namespace DoAnCSharp.Views
                 cameraBarcodeReaderView.IsDetecting = false;
 
                 string scannedValue = result.Value;
-                string? poiName = ExtractPoiName(scannedValue);
+                string? poiName = await ExtractPoiNameAsync(scannedValue);
 
                 if (poiName != null)
                 {
@@ -105,25 +109,50 @@ namespace DoAnCSharp.Views
         // Trích xuất poi_name từ các định dạng QR hỗ trợ:
         // 1. vinhkhanhtour://play_audio?poi_name=xxx
         // 2. https://any-domain.com/any-path?poi_name=xxx
+        // 3. QR từ Web Admin: http://172.20.10.2:5000/qr/POI_XXX (Sẽ gọi API lấy tên)
         // 3. Tên POI thuần (nếu không phải URL)
-        private static string? ExtractPoiName(string value)
+        private async Task<string?> ExtractPoiNameAsync(string value)
         {
             if (string.IsNullOrWhiteSpace(value)) return null;
 
             if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
             {
-                // Deep link scheme hoặc web URL
-                if (uri.Scheme == "vinhkhanhtour" || uri.Scheme == "http" || uri.Scheme == "https")
+                // 1. Xử lý deep link cũ chứa tham số poi_name
+                string query = uri.Query.TrimStart('?');
+                foreach (var pair in query.Split('&'))
                 {
-                    string query = uri.Query.TrimStart('?');
-                    foreach (var pair in query.Split('&'))
+                    var parts = pair.Split('=');
+                    if (parts.Length == 2 && Uri.UnescapeDataString(parts[0]) == "poi_name")
+                        return Uri.UnescapeDataString(parts[1]);
+                }
+
+                // 2. Xử lý URL từ Web Admin (vd: http://172.20.10.2:5000/qr/POI_ABC)
+                if ((uri.Scheme == "http" || uri.Scheme == "https") && uri.AbsolutePath.Contains("/qr/"))
+                {
+                    try
                     {
-                        var parts = pair.Split('=');
-                        if (parts.Length == 2 && Uri.UnescapeDataString(parts[0]) == "poi_name")
-                            return Uri.UnescapeDataString(parts[1]);
+                        string code = uri.AbsolutePath.Split('/').Last(); // Lấy "POI_ABC"
+                        
+                        // Gọi nhanh API của Web Admin để lấy tên Quán Ăn
+                        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                        string apiUrl = $"{uri.Scheme}://{uri.Authority}/api/pois/qr/{code}";
+                        
+                        var response = await http.GetAsync(apiUrl);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var jsonString = await response.Content.ReadAsStringAsync();
+                            var json = System.Text.Json.JsonDocument.Parse(jsonString);
+                            if (json.RootElement.TryGetProperty("name", out var nameElement))
+                            {
+                                return nameElement.GetString(); // Trả về tên quán để App phát Audio
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"API QR Lookup Error: {ex.Message}");
                     }
                 }
-                return null; // URL không có poi_name
             }
 
             // Không phải URL → coi là tên POI thuần

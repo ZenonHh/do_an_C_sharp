@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Web - Simple Version</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        
+        ul {
+            margin-left: 20px;
+        }
+        
+        li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Vĩnh Khánh Tour - Web Health Check</h1>
+        
+        <div class="test-section">
+            <h2>📊 Trạng Thái Hệ Thống</h2>
+            <div id="status"></div>
+            <button onclick="runTests()">▶️ Chạy Kiểm Tra</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>✅ Danh Sách Kiểm Tra</h2>
+            <ul>
+                <li><input type="checkbox"> HTML được tải (OK)</li>
+                <li><input type="checkbox"> CSS được tải (OK)</li>
+                <li><input type="checkbox"> JavaScript được tải (OK)</li>
+                <li><input type="checkbox"> API /api/pois hoạt động</li>
+                <li><input type="checkbox"> QRCode.js đã tải</li>
+                <li><input type="checkbox"> Modal hoạt động</li>
+                <li><input type="checkbox"> Database kết nối</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔗 Các URL Quan Trọng</h2>
+            <p>
+                <button onclick="window.location.href='https://localhost:5001'">🏠 Admin Dashboard</button>
+                <button onclick="window.location.href='https://localhost:5001/swagger'">📖 API Swagger</button>
+            </p>
+        </div>
+        
+        <div class="test-section">
+            <h2>🐛 Ghi Chú Lỗi</h2>
+            <p>Nếu gặp lỗi:</p>
+            <ol>
+                <li>Mở DevTools (F12)</li>
+                <li>Kiểm tra tab Console</li>
+                <li>Tìm thông báo lỗi</li>
+                <li>Reload page (Ctrl+F5)</li>
+                <li>Kiểm tra thư mục /wwwroot</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        function runTests() {
+            const status = document.getElementById('status');
+            let results = '<h3>Kết Quả Kiểm Tra:</h3>';
+            
+            // Test 1: Page loaded
+            results += '<div class="status success">✅ HTML Page Loaded</div>';
+            
+            // Test 2: Check API
+            fetch('/api/devices/stats')
+                .then(r => r.json())
+                .then(data => {
+                    results = document.getElementById('status').innerHTML;
+                    results += '<div class="status success">✅ API Accessible (/api/devices/stats)</div>';
+                    document.getElementById('status').innerHTML = results;
+                })
+                .catch(e => {
+                    results = document.getElementById('status').innerHTML;
+                    results += '<div class="status error">❌ API Error: ' + e.message + '</div>';
+                    document.getElementById('status').innerHTML = results;
+                });
+            
+            // Test 3: Check QRCode.js
+            if (typeof QRCode !== 'undefined') {
+                results += '<div class="status success">✅ QRCode.js Loaded</div>';
+            } else {
+                results += '<div class="status error">❌ QRCode.js Not Loaded</div>';
+            }
+            
+            // Test 4: Check CSS
+            const cssLink = document.querySelector('link[href*="admin.css"]');
+            if (cssLink) {
+                results += '<div class="status success">✅ CSS Files Loaded</div>';
+            } else {
+                results += '<div class="status info">ℹ️ CSS Check Skipped</div>';
+            }
+            
+            status.innerHTML = results;
+        }
+        
+        // Auto run tests on load
+        window.addEventListener('load', () => {
+            console.log('Page loaded successfully');
+            document.querySelector('.status').innerHTML = '<div class="status info">ℹ️ Click button to run tests</div>';
+        });
+        
+        // Error handler
+        window.addEventListener('error', (e) => {
+            console.error('JavaScript Error:', e.error);
+        });
+    </script>
+</body>
+</html>

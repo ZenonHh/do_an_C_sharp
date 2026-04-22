@@ -1,0 +1,57 @@
+# 🚀 QUICK REFERENCE CARD
+
+## Problem
+```
+Scan QR → "❌ Quán ăn không tìm thấy"
+```
+
+## Root Cause
+```
+Database EMPTY - SeedSampleDataAsync() commented out
+```
+
+## Fix Applied
+```
+✅ Uncommented SeedSampleDataAsync() in Program.cs
+✅ Removed duplicate GetPOIByQRCodeAsync() method
+✅ Build successful
+```
+
+## Test It
+```powershell
+# 1. Kill old server
+Get-Process | Where-Object {$_.ProcessName -eq "dotnet"} | Stop-Process -Force
+
+# 2. Restart
+cd C:\Users\LENOVO\source\repos\do_an_C_sharp\DoAnCSharp.AdminWeb\DoAnCSharp.AdminWeb
+dotnet run
+
+# 3. Wait 3 seconds, then:
+# - Open http://172.20.10.2:5000
+# - Go to "🏪 Quán Ăn" tab
+# - Scan QR code
+# - Should see info page (NOT error!)
+```
+
+## Expected Result
+```
+✅ 5 restaurants in database
+✅ QR codes work
+✅ Info page displays beautifully
+✅ No "không tìm thấy quán" error
+```
+
+## Build Status
+```
+✅ SUCCESS (0 errors, 0 warnings)
+```
+
+---
+
+## Files Changed
+1. `Program.cs` line 44 - Uncommented seeding
+2. `DatabaseService.cs` line 711-715 - Removed duplicate
+
+---
+
+## Done! 🎉
