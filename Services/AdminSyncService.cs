@@ -46,6 +46,31 @@ public class AdminSyncService
         }
     }
 
+    // Gọi khi người dùng mua gói thành công trên App
+    public async Task SyncPaymentToServerAsync(string email, string fullName, string packageName, decimal amount)
+    {
+        try
+        {
+            var payload = new
+            {
+                Email = email,
+                FullName = fullName,
+                PackageName = packageName,
+                Amount = amount
+            };
+            
+            var response = await _http.PostAsJsonAsync($"{ServerUrl}/api/payments/sync-from-app", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Payment Sync] Success");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Payment Sync] Error: {ex.Message}");
+        }
+    }
+
     // Bắt đầu gửi heartbeat mỗi 30 giây để server biết user đang online
     public void StartHeartbeat(string userId)
     {

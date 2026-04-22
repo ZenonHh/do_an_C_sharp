@@ -196,7 +196,8 @@ public class DatabaseService
     public async Task<User?> GetUserByEmailAsync(string email)
     {
         await InitAsync();
-        return await _connection!.Table<User>().Where(u => u.Email == email).FirstOrDefaultAsync();
+        var allUsers = await _connection!.Table<User>().ToListAsync();
+        return allUsers.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
     }
 
     // 5. Lấy User đang đăng nhập

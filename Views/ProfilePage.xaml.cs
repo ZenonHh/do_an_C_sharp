@@ -62,6 +62,10 @@ public partial class ProfilePage : ContentPage
                 // Xóa phiên đăng nhập
                 Preferences.Default.Remove("CurrentUserEmail");
                 
+                // Cập nhật lại Heartbeat thành guest
+                var syncService = ServiceHelper.GetService<AdminSyncService>();
+                syncService?.StartHeartbeat("guest");
+
                 // Load lại thông tin -> ViewModel sẽ chuyển sang trạng thái "Chưa đăng nhập" ngay lập tức
                 if (BindingContext is ProfileViewModel viewModel)
                 {
@@ -80,6 +84,11 @@ public partial class ProfilePage : ContentPage
     if (confirm)
     {
         Preferences.Default.Remove("CurrentUserEmail");
+        
+        // Cập nhật lại Heartbeat thành guest
+        var syncService = ServiceHelper.GetService<AdminSyncService>();
+        syncService?.StartHeartbeat("guest");
+
         if (BindingContext is ProfileViewModel viewModel)
         {
             await viewModel.LoadUserProfileAsync(); // Lệnh này sẽ ẩn profile và hiện nút Login

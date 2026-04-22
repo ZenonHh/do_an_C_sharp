@@ -16,4 +16,8 @@ public class UserPayment
     public string PaymentMethod { get; set; } = "Credit Card";
 
     public decimal Amount { get; set; } = 0m;
+
+    public string PackageName { get; set; } = "";
+
+    public DateTime PaymentDate { get; set; }
 }

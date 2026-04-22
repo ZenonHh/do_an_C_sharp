@@ -184,9 +184,9 @@ public class DevicesController : ControllerBase
             if (!string.IsNullOrEmpty(query))
             {
                 filtered = filtered.Where(d =>
-                    d.DeviceName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                    d.DeviceModel.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                    d.IpAddress.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+                    (d.DeviceName != null && d.DeviceName.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                    (d.DeviceModel != null && d.DeviceModel.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                    (d.IpAddress != null && d.IpAddress.Contains(query, StringComparison.OrdinalIgnoreCase))).ToList();
             }
 
             // Order by LastOnlineAt desc

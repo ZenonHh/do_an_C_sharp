@@ -1,6 +1,7 @@
 using DoAnCSharp.AdminWeb.Services;
 using DoAnCSharp.AdminWeb.Models;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,12 @@ var app = builder.Build();
 app.Urls.Clear();
 app.Urls.Add("http://0.0.0.0:5000");      // Listen on all IPv4 interfaces
 app.Urls.Add("http://[::]:5000");         // Listen on all IPv6 interfaces
+
+// ✅ Thêm ForwardedHeaders để nhận diện đúng IP thật của User khi deploy lên Railway/Ngrok
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())

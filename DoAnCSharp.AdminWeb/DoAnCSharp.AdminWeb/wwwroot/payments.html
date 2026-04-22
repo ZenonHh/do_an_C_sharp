@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Thanh Toán & Lượt Quét</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f6fa; padding: 30px; color: #2c3e50; }
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 1000px; margin: auto; }
+        .header-action { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 20px;}
+        h2 { margin: 0; color: #e74c3c; }
+        .btn-back { background: #95a5a6; color: white; padding: 8px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; }
+        .btn-back:hover { background: #7f8c8d; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #ecf0f1; }
+        th { background-color: #f8f9fa; color: #7f8c8d; font-weight: 600; text-transform: uppercase; font-size: 13px; }
+        tr:hover { background-color: #fcfcfc; }
+        
+        /* Màu sắc phân biệt các gói */
+        .pkg-basic { color: #3498db; font-weight: bold; background: #ebf5fb; padding: 5px 12px; border-radius: 20px; font-size: 12px;}
+        .pkg-premium { color: #e67e22; font-weight: bold; background: #fdf2e9; padding: 5px 12px; border-radius: 20px; font-size: 12px;}
+        .pkg-vip { color: #9b59b6; font-weight: bold; background: #f5eef8; padding: 5px 12px; border-radius: 20px; font-size: 12px;}
+        
+        .amount { color: #27ae60; font-weight: bold; font-size: 15px; }
+        .date-text { color: #95a5a6; font-size: 14px; }
+        .user-info { display: flex; flex-direction: column; }
+        .user-name { font-weight: 600; color: #2c3e50; }
+        .user-email { font-size: 12px; color: #7f8c8d; margin-top: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-action">
+            <h2>💰 Lịch sử Nạp Lượt Quét</h2>
+            <a href="/" class="btn-back">⬅ Quay lại Dashboard</a>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Mã GD</th>
+                    <th>Khách Hàng</th>
+                    <th>Gói Đã Nạp</th>
+                    <th>Số Tiền</th>
+                    <th>Thời Gian Giao Dịch</th>
+                </tr>
+            </thead>
+            <tbody id="paymentTableBody">
+                <tr><td colspan="5" style="text-align: center; padding: 30px;">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function loadPayments() {
+            try {
+                const response = await fetch('/api/payments');
+                const data = await response.json();
+                
+                const tbody = document.getElementById('paymentTableBody');
+                tbody.innerHTML = ''; 
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #7f8c8d;">Chưa có giao dịch nạp lượt quét nào từ App.</td></tr>';
+                    return;
+                }
+
+                data.forEach(p => {
+                    // Logic tự động nhận diện và làm đẹp tên Gói
+                    let pkgClass = 'pkg-basic';
+                    let pkgName = p.packageName;
+                    
+                    if (pkgName === 'premium') { pkgClass = 'pkg-premium'; pkgName = 'Gói Cao Cấp (+20 lượt)'; }
+                    else if (pkgName === 'vip') { pkgClass = 'pkg-vip'; pkgName = 'Gói VIP (Không giới hạn)'; }
+                    else if (pkgName === 'basic') { pkgName = 'Gói Cơ Bản (+5 lượt)'; }
+
+                    // Format ngày giờ Việt Nam & Tiền tệ VNĐ
+                    let dateStr = new Date(p.paymentDate).toLocaleString('vi-VN');
+                    let amountStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.amount);
+
+                    let tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="color: #bdc3c7;">#${p.id}</td>
+                        <td class="user-info">
+                            <span class="user-name">${p.userName}</span>
+                            <span class="user-email">${p.userEmail}</span>
+                        </td>
+                        <td><span class="${pkgClass}">${pkgName}</span></td>
+                        <td class="amount">${amountStr}</td>
+                        <td class="date-text">${dateStr}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("Lỗi:", error);
+                document.getElementById('paymentTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">Lỗi khi tải dữ liệu thanh toán</td></tr>';
+            }
+        }
+
+        window.onload = loadPayments;
+    </script>
+</body>
+</html>

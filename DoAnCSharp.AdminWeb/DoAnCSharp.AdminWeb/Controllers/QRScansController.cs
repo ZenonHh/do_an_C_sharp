@@ -171,8 +171,16 @@ public class QRScansController : ControllerBase
         var deviceId = Request.Query["deviceId"].ToString();
         if (string.IsNullOrWhiteSpace(deviceId))
         {
-            // Tạo device ID từ IP address
-            deviceId = $"device_{Request.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+            // Lấy từ Cookie hoặc tạo mới (Tránh lỗi giới hạn nhầm lượt quét của người khác khi dùng chung Wifi/4G)
+            if (Request.Cookies.TryGetValue("vkt_device_id", out var cookieDeviceId) && !string.IsNullOrEmpty(cookieDeviceId))
+            {
+                deviceId = cookieDeviceId;
+            }
+            else 
+            {
+                deviceId = $"device_web_{Guid.NewGuid():N}";
+                Response.Cookies.Append("vkt_device_id", deviceId, new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1) });
+            }
         }
 
         try
@@ -222,10 +230,10 @@ public class QRScansController : ControllerBase
                 ? $"https://www.google.com/maps/search/?api=1&query={poi.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{poi.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
                 : "";
             string addressHtml = !string.IsNullOrWhiteSpace(poi.Address)
-                ? $"<div class='meta-row'>📍 {System.Web.HttpUtility.HtmlEncode(poi.Address)}</div>"
+            ? $"<div class='meta-row'>📍 {System.Net.WebUtility.HtmlEncode(poi.Address)}</div>"
                 : "";
             string descHtml = !string.IsNullOrWhiteSpace(poi.Description)
-                ? $"<p class='desc'>{System.Web.HttpUtility.HtmlEncode(poi.Description)}</p>"
+            ? $"<p class='desc'>{System.Net.WebUtility.HtmlEncode(poi.Description)}</p>"
                 : "";
             string mapsBtn = !string.IsNullOrEmpty(mapsUrl)
                 ? $"<a href='{mapsUrl}' target='_blank' class='btn btn-maps'>🗺️&nbsp; Xem trên bản đồ</a>"
@@ -237,7 +245,7 @@ public class QRScansController : ControllerBase
 <head>
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <title>{System.Web.HttpUtility.HtmlEncode(poi.Name)} - Vĩnh Khánh Food Tour</title>
+    <title>{System.Net.WebUtility.HtmlEncode(poi.Name)} - Vĩnh Khánh Food Tour</title>
     <style>
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
@@ -343,7 +351,7 @@ public class QRScansController : ControllerBase
     <div class='card'>
         <div class='card-header'>
             <div class='brand'>Vĩnh Khánh Food Tour</div>
-            <div class='poi-name'>{System.Web.HttpUtility.HtmlEncode(poi.Name)}</div>
+            <div class='poi-name'>{System.Net.WebUtility.HtmlEncode(poi.Name)}</div>
             {addressHtml}
         </div>
 

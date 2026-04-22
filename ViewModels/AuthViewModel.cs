@@ -61,6 +61,10 @@ public partial class AuthViewModel : ObservableObject
                     await _authService.SetLoggedInAsync(true);
                 }
 
+                // Cập nhật tín hiệu Online (Heartbeat) với tài khoản mới ngay lập tức
+                var syncService = _serviceProvider.GetService(typeof(AdminSyncService)) as AdminSyncService;
+                syncService?.StartHeartbeat(normalizedEmail);
+
                 // 3. CHUYỂN GIAO DIỆN: Vào App chính
                 if (Application.Current != null)
                 {

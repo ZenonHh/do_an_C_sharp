@@ -4,6 +4,14 @@ using DoAnCSharp.AdminWeb.Services;
 
 namespace DoAnCSharp.AdminWeb.Controllers;
 
+public class AppPaymentSyncRequest
+{
+    public string Email { get; set; } = "";
+    public string FullName { get; set; } = "";
+    public string PackageName { get; set; } = "";
+    public decimal Amount { get; set; }
+}
+
 [ApiController]
 [Route("api/[controller]")]
 public class PaymentsController : ControllerBase
@@ -72,14 +80,88 @@ public class PaymentsController : ControllerBase
         }
     }
 
+    [HttpPost("sync-from-app")]
+    public async Task<ActionResult> SyncFromApp([FromBody] AppPaymentSyncRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.Email))
+                return BadRequest(new { error = "Email is required" });
+
+            // 1. Tìm hoặc tạo User trên Server dựa trên Email từ App
+            var users = await _db.GetAllUsersAsync();
+            var user = users.FirstOrDefault(u => string.Equals(u.Email, request.Email, StringComparison.OrdinalIgnoreCase));
+            
+            if (user == null)
+            {
+                user = new User 
+                {
+                    Email = request.Email,
+                    FullName = string.IsNullOrEmpty(request.FullName) ? "App User" : request.FullName,
+                    Password = "AppUserAuto", // Mật khẩu ảo cho user đồng bộ từ App
+                    Phone = "",
+                    Avatar = "dotnet_bot.png"
+                };
+                await _db.InsertUserAsync(user);
+                
+                // Lấy lại danh sách để có Id mới
+                users = await _db.GetAllUsersAsync();
+                user = users.FirstOrDefault(u => string.Equals(u.Email, request.Email, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                // Ép Server cập nhật lại Tên thật của người dùng nếu App gửi lên tên mới
+                if (!string.IsNullOrEmpty(request.FullName) && request.FullName != "App User" && user.FullName != request.FullName)
+                {
+                    user.FullName = request.FullName;
+                    await _db.UpdateUserAsync(user);
+                }
+            }
+
+            if (user == null) return BadRequest(new { error = "Failed to sync user" });
+
+            // 2. Cập nhật hoặc tạo mới UserPayment
+            var payment = await _db.GetUserPaymentByUserIdAsync(user.Id) ?? new UserPayment();
+            payment.UserId = user.Id;
+            
+            payment.PackageName = request.PackageName; 
+            payment.Amount = request.Amount;
+            payment.PaymentDate = DateTime.Now;
+
+            if (payment.Id == 0) await _db.InsertUserPaymentAsync(payment);
+            else await _db.UpdateUserPaymentAsync(payment);
+
+            return Ok(new { message = "Payment synced successfully to Admin Web" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // Get all payments for admin dashboard
     [HttpGet]
-    public async Task<ActionResult<List<UserPayment>>> GetAllPayments()
+    public async Task<ActionResult> GetAllPayments()
     {
         try
         {
             var payments = await _db.GetAllPaymentsAsync();
-            return Ok(payments);
+            var users = await _db.GetAllUsersAsync();
+
+            // Ghép hóa đơn với tên và Email người mua
+            var result = payments.Select(p => {
+                var user = users.FirstOrDefault(u => u.Id == p.UserId);
+                return new {
+                    id = p.Id,
+                    userName = user?.FullName ?? "Khách vãng lai",
+                    userEmail = user?.Email ?? "Không có Email",
+                    packageName = p.PackageName,
+                    amount = p.Amount,
+                    paymentDate = p.PaymentDate
+                };
+            }).OrderByDescending(x => x.paymentDate).ToList();
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
