@@ -148,6 +148,13 @@ public class QRScansController : ControllerBase
     }
 
     /// <summary>
+    /// Backward-compat route: /POI_XXXX (QR codes stored without /qr/ prefix)
+    /// </summary>
+    [HttpGet]
+    [Route("/{code:regex(^POI_\\w+$)}")]
+    public Task<IActionResult> LegacyPOIRoute(string code) => QuickScanQR(code);
+
+    /// <summary>
     /// Route đặc biệt: /qr/{code} để handle camera quét trực tiếp
     /// VD: điện thoại quét QR → 192.168.1.100:5000/qr/POI_UA8AG0H2D
     /// </summary>
@@ -208,8 +215,188 @@ public class QRScansController : ControllerBase
 
             _logger.LogInformation("Quét QR thành công: {QRCode} → POI {POIId} từ device {DeviceId}", code, poi.Id, deviceId);
 
-            // Redirect tới trang hiển thị
-            return Redirect($"/poi-public.html?poiId={poi.Id}&deviceId={Uri.EscapeDataString(deviceId)}&code={Uri.EscapeDataString(code)}");
+            string appDeepLink = $"vinhkhanhtour://play_audio?poi_name={Uri.EscapeDataString(poi.Name ?? "")}";
+            string downloadUrl = "/api/download/app-apk";
+            string mapsUrl = (poi.Lat != 0 && poi.Lng != 0)
+                ? $"https://www.google.com/maps/search/?api=1&query={poi.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{poi.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
+                : "";
+            string addressHtml = !string.IsNullOrWhiteSpace(poi.Address)
+                ? $"<div class='meta-row'>📍 {System.Web.HttpUtility.HtmlEncode(poi.Address)}</div>"
+                : "";
+            string descHtml = !string.IsNullOrWhiteSpace(poi.Description)
+                ? $"<p class='desc'>{System.Web.HttpUtility.HtmlEncode(poi.Description)}</p>"
+                : "";
+            string mapsBtn = !string.IsNullOrEmpty(mapsUrl)
+                ? $"<a href='{mapsUrl}' target='_blank' class='btn btn-maps'>🗺️&nbsp; Xem trên bản đồ</a>"
+                : "";
+
+            string htmlContent = $@"
+<!DOCTYPE html>
+<html lang='vi'>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>{System.Web.HttpUtility.HtmlEncode(poi.Name)} - Vĩnh Khánh Food Tour</title>
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffecd2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }}
+        .card {{
+            background: #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+        }}
+        .card-header {{
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            padding: 22px 20px 18px;
+            color: #fff;
+        }}
+        .brand {{
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.85;
+            margin-bottom: 6px;
+        }}
+        .poi-name {{
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.25;
+            margin-bottom: 10px;
+        }}
+        .meta-row {{
+            font-size: 13px;
+            opacity: 0.9;
+            margin-top: 4px;
+        }}
+        .card-body {{ padding: 18px 20px 20px; }}
+        .desc {{
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }}
+        .divider {{ height: 1px; background: #f0f0f0; margin: 16px 0; }}
+        #loading {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0 4px;
+        }}
+        .spinner {{
+            width: 38px; height: 38px;
+            border: 3px solid #fee2e2;
+            border-top-color: #e74c3c;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }}
+        @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+        .loading-text {{ font-size: 13px; color: #888; text-align: center; line-height: 1.5; }}
+        #fallback {{ display: none; }}
+        .notif-banner {{
+            background: #fff7ed;
+            border: 1.5px solid #fed7aa;
+            border-radius: 12px;
+            padding: 13px 15px;
+            margin-bottom: 14px;
+            display: flex;
+            gap: 11px;
+            align-items: flex-start;
+        }}
+        .notif-icon {{ font-size: 20px; line-height: 1.2; flex-shrink: 0; }}
+        .notif-title {{ font-weight: 700; color: #9a3412; font-size: 13px; margin-bottom: 3px; }}
+        .notif-body {{ color: #7c2d12; font-size: 12px; line-height: 1.5; }}
+        .btn {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 13px 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }}
+        .btn-download {{ background: #e74c3c; color: #fff; }}
+        .btn-open {{ background: #f3f4f6; color: #374151; }}
+        .btn-maps {{ background: #eaf4ff; color: #1d6fa4; }}
+    </style>
+</head>
+<body>
+    <div class='card'>
+        <div class='card-header'>
+            <div class='brand'>Vĩnh Khánh Food Tour</div>
+            <div class='poi-name'>{System.Web.HttpUtility.HtmlEncode(poi.Name)}</div>
+            {addressHtml}
+        </div>
+
+        <div class='card-body'>
+            {descHtml}
+
+            <div id='loading'>
+                <div class='spinner'></div>
+                <div class='loading-text'>Đang mở ứng dụng để<br>phát audio thuyết minh...</div>
+            </div>
+
+            <div id='fallback'>
+                <div class='notif-banner'>
+                    <span class='notif-icon'>🔔</span>
+                    <div>
+                        <div class='notif-title'>Chưa có ứng dụng?</div>
+                        <div class='notif-body'>
+                            Tải <strong>Vĩnh Khánh Food Tour</strong> để nghe thuyết minh audio
+                            và khám phá bản đồ ẩm thực Vĩnh Khánh.
+                        </div>
+                    </div>
+                </div>
+                <a href='{downloadUrl}' class='btn btn-download'>⬇️&nbsp; Tải ứng dụng ngay</a>
+                <a href='{appDeepLink}' class='btn btn-open'>📱&nbsp; Mở ứng dụng (nếu đã cài)</a>
+                {mapsBtn}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var appOpened = false;
+
+        document.addEventListener('visibilitychange', function () {{
+            if (document.hidden) appOpened = true;
+        }});
+        window.addEventListener('blur', function () {{
+            appOpened = true;
+        }});
+
+        setTimeout(function () {{
+            window.location.href = '{appDeepLink}';
+        }}, 50);
+
+        setTimeout(function () {{
+            if (!appOpened) {{
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('fallback').style.display = 'block';
+            }}
+        }}, 2500);
+    </script>
+</body>
+</html>";
+
+            return Content(htmlContent, "text/html", System.Text.Encoding.UTF8);
         }
         catch (Exception ex)
         {
@@ -374,10 +561,16 @@ public class QRScansController : ControllerBase
         try
         {
             var onlineDevices = await _db.GetOnlineUsersAsync();
+
+            // Lọc: Chỉ lấy máy là Mobile/Tablet VÀ vừa gửi heartbeat trong vòng 35s qua
+            var realOnlineDevices = onlineDevices.Where(d => 
+                (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35 &&
+                d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux").ToList();
+
             return Ok(new
             {
-                totalOnlineDevices = onlineDevices.Count,
-                devices = onlineDevices.OrderByDescending(d => d.LastOnlineAt).ToList()
+                totalOnlineDevices = realOnlineDevices.Count,
+                devices = realOnlineDevices.OrderByDescending(d => d.LastOnlineAt).ToList()
             });
         }
         catch (Exception ex)
@@ -399,12 +592,17 @@ public class QRScansController : ControllerBase
             var onlineDevices = await _db.GetOnlineUsersAsync();
             var qrActivity = await _db.GetQRActivityTodayAsync();
 
+            // Lọc: Chỉ đếm các máy là App thực sự đang mở
+            var realOnlineDevices = onlineDevices.Where(d => 
+                (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35 &&
+                d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux").ToList();
+
             return Ok(new
             {
-                summary.TotalOnlineUsers,
+                TotalOnlineUsers = realOnlineDevices.Count, // Ép ghi đè số đếm chính xác
                 summary.TotalRegisteredUsers,
                 summary.TotalPaidUsers,
-                OnlineDevices = onlineDevices.Count,
+                OnlineDevices = realOnlineDevices.Count,
                 TodayQRScans = summary.TodayQRScans,
                 QRActivity = new
                 {
@@ -412,7 +610,7 @@ public class QRScansController : ControllerBase
                     UniqueUsers = qrActivity.uniqueUsers,
                     TopPOIs = qrActivity.topPOIs
                 },
-                OnlineDevicesList = onlineDevices.OrderByDescending(d => d.LastOnlineAt).ToList()
+                OnlineDevicesList = realOnlineDevices.OrderByDescending(d => d.LastOnlineAt).ToList()
             });
         }
         catch (Exception ex)

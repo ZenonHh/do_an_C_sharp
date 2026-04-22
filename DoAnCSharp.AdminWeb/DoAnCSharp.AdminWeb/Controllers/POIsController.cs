@@ -74,11 +74,8 @@ public class POIsController : ControllerBase
             if (string.IsNullOrWhiteSpace(poi.Name))
                 return BadRequest(new { error = "Name is required" });
 
-            // Tự động tạo một mã QR duy nhất nếu chưa có
             if (string.IsNullOrWhiteSpace(poi.QRCode))
-            {
-                poi.QRCode = GenerateQRCode();
-            }
+                poi.QRCode = GenerateQRCode(poi.Name);
 
             poi.CreatedAt = DateTime.Now;
             poi.UpdatedAt = DateTime.Now;
@@ -103,11 +100,8 @@ public class POIsController : ControllerBase
 
             poi.Id = id;
 
-            // Giữ QR code cũ nếu không thay đổi
             if (string.IsNullOrWhiteSpace(poi.QRCode))
-            {
-                poi.QRCode = existing.QRCode ?? GenerateQRCode();
-            }
+                poi.QRCode = existing.QRCode ?? GenerateQRCode(poi.Name);
 
             poi.UpdatedAt = DateTime.Now;
             // Preserve created date
@@ -122,21 +116,16 @@ public class POIsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Generate unique QR code with full URL
-    /// Format: Full URL (http://server/qr/POI_XXXXXXXXXX)
-    /// This ensures QR codes are scannable by phones
-    /// </summary>
-    private string GenerateQRCode()
+    // Generates a deep link QR so the phone camera opens the app directly (no browser).
+    // Falls back to a web URL only when the POI name is unknown.
+    private string GenerateQRCode(string? poiName = null)
     {
-        // Generate base code: POI_XXXXXXXXXX
+        if (!string.IsNullOrWhiteSpace(poiName))
+            return $"vinhkhanhtour://play_audio?poi_name={Uri.EscapeDataString(poiName)}";
+
+        string publicUrl = (_configuration["ServerSettings:PublicUrl"] ??
+                           $"{Request.Scheme}://{Request.Host}").TrimEnd('/');
         string baseCode = "POI_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper();
-
-        // Get public server URL from configuration or current request
-        string publicUrl = _configuration["ServerSettings:PublicUrl"] ?? 
-                          $"{Request.Scheme}://{Request.Host}";
-
-        // Return full URL so QR codes contain complete, scannable data
         return $"{publicUrl}/qr/{baseCode}";
     }
 
@@ -146,10 +135,9 @@ public class POIsController : ControllerBase
     /// </summary>
     private string GetQRImageUrl(string qrCode)
     {
-        // If qrCode is already a full URL, use it directly
-        // If it's just a code, build the full URL
-        string fullUrl = qrCode.StartsWith("http") 
-            ? qrCode 
+        // Deep links and http URLs are used as-is; bare codes get a web URL built around them
+        string fullUrl = (qrCode.StartsWith("http") || qrCode.StartsWith("vinhkhanhtour://"))
+            ? qrCode
             : $"{Request.Scheme}://{Request.Host}/qr/{qrCode}";
 
         // Escape URL for QR API
@@ -318,8 +306,7 @@ public class POIsController : ControllerBase
             if (poi == null)
                 return NotFound(new { error = "POI not found" });
 
-            // Generate new QR code
-            poi.QRCode = GenerateQRCode();
+            poi.QRCode = GenerateQRCode(poi.Name);
             poi.UpdatedAt = DateTime.Now;
 
             await _db.UpdatePOIAsync(poi);

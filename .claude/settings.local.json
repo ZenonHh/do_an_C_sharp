@@ -4,7 +4,11 @@
       "Bash(mkdir -p \"d:/C_Sharp/do_an_C_sharp-main/AdminServer/wwwroot\")",
       "Bash(mkdir -p \"d:/C_Sharp/do_an_C_sharp-main/AdminServer/Properties\")",
       "Bash(dotnet build *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(\"C:/Users/HIEN LE/AppData/Local/Android/Sdk/platform-tools/adb.exe\" devices)",
+      "PowerShell(& \"C:\\\\Users\\\\HIEN LE\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" devices)",
+      "Read(//c/Program Files \\(x86\\)/Android/**)",
+      "Read(//c/Users/HIEN LE/AppData/Local/Android/**)"
     ]
   }
 }

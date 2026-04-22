@@ -2,15 +2,16 @@ using ZXing.Net.Maui;
 using CommunityToolkit.Mvvm.Messaging;
 using DoAnCSharp.Models;
 using DoAnCSharp.Services;
-using System;
 using System.Linq;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace DoAnCSharp.Views
 {
     public partial class ScanQRPage : ContentPage
     {
+        private static readonly Regex _poiPathRegex = new(@"^/POI_\w+$", RegexOptions.Compiled);
         private readonly ScanQuotaService _quotaService;
         private bool _hasScanned = false;
 
@@ -126,8 +127,11 @@ namespace DoAnCSharp.Views
                         return Uri.UnescapeDataString(parts[1]);
                 }
 
-                // 2. Xử lý URL từ Web Admin (vd: http://172.20.10.2:5000/qr/POI_ABC)
-                if ((uri.Scheme == "http" || uri.Scheme == "https") && uri.AbsolutePath.Contains("/qr/"))
+                // 2. Xử lý URL từ Web Admin (vd: .../qr/POI_ABC hoặc .../POI_ABC)
+                bool isPOIUrl = (uri.Scheme == "http" || uri.Scheme == "https") &&
+                                (uri.AbsolutePath.Contains("/qr/") ||
+                                 _poiPathRegex.IsMatch(uri.AbsolutePath));
+                if (isPOIUrl)
                 {
                     try
                     {

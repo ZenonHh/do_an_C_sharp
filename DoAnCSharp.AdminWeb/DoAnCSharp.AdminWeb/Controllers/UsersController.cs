@@ -120,7 +120,13 @@ public class UsersController : ControllerBase
         try
         {
             var onlineUsers = await _db.GetOnlineUsersAsync();
-            return Ok(onlineUsers);
+            
+            // Lọc bỏ thiết bị Desktop và thiết bị quá 35 giây không online
+            var realOnlineDevices = onlineUsers.Where(d => 
+                (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35 &&
+                d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux").ToList();
+
+            return Ok(realOnlineDevices);
         }
         catch (Exception ex)
         {

@@ -279,7 +279,12 @@ public partial class MapPage : ContentPage, IQueryAttributable
     {
         _ttsCancellationTokenSource?.Cancel();
         _isPlaying = false;
-        MainThread.BeginInvokeOnMainThread(() => { AudioPlayerUI.IsVisible = false; PlayStopButton.Text = "▶️"; });
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            AudioPlayerUI.IsVisible = false;
+            PlayStopButton.Text = "▶️";
+            PoiDetailCard.Margin = new Thickness(20, 0, 20, 30);
+        });
     }
 
     private async void PlayAudioAlert(AudioPOI poi)
@@ -297,7 +302,9 @@ public partial class MapPage : ContentPage, IQueryAttributable
                 TranslationLoader.IsRunning = true;
                 AudioText.Text = lang == "vi" ? poi.Name : "Đang dịch...";
                 AudioPlayerUI.IsVisible = true;
-                PoiDetailCard.IsVisible = false;
+                // Push detail card above the audio bar so both are visible together
+                if (PoiDetailCard.IsVisible)
+                    PoiDetailCard.Margin = new Thickness(20, 0, 20, 100);
                 PlayStopButton.Text = "⏹";
             });
 
@@ -381,7 +388,9 @@ public partial class MapPage : ContentPage, IQueryAttributable
             DetailName.Text = "Đang tải...";
             DetailDistance.Text = "📍 Đang tính...";
             PoiDetailCard.IsVisible = true;
-            AudioPlayerUI.IsVisible = false;
+            PoiDetailCard.Margin = _isPlaying
+                ? new Thickness(20, 0, 20, 100)
+                : new Thickness(20, 0, 20, 30);
         });
 
         // Dùng LanguageService trước (có sẵn dict cho tên + mô tả)
@@ -467,7 +476,7 @@ public partial class MapPage : ContentPage, IQueryAttributable
 
     private void PlayReviewFromDetailClicked(object? sender, EventArgs e)
     {
-        if (_currentPoi != null) { _isManualSelection = true; PoiDetailCard.IsVisible = false; PlayAudioAlert(_currentPoi); }
+        if (_currentPoi != null) { _isManualSelection = true; PlayAudioAlert(_currentPoi); }
     }
 
     private async void OnGetDirectionsClicked(object sender, EventArgs e)

@@ -799,33 +799,16 @@
       }
 
       function generateQRCode() {
-        // Fetch server URL from API configuration
-        fetch(`${API_BASE}/pois/config/server`)
-          .then(response => response.json())
-          .then(data => {
-            const serverUrl = data.serverUrl;
-            // Generate unique QR code (just the code part)
-            const qrCode = 'POI_' + Math.random().toString(36).substr(2, 9).toUpperCase();
-            // Build full URL for camera scanning using server public URL
-            const fullQRUrl = `${serverUrl}/qr/${qrCode}`;
-            // Store full URL in the field (this is what gets encoded in QR)
-            document.getElementById("poiQRCode").value = fullQRUrl;
-            console.log('[QR] Generated QR Code:', {
-              code: qrCode,
-              fullUrl: fullQRUrl,
-              serverUrl: serverUrl
-            });
-          })
-          .catch(error => {
-            console.warn("Failed to fetch server config, using fallback", error);
-            // Fallback to current location if API fails
-            const qrCode = 'POI_' + Math.random().toString(36).substr(2, 9).toUpperCase();
-            const protocol = window.location.protocol;
-            const host = window.location.host;
-            const fullQRUrl = `${protocol}//${host}/qr/${qrCode}`;
-            document.getElementById("poiQRCode").value = fullQRUrl;
-            console.warn('[QR] Using fallback QR URL:', fullQRUrl);
-          });
+        const poiName = document.getElementById("poiName")?.value?.trim();
+        if (!poiName) {
+          alert('Hãy nhập tên quán trước khi tạo mã QR.');
+          document.getElementById("poiName").focus();
+          return;
+        }
+        // Deep link QR: phone camera opens the app directly without browser
+        const deepLink = `vinhkhanhtour://play_audio?poi_name=${encodeURIComponent(poiName)}`;
+        document.getElementById("poiQRCode").value = deepLink;
+        console.log('[QR] Generated deep-link QR:', deepLink);
       }
 
       async function handlePOIFormSubmit(e) {

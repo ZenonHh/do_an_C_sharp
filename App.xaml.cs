@@ -11,6 +11,8 @@ public partial class App : Application
     private readonly DatabaseService _dbService;
     private readonly AdminSyncService _syncService;
     private bool _isInitialized = false;
+    // Deep link that arrived before init finished — replayed after init completes
+    private Uri? _pendingDeepLink;
 
     public App(AppShell appShell, ILanguageService langService, DatabaseService dbService, AdminSyncService syncService)
     {
@@ -27,17 +29,14 @@ public partial class App : Application
 
     private void InitializeServicesInBackground()
     {
-        // Sử dụng Task.Run thay vì MainThread.BeginInvokeOnMainThread
         Task.Run(async () =>
         {
             try
             {
                 if (_isInitialized) return;
-                
+
                 System.Diagnostics.Debug.WriteLine("=== Starting App Initialization ===");
 
-                // 1. Khởi tạo ngôn ngữ 
-                System.Diagnostics.Debug.WriteLine("Initializing Language Service...");
                 try
                 {
                     await _langService.Initialize();
@@ -48,8 +47,6 @@ public partial class App : Application
                     System.Diagnostics.Debug.WriteLine($"✗ Language Service Error: {langEx}");
                 }
 
-                // 2. Khởi tạo database (Chạy ngầm sẽ rất mượt, không giật UI)
-                System.Diagnostics.Debug.WriteLine("Initializing Database...");
                 try
                 {
                     await _dbService.SeedDataAsync();
@@ -63,24 +60,27 @@ public partial class App : Application
                 _isInitialized = true;
                 System.Diagnostics.Debug.WriteLine("=== App Initialization Complete ===");
 
-                // Bắt đầu gửi heartbeat để server biết thiết bị này đang online
                 string userId = Microsoft.Maui.Storage.Preferences.Default.Get("CurrentUserEmail", "guest");
                 _syncService.StartHeartbeat(userId);
+
+                // Replay any deep link that arrived before init finished
+                if (_pendingDeepLink != null)
+                {
+                    var uri = _pendingDeepLink;
+                    _pendingDeepLink = null;
+                    MainThread.BeginInvokeOnMainThread(async () => await NavigateToDeepLinkAsync(uri));
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"CRITICAL ERROR in App initialization: {ex}");
-                
-                // Nếu có lỗi nặng cần báo cho người dùng, LÚC NÀY mới gọi MainThread
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     try
                     {
                         if (Application.Current?.MainPage != null)
-                        {
-                            await Application.Current.MainPage.DisplayAlert("Lỗi Khởi Tạo", 
+                            await Application.Current.MainPage.DisplayAlert("Lỗi Khởi Tạo",
                                 $"Không thể tải dữ liệu: {ex.Message}", "OK");
-                        }
                     }
                     catch { }
                 });
@@ -114,24 +114,27 @@ public partial class App : Application
     }
 
     // Xử lý Deep Link khi ứng dụng được mở từ bên ngoài
-    protected override async void OnAppLinkRequestReceived(Uri uri)
+    protected override void OnAppLinkRequestReceived(Uri uri)
     {
         base.OnAppLinkRequestReceived(uri);
 
-        // Kiểm tra scheme và host của deep link
-        if (uri.Scheme == "vinhkhanhtour" && uri.Host == "play_audio")
+        if (uri.Scheme != "vinhkhanhtour" || uri.Host != "play_audio") return;
+
+        if (!_isInitialized)
         {
-            string? poiName = null; // Sử dụng string? để xử lý nullability
-            if (!string.IsNullOrEmpty(uri.Query))
-                poiName = GetQueryParamFromUri(uri, "poi_name");
-            
-            if (!string.IsNullOrEmpty(poiName))
-            {
-                // Điều hướng đến MapTab và truyền poi_name như một query attribute
-                // MapPage (đã implement IQueryAttributable) sẽ xử lý tham số này.
-                await Shell.Current.GoToAsync($"//MapTab?poi_name={Uri.EscapeDataString(poiName)}");
-            }
+            // DB chưa seed xong — lưu lại, xử lý sau khi init hoàn tất
+            _pendingDeepLink = uri;
+            return;
         }
+
+        MainThread.BeginInvokeOnMainThread(async () => await NavigateToDeepLinkAsync(uri));
+    }
+
+    private async Task NavigateToDeepLinkAsync(Uri uri)
+    {
+        string? poiName = GetQueryParamFromUri(uri, "poi_name");
+        if (!string.IsNullOrEmpty(poiName))
+            await Shell.Current.GoToAsync($"//MapTab?poi_name={Uri.EscapeDataString(poiName)}");
     }
 
     // Helper method to parse query parameters from a Uri object

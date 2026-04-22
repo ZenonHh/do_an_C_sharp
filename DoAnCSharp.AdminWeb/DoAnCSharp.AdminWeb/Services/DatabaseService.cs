@@ -748,20 +748,19 @@ public class DatabaseService
             }
         }
 
-        // Seed sample POIs if none exist
         var poiCount = await _connection!.Table<AudioPOI>().CountAsync();
         if (poiCount == 0)
         {
-            // Get public server URL from environment or use default
-            string publicUrl = Environment.GetEnvironmentVariable("VINHKHANH_PUBLIC_URL") ?? "http://172.20.10.2:5000";
+            static string DeepLink(string name) =>
+                $"vinhkhanhtour://play_audio?poi_name={Uri.EscapeDataString(name)}";
 
             var samplePOIs = new List<AudioPOI>
             {
-                new AudioPOI { Name = "Ốc Oanh", Address = "534 Vĩnh Khánh, Q.4", Description = "Quán ốc nổi tiếng", Lat = 10.7595, Lng = 106.7045, Radius = 40, Priority = 1, ImageAsset = "dotnet_bot.png", QRCode = $"{publicUrl}/qr/POI_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
-                new AudioPOI { Name = "Ốc Vũ", Address = "37 Vĩnh Khánh, Q.4", Description = "Ốc vũ tươi ngon", Lat = 10.7578, Lng = 106.7058, Radius = 40, Priority = 1, ImageAsset = "dotnet_bot.png", QRCode = $"{publicUrl}/qr/POI_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
-                new AudioPOI { Name = "Ốc Nho", Address = "178 Vĩnh Khánh, Q.4", Description = "Ốc nho sốt phô mai", Lat = 10.7582, Lng = 106.7052, Radius = 40, Priority = 1, ImageAsset = "dotnet_bot.png", QRCode = $"{publicUrl}/qr/POI_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
-                new AudioPOI { Name = "Quán Nướng Chilli", Address = "232 Vĩnh Khánh, Q.4", Description = "Nướng hải sản", Lat = 10.7586, Lng = 106.7055, Radius = 50, Priority = 2, ImageAsset = "dotnet_bot.png", QRCode = $"{publicUrl}/qr/POI_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
-                new AudioPOI { Name = "Lẩu Bò Khu Nhà Cháy", Address = "Gần Vĩnh Khánh", Description = "Lẩu bò gia truyền", Lat = 10.7590, Lng = 106.7025, Radius = 50, Priority = 2, ImageAsset = "dotnet_bot.png", QRCode = $"{publicUrl}/qr/POI_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now }
+                new AudioPOI { Name = "Ốc Oanh",           Address = "534 Vĩnh Khánh, Q.4", Description = "Quán ốc nổi tiếng",      Lat = 10.7595, Lng = 106.7045, Radius = 40, Priority = 1, ImageAsset = "dotnet_bot.png", QRCode = DeepLink("Ốc Oanh"),           CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
+                new AudioPOI { Name = "Ốc Vũ",             Address = "37 Vĩnh Khánh, Q.4",  Description = "Ốc vũ tươi ngon",        Lat = 10.7578, Lng = 106.7058, Radius = 40, Priority = 1, ImageAsset = "dotnet_bot.png", QRCode = DeepLink("Ốc Vũ"),             CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
+                new AudioPOI { Name = "Ốc Nho",             Address = "178 Vĩnh Khánh, Q.4", Description = "Ốc nho sốt phô mai",     Lat = 10.7582, Lng = 106.7052, Radius = 40, Priority = 1, ImageAsset = "dotnet_bot.png", QRCode = DeepLink("Ốc Nho"),             CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
+                new AudioPOI { Name = "Quán Nướng Chilli",  Address = "232 Vĩnh Khánh, Q.4", Description = "Nướng hải sản",          Lat = 10.7586, Lng = 106.7055, Radius = 50, Priority = 2, ImageAsset = "dotnet_bot.png", QRCode = DeepLink("Quán Nướng Chilli"),  CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
+                new AudioPOI { Name = "Lẩu Bò Khu Nhà Cháy", Address = "Gần Vĩnh Khánh",    Description = "Lẩu bò gia truyền",      Lat = 10.7590, Lng = 106.7025, Radius = 50, Priority = 2, ImageAsset = "dotnet_bot.png", QRCode = DeepLink("Lẩu Bò Khu Nhà Cháy"), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now }
             };
 
             foreach (var poi in samplePOIs)
