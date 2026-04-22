@@ -106,6 +106,13 @@ public class UsersController : ControllerBase
         try
         {
             var summary = await _db.GetDashboardSummaryAsync();
+
+            // Cập nhật lại số liệu online chuẩn xác (35 giây & loại bỏ trình duyệt máy tính)
+            var onlineUsers = await _db.GetOnlineUsersAsync();
+            summary.TotalOnlineUsers = onlineUsers.Count(d => 
+                (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35 &&
+                d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux");
+
             return Ok(summary);
         }
         catch (Exception ex)

@@ -175,8 +175,8 @@ public class DevicesController : ControllerBase
             // Filter by status
             var filtered = status switch
             {
-                "online" => allDevices.Where(d => d.IsOnline).ToList(),
-                "offline" => allDevices.Where(d => !d.IsOnline).ToList(),
+                "online" => allDevices.Where(d => d.IsOnline && (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35).ToList(),
+                "offline" => allDevices.Where(d => !d.IsOnline || (DateTime.Now - d.LastOnlineAt).TotalSeconds > 35).ToList(),
                 _ => allDevices
             };
 
@@ -223,8 +223,8 @@ public class DevicesController : ControllerBase
             return Ok(new
             {
                 total = devices.Count,
-                online = devices.Count(d => d.IsOnline),
-                offline = devices.Count(d => !d.IsOnline),
+                online = devices.Count(d => d.IsOnline && (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35 && d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux"),
+                offline = devices.Count(d => !d.IsOnline || (DateTime.Now - d.LastOnlineAt).TotalSeconds > 35 || d.DeviceOS == "Windows" || d.DeviceOS == "macOS" || d.DeviceOS == "Linux"),
                 blocked = devices.Count(d => !d.IsActive)
             });
         }
@@ -355,9 +355,9 @@ public class DevicesController : ControllerBase
             {
                 total = allDevices.Count,
                 online = allDevices.Count(d => d.IsOnline && 
-                    (DateTime.Now - d.LastOnlineAt).TotalMinutes < 5),
+                    (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35 && d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux"),
                 offline = allDevices.Count(d => !d.IsOnline || 
-                    (DateTime.Now - d.LastOnlineAt).TotalMinutes >= 5)
+                    (DateTime.Now - d.LastOnlineAt).TotalSeconds > 35 || d.DeviceOS == "Windows" || d.DeviceOS == "macOS" || d.DeviceOS == "Linux")
             };
 
             return Ok(new
@@ -414,7 +414,7 @@ public class DevicesController : ControllerBase
         try
         {
             var devices = await _dbService.GetAllUserDevicesAsync();
-            var offlineThreshold = DateTime.Now.AddMinutes(-5);
+            var offlineThreshold = DateTime.Now.AddSeconds(-35); // Quét dọn thiết bị sau 35 giây
 
             var markedOffline = 0;
             foreach (var device in devices)
