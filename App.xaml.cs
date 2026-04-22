@@ -1,5 +1,7 @@
 using DoAnCSharp.Views;
 using DoAnCSharp.Services;
+using CommunityToolkit.Mvvm.Messaging;
+using DoAnCSharp.Models;
 
 namespace DoAnCSharp;
 
@@ -133,8 +135,14 @@ public partial class App : Application
     private async Task NavigateToDeepLinkAsync(Uri uri)
     {
         string? poiName = GetQueryParamFromUri(uri, "poi_name");
-        if (!string.IsNullOrEmpty(poiName))
-            await Shell.Current.GoToAsync($"//MapTab?poi_name={Uri.EscapeDataString(poiName)}");
+        if (string.IsNullOrEmpty(poiName)) return;
+
+        // Truyền thẳng dữ liệu qua tham số của Shell thay vì dùng Messenger (tránh lỗi timing)
+        var navigationParameter = new Dictionary<string, object>
+        {
+            { "poi_name", poiName }
+        };
+        await Shell.Current.GoToAsync("//MapTab", navigationParameter);
     }
 
     // Helper method to parse query parameters from a Uri object

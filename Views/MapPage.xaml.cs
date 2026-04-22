@@ -579,13 +579,25 @@ public partial class MapPage : ContentPage, IQueryAttributable
 
         await Task.Delay(500);
 
-        MainThread.BeginInvokeOnMainThread(() =>
+            MainThread.BeginInvokeOnMainThread(async () =>
         {
-            RunScript($"centerOn({targetPoi.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {targetPoi.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture)}, 17)");
             _isManualSelection = true;
             StopAudio();
             _ = UpdateDetailCardAsync(targetPoi);
             PlayAudioAlert(targetPoi);
+                
+                // Chờ bản đồ khởi tạo xong để đảm bảo luôn zoom đúng vị trí
+                int waitTime = 0;
+                while (!_isMapLoaded && waitTime < 3000)
+                {
+                    await Task.Delay(300);
+                    waitTime += 300;
+                }
+
+                if (_isMapLoaded)
+                {
+                    RunScript($"centerOn({targetPoi.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {targetPoi.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture)}, 17)");
+                }
         });
     }
 

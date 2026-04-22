@@ -194,10 +194,11 @@ public class QRScansController : ControllerBase
             }
 
             // Kiểm tra giới hạn
-            if (scanLimit.ScanCount >= scanLimit.MaxScans)
-            {
-                return Redirect($"/poi-public.html?error=limit_exceeded&code={code}");
-            }
+            // [DEV TEST] Tạm thời comment/tắt khối lệnh này để test quét QR không bị giới hạn 5 lần/ngày
+            // if (scanLimit.ScanCount >= scanLimit.MaxScans)
+            // {
+            //     return Redirect($"/poi-public.html?error=limit_exceeded&code={code}");
+            // }
 
             // Tìm POI bằng cách search trực tiếp với full code (database stores with POI_ prefix)
             AudioPOI poi = null;
