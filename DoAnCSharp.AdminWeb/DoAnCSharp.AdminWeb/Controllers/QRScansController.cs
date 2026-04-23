@@ -38,6 +38,9 @@ public class QRScansController : ControllerBase
 
         try
         {
+            // 🔥 Theo dõi và lưu thông tin thiết bị khi App gọi API Verify QR
+            await TrackDeviceInfoAsync(deviceId);
+
             // LƯU Ý: Bạn cần triển khai các phương thức này trong DatabaseService của WebAdmin:
             // - Task<DeviceScanLimit> GetDeviceScanLimitAsync(string deviceId)
             // - Task SaveDeviceScanLimitAsync(DeviceScanLimit limit) // (Hàm này sẽ tự động Insert hoặc Update)
@@ -67,8 +70,19 @@ public class QRScansController : ControllerBase
                 });
             }
 
+            // 🔥 FIX: App gửi lên nguyên chuỗi URL chứa mã QR, ta cần tách lấy đúng phần mã code (VD: POI_12345)
+            string codeToSearch = qrCode;
+            if (codeToSearch.Contains("/qr/"))
+            {
+                codeToSearch = codeToSearch.Substring(codeToSearch.LastIndexOf("/qr/") + 4);
+            }
+            else if (codeToSearch.Contains("POI_"))
+            {
+                codeToSearch = codeToSearch.Substring(codeToSearch.IndexOf("POI_"));
+            }
+
             // Tìm quán ăn tương ứng với mã QR
-            var poi = await _db.GetPOIByQRCodeAsync(qrCode);
+            var poi = await _db.GetPOIByQRCodeAsync(codeToSearch);
             if (poi == null)
             {
                 return NotFound(new { error = "Mã QR không hợp lệ hoặc không tìm thấy địa điểm." });
@@ -126,8 +140,19 @@ public class QRScansController : ControllerBase
                 return Redirect($"/poi-public.html?error=limit_exceeded");
             }
 
+            // 🔥 FIX: Xử lý chuỗi qrCode nếu nó chứa full URL
+            string codeToSearch = qrCode;
+            if (codeToSearch.Contains("/qr/"))
+            {
+                codeToSearch = codeToSearch.Substring(codeToSearch.LastIndexOf("/qr/") + 4);
+            }
+            else if (codeToSearch.Contains("POI_"))
+            {
+                codeToSearch = codeToSearch.Substring(codeToSearch.IndexOf("POI_"));
+            }
+
             // Tìm POI
-            var poi = await _db.GetPOIByQRCodeAsync(qrCode);
+            var poi = await _db.GetPOIByQRCodeAsync(codeToSearch);
             if (poi == null)
             {
                 return Redirect($"/poi-public.html?error=poi_not_found");
@@ -208,9 +233,16 @@ public class QRScansController : ControllerBase
             //     return Redirect($"/poi-public.html?error=limit_exceeded&code={code}");
             // }
 
+            // 🔥 FIX: Đảm bảo chỉ tìm kiếm bằng mã POI_ (bỏ các thành phần URL dư thừa)
+            string codeToSearch = code;
+            if (codeToSearch.Contains("POI_"))
+            {
+                codeToSearch = codeToSearch.Substring(codeToSearch.IndexOf("POI_"));
+            }
+
             // Tìm POI bằng cách search trực tiếp với full code (database stores with POI_ prefix)
             AudioPOI poi = null;
-            poi = await _db.GetPOIByQRCodeAsync(code);
+            poi = await _db.GetPOIByQRCodeAsync(codeToSearch);
 
             if (poi == null)
             {
@@ -625,73 +657,6 @@ public class QRScansController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi khi lấy dashboard stats");
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// 🔥 NEW: Update device online status (heartbeat from client)
-    /// Clients can send periodic heartbeat to keep device marked as online
-    /// </summary>
-    [HttpPost("device-heartbeat")]
-    public async Task<ActionResult> DeviceHeartbeat([FromQuery] string deviceId)
-    {
-        if (string.IsNullOrWhiteSpace(deviceId))
-            return BadRequest(new { error = "deviceId is required" });
-
-        try
-        {
-            var ipAddress = Request.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            // Get all devices for default user (ID 1)
-            var devices = await _db.GetUserDevicesAsync(1);
-            var device = devices?.FirstOrDefault(d => d.DeviceId == deviceId);
-
-            if (device != null)
-            {
-                device.IsOnline = true;
-                device.LastOnlineAt = DateTime.Now;
-                device.IpAddress = ipAddress;
-                await _db.UpdateUserDeviceAsync(device);
-                _logger.LogInformation("Device heartbeat: {DeviceId}", deviceId);
-            }
-
-            return Ok(new { message = "Device heartbeat recorded", timestamp = DateTime.Now });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Lỗi khi ghi nhận device heartbeat: {DeviceId}", deviceId);
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// 🔥 NEW: Mark device as offline when user leaves
-    /// </summary>
-    [HttpPost("device-offline")]
-    public async Task<ActionResult> DeviceOffline([FromQuery] string deviceId)
-    {
-        if (string.IsNullOrWhiteSpace(deviceId))
-            return BadRequest(new { error = "deviceId is required" });
-
-        try
-        {
-            var devices = await _db.GetUserDevicesAsync(1);
-            var device = devices?.FirstOrDefault(d => d.DeviceId == deviceId);
-
-            if (device != null)
-            {
-                device.IsOnline = false;
-                device.LastOnlineAt = DateTime.Now;
-                await _db.UpdateUserDeviceAsync(device);
-                _logger.LogInformation("Device marked offline: {DeviceId}", deviceId);
-            }
-
-            return Ok(new { message = "Device marked offline" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Lỗi khi đánh dấu device offline: {DeviceId}", deviceId);
             return BadRequest(new { error = ex.Message });
         }
     }

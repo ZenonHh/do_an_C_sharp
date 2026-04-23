@@ -108,10 +108,11 @@ function searchDevices(query) {
 }
 
 function applyFilter(devices) {
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
   if (currentFilterStatus === 'online') {
-    return devices.filter(d => d.isOnline);
+    return devices.filter(d => new Date(d.lastOnlineAt) >= fiveMinAgo);
   } else if (currentFilterStatus === 'offline') {
-    return devices.filter(d => !d.isOnline);
+    return devices.filter(d => new Date(d.lastOnlineAt) < fiveMinAgo);
   }
   return devices;
 }
@@ -151,8 +152,9 @@ function renderDevicesWithFilter(devices) {
 }
 
 function updateDevicesStats(devices) {
-  const online = devices.filter(d => d.isOnline).length;
-  const offline = devices.filter(d => !d.isOnline).length;
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const online = devices.filter(d => new Date(d.lastOnlineAt) >= fiveMinAgo).length;
+  const offline = devices.length - online;
   const total = devices.length;
 
   const statsHtml = `
@@ -193,13 +195,16 @@ function renderDevicesCards(devices) {
   const endIdx = startIdx + DEVICES_PER_PAGE;
   const devicesToShow = devices.slice(startIdx, endIdx);
 
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
   container.className = 'devices-container';
-  container.innerHTML = devicesToShow.map(device => `
+  container.innerHTML = devicesToShow.map(device => {
+    const isActive = new Date(device.lastOnlineAt) >= fiveMinAgo;
+    return `
     <div class="device-card">
       <div class="device-header">
         <div class="device-name">${device.deviceName || 'Unknown'}</div>
-        <div class="device-status ${device.isOnline ? 'online pulsing' : 'offline'}">
-          ${device.isOnline ? 'Online' : 'Offline'}
+        <div class="device-status ${isActive ? 'online pulsing' : 'offline'}">
+          ${isActive ? 'Online' : 'Offline'}
         </div>
       </div>
 
@@ -235,7 +240,8 @@ function renderDevicesCards(devices) {
         <button class="danger" onclick="deleteDevice(${device.id})">🗑️ Xóa</button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   renderDevicesPagination(totalPages);
 }
@@ -273,14 +279,18 @@ function renderDevicesTable(devices) {
         </tr>
       </thead>
       <tbody>
-        ${devicesToShow.map(device => `
+        ${(() => {
+          const t = new Date(Date.now() - 5 * 60 * 1000);
+          return devicesToShow.map(device => {
+            const active = new Date(device.lastOnlineAt) >= t;
+            return `
           <tr>
             <td>${device.deviceName || '-'}</td>
             <td>${device.deviceModel || '-'}</td>
             <td>${device.deviceOS || '-'}</td>
             <td>${device.appVersion || '-'}</td>
-            <td class="status-${device.isOnline ? 'online' : 'offline'}">
-              ${device.isOnline ? '🟢 Online' : '🔴 Offline'}
+            <td class="status-${active ? 'online' : 'offline'}">
+              ${active ? '🟢 Online' : '🔴 Offline'}
             </td>
             <td>${device.ipAddress || '-'}</td>
             <td>${formatTime(device.lastOnlineAt)}</td>
@@ -290,8 +300,9 @@ function renderDevicesTable(devices) {
               </button>
               <button style="padding: 4px 8px; font-size: 11px; background: #e74c3c; color: white; border: none;" onclick="deleteDevice(${device.id})">🗑️</button>
             </td>
-          </tr>
-        `).join('')}
+          </tr>`;
+          }).join('');
+        })()}
       </tbody>
     </table>
   `;

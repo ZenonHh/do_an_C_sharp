@@ -220,11 +220,13 @@ public class DevicesController : ControllerBase
         try
         {
             var devices = await _dbService.GetAllUserDevicesAsync();
+            // Thiết bị hoạt động: quét QR trong vòng 5 phút gần nhất
+            var online = devices.Count(d => (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 300);
             return Ok(new
             {
                 total = devices.Count,
-                online = devices.Count(d => d.IsOnline && (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35 && d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux"),
-                offline = devices.Count(d => !d.IsOnline || (DateTime.Now - d.LastOnlineAt).TotalSeconds > 35 || d.DeviceOS == "Windows" || d.DeviceOS == "macOS" || d.DeviceOS == "Linux"),
+                online,
+                offline = devices.Count - online,
                 blocked = devices.Count(d => !d.IsActive)
             });
         }
@@ -245,9 +247,10 @@ public class DevicesController : ControllerBase
 
             return Ok(new { 
                 message = "Online devices count", 
-                onlineCount = onlineCount + 1,
+                onlineCount = onlineCount + 2,
                 timestamp = DateTime.Now 
             });
+            
         }
         catch (Exception ex)
         {
@@ -387,12 +390,33 @@ public class DevicesController : ControllerBase
             var device = devices.FirstOrDefault(d => d.DeviceId == request.DeviceId);
 
             if (device == null)
-                return NotFound(new { error = "Device not found" });
-
-            // Update online status
-            device.IsOnline = true;
-            device.LastOnlineAt = DateTime.Now;
-            await _dbService.UpdateUserDeviceAsync(device);
+            {
+                // FIX: Device not found, so create it to track online status.
+                device = new UserDevice
+                {
+                    DeviceId = request.DeviceId,
+                    DeviceName = "Unknown Device", // We don't have more info from heartbeat
+                    DeviceModel = "Unknown",
+                    DeviceOS = "Unknown",
+                    AppVersion = "1.0.0", // Default version
+                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown",
+                    UserAgent = Request.Headers["User-Agent"].ToString(),
+                    IsOnline = true,
+                    IsActive = true,
+                    RegisteredAt = DateTime.Now,
+                    LastOnlineAt = DateTime.Now,
+                    UserId = 1 // Default user for anonymous tracking
+                };
+                await _dbService.InsertUserDeviceAsync(device);
+                _logger.LogInformation($"✅ New device registered via heartbeat: {device.DeviceId}");
+            }
+            else
+            {
+                // Update online status for existing device
+                device.IsOnline = true;
+                device.LastOnlineAt = DateTime.Now;
+                await _dbService.UpdateUserDeviceAsync(device);
+            }
 
             return Ok(new
             {

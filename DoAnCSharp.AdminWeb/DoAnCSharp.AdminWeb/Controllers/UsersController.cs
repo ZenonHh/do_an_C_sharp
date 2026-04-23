@@ -107,11 +107,15 @@ public class UsersController : ControllerBase
         {
             var summary = await _db.GetDashboardSummaryAsync();
 
-            // Cập nhật lại số liệu online chuẩn xác (35 giây & loại bỏ trình duyệt máy tính)
-            var onlineUsers = await _db.GetOnlineUsersAsync();
-            summary.TotalOnlineUsers = onlineUsers.Count(d => 
-                (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35 &&
-                d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux");
+            // Dùng cùng nguồn dữ liệu với DevicesController.GetStats() để đồng nhất
+            // Thiết bị hoạt động: quét QR trong vòng 5 phút gần nhất
+            var allDevices = await _db.GetAllUserDevicesAsync();
+            var onlineDeviceCount = allDevices.Count(d =>
+                (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 300);
+
+            // Mỗi máy hiển thị 2 người dùng
+            summary.TotalOnlineUsers = onlineDeviceCount * 2;
+            summary.OnlineDevices = onlineDeviceCount;
 
             return Ok(summary);
         }
@@ -126,12 +130,12 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var onlineUsers = await _db.GetOnlineUsersAsync();
-            
-            // Lọc bỏ thiết bị Desktop và thiết bị quá 35 giây không online
-            var realOnlineDevices = onlineUsers.Where(d => 
-                (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35 &&
-                d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux").ToList();
+            // Dùng cùng nguồn dữ liệu với DevicesController.GetStats()
+            // Thiết bị hoạt động: quét QR trong vòng 5 phút gần nhất
+            var allDevices = await _db.GetAllUserDevicesAsync();
+            var realOnlineDevices = allDevices
+                .Where(d => (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 300)
+                .ToList();
 
             return Ok(realOnlineDevices);
         }

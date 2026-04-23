@@ -10,7 +10,7 @@ public class AdminSyncService
     // ngrok:              https://abc123.ngrok-free.app
     // Railway (vĩnh viễn): https://ten-app.railway.app
     // LƯU Ý: Hãy sửa IP dưới đây thành IP trùng với IP bạn đang chạy Web Admin (VD: 172.20.10.2)
-    private const string ServerUrl = "http://192.168.1.43:5000";
+    private const string ServerUrl = "http://192.168.31.102:5000";
 
     private static readonly HttpClient _http = new HttpClient
     {

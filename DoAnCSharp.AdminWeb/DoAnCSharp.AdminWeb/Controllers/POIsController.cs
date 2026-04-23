@@ -75,7 +75,7 @@ public class POIsController : ControllerBase
                 return BadRequest(new { error = "Name is required" });
 
             if (string.IsNullOrWhiteSpace(poi.QRCode))
-                poi.QRCode = GenerateQRCode(poi.Name);
+                poi.QRCode = GenerateQRCode();
 
             poi.CreatedAt = DateTime.Now;
             poi.UpdatedAt = DateTime.Now;
@@ -101,7 +101,7 @@ public class POIsController : ControllerBase
             poi.Id = id;
 
             if (string.IsNullOrWhiteSpace(poi.QRCode))
-                poi.QRCode = existing.QRCode ?? GenerateQRCode(poi.Name);
+                poi.QRCode = existing.QRCode ?? GenerateQRCode();
 
             poi.UpdatedAt = DateTime.Now;
             // Preserve created date
@@ -116,13 +116,12 @@ public class POIsController : ControllerBase
         }
     }
 
-    // Generates a deep link QR so the phone camera opens the app directly (no browser).
-    // Falls back to a web URL only when the POI name is unknown.
-    private string GenerateQRCode(string? poiName = null)
+    /// <summary>
+    /// Generates a QR code string containing the full public URL for scanning.
+    /// Example: http://192.168.31.102:5000/qr/POI_ABC123
+    /// </summary>
+    private string GenerateQRCode()
     {
-        if (!string.IsNullOrWhiteSpace(poiName))
-            return $"vinhkhanhtour://play_audio?poi_name={Uri.EscapeDataString(poiName)}";
-
         string publicUrl = (_configuration["ServerSettings:PublicUrl"] ??
                            $"{Request.Scheme}://{Request.Host}").TrimEnd('/');
         string baseCode = "POI_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper();
@@ -306,7 +305,7 @@ public class POIsController : ControllerBase
             if (poi == null)
                 return NotFound(new { error = "POI not found" });
 
-            poi.QRCode = GenerateQRCode(poi.Name);
+            poi.QRCode = GenerateQRCode();
             poi.UpdatedAt = DateTime.Now;
 
             await _db.UpdatePOIAsync(poi);

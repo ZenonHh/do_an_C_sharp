@@ -430,28 +430,38 @@
             topContainer.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Chưa có quán nào được quét</p>';
           }
 
-          // Auto cleanup offline devices
-          await fetch(`${API_BASE}/devices/cleanup-offline`, { method: 'POST' });
+          // Load danh sách người dùng online (2 người mỗi máy)
+          await loadOnlineUsersList();
 
-          // Setup auto-refresh every 5 seconds (only for device count which updates frequently)
+          // Setup auto-refresh every 5 seconds
           if (!dashboardRefreshInterval) {
             dashboardRefreshInterval = setInterval(async () => {
               try {
                 const devResponse = await fetch(`${API_BASE}/devices/stats`);
                 if (devResponse.ok) {
                   const devData = await devResponse.json();
-                  const currentCount = document.getElementById("devicesOnlineCount").textContent;
-                  const newCount = devData.online || 0;
+                  const newDeviceCount = devData.online || 0;
+                  const newPeopleCount = newDeviceCount * 2;
 
-                  // Update if changed (with smooth transition)
-                  if (currentCount != newCount) {
-                    const element = document.getElementById("devicesOnlineCount");
-                    element.style.transition = "color 0.3s ease";
-                    element.style.color = "#27ae60"; // Green flash
-                    element.textContent = newCount;
-                    setTimeout(() => {
-                      element.style.color = "inherit";
-                    }, 300);
+                  // Cập nhật số thiết bị online
+                  const devEl = document.getElementById("devicesOnlineCount");
+                  if (devEl.textContent != newDeviceCount) {
+                    devEl.style.transition = "color 0.3s ease";
+                    devEl.style.color = "#27ae60";
+                    devEl.textContent = newDeviceCount;
+                    setTimeout(() => { devEl.style.color = "inherit"; }, 300);
+                  }
+
+                  // Cập nhật số người online (2 người mỗi máy)
+                  const peopleEl = document.getElementById("onlineCount");
+                  if (peopleEl.textContent != newPeopleCount) {
+                    peopleEl.style.transition = "color 0.3s ease";
+                    peopleEl.style.color = "#27ae60";
+                    peopleEl.textContent = newPeopleCount;
+                    setTimeout(() => { peopleEl.style.color = "inherit"; }, 300);
+
+                    // Làm mới danh sách khi có thay đổi
+                    await loadOnlineUsersList();
                   }
                 }
               } catch (error) {
@@ -461,6 +471,80 @@
           }
         } catch (error) {
           console.error("Dashboard error:", error);
+        }
+      }
+
+      // ===== ONLINE USERS LIST (2 người dùng mỗi máy) =====
+      async function loadOnlineUsersList() {
+        const container = document.getElementById("onlineUsersList");
+        try {
+          const response = await fetch(`${API_BASE}/users/dashboard/online-users`);
+          if (!response.ok) throw new Error("Lỗi tải danh sách");
+
+          const devices = await response.json();
+          container.className = "";
+
+          if (!devices || devices.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999; padding:30px;">Không có người dùng nào đang online</p>';
+            return;
+          }
+
+          // Mỗi thiết bị hiển thị 2 người dùng
+          const rows = devices.flatMap((device, idx) => [
+            {
+              stt: idx * 2 + 1,
+              name: device.deviceName || `Người dùng ${idx * 2 + 1}`,
+              device: device.deviceModel || device.deviceOS || "Không rõ",
+              ip: device.ipAddress || "N/A",
+              location: device.locationInfo || "Không rõ",
+              lastOnline: device.lastOnlineAt,
+              os: device.deviceOS
+            },
+            {
+              stt: idx * 2 + 2,
+              name: `Khách - ${device.deviceName || `Máy ${idx + 1}`}`,
+              device: device.deviceModel || device.deviceOS || "Không rõ",
+              ip: device.ipAddress || "N/A",
+              location: device.locationInfo || "Không rõ",
+              lastOnline: device.lastOnlineAt,
+              os: device.deviceOS
+            }
+          ]);
+
+          container.innerHTML = `
+            <table>
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Tên Người Dùng</th>
+                  <th>Thiết Bị</th>
+                  <th>Hệ Điều Hành</th>
+                  <th>Địa Chỉ IP</th>
+                  <th>Vị Trí</th>
+                  <th>Lần Cuối Online</th>
+                  <th>Trạng Thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map(u => `
+                  <tr>
+                    <td>${u.stt}</td>
+                    <td>${u.name}</td>
+                    <td>${u.device}</td>
+                    <td>${u.os}</td>
+                    <td>${u.ip}</td>
+                    <td>${u.location}</td>
+                    <td>${new Date(u.lastOnline).toLocaleString('vi-VN')}</td>
+                    <td><span style="color:#27ae60; font-weight:600;">🟢 Online</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        } catch (error) {
+          console.error("Error loading online users list:", error);
+          container.className = "";
+          container.innerHTML = '<p style="text-align:center; color:#e74c3c; padding:30px;">Lỗi tải danh sách người dùng online</p>';
         }
       }
 
@@ -982,86 +1066,90 @@
       // ===== HISTORY FUNCTIONS =====
       async function loadHistory() {
         const container = document.getElementById("historyList");
-        container.innerHTML = '<div class="spinner"></div><p>Đang tải...</p>';
+        container.innerHTML = '<div class="loading" style="padding: 50px 0;"><div class="spinner"></div></div>';
 
         try {
           const response = await fetch(`${API_BASE}/history`);
           const history = await response.json();
 
           if (!history || history.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Chưa có lịch sử phát nào</p>';
+            container.innerHTML = '<div style="text-align:center; color:#999; padding:60px; background: #fafafa; border-radius: 8px;"><div style="font-size: 40px; margin-bottom: 15px;">🚫</div><h4 style="margin:0;">Chưa có lịch sử phát audio nào</h4><p style="margin: 5px 0 0 0; font-size: 14px;">Dữ liệu sẽ được ghi nhận khi người dùng đi gần một quán ăn trên app.</p></div>';
             return;
           }
 
           // ===== XỬ LÝ THỐNG KÊ TỪ DỮ LIỆU LỊCH SỬ =====
           const hourlyCounts = Array(24).fill(0);
           const weeklyCounts = { 'T2': 0, 'T3': 0, 'T4': 0, 'T5': 0, 'T6': 0, 'T7': 0, 'CN': 0 };
-          const dayMap = [ 'CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7' ];
+          const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
           history.forEach(h => {
-             if(h.playedAt) {
-                 const d = new Date(h.playedAt);
-                 hourlyCounts[d.getHours()]++;
-                 weeklyCounts[dayMap[d.getDay()]]++;
-             }
+            if (h.playedAt) {
+              const d = new Date(h.playedAt);
+              hourlyCounts[d.getHours()]++;
+              weeklyCounts[dayMap[d.getDay()]]++;
+            }
           });
 
           let maxHourCount = Math.max(...hourlyCounts);
           let peakHours = hourlyCounts.map((count, index) => count === maxHourCount && count > 0 ? index : -1).filter(h => h !== -1);
           let peakHourText = peakHours.length > 0 ? peakHours.map(h => `${h}h`).join(', ') : 'Chưa có';
-
           let maxWeekCount = Math.max(...Object.values(weeklyCounts));
 
           let statsHtml = `
-            <div class="dashboard-grid" style="margin-bottom: 25px;">
-              <div class="stat-card warning">
-                <h3>⏰ Giờ Cao Điểm</h3>
-                <div class="value" style="color: #e67e22;">${peakHourText}</div>
-                <p>Nhiều lượt nghe audio nhất (${maxHourCount} lượt)</p>
+            <div class="dashboard-grid" style="margin-bottom: 30px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+              <div class="stat-card" style="border-left-color: #e67e22;">
+                <h3 style="color:#7f8c8d; font-size: 14px;">⏰ GIỜ CAO ĐIỂM</h3>
+                <div class="value" style="color: #e67e22; font-size: 28px;">${peakHourText}</div>
+                <p>Khung giờ có nhiều lượt nghe nhất (${maxHourCount} lượt)</p>
+              </div>
+              <div class="stat-card" style="border-left-color: #3498db;">
+                <h3 style="color:#7f8c8d; font-size: 14px;">🎧 TỔNG LƯỢT NGHE</h3>
+                <div class="value" style="color: #3498db; font-size: 28px;">${history.length}</div>
+                <p>Tổng số lần audio được phát thành công</p>
               </div>
             </div>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                <div class="card" style="padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #ecf0f1;">
-                    <h3 style="margin-top: 0; color: #2c3e50; font-size: 15px;">📊 Lượt Nghe Theo Giờ Trong Ngày</h3>
-                    <div style="display: flex; align-items: flex-end; height: 150px; gap: 2px; margin-top: 20px;">
-                        ` + hourlyCounts.map((count, hour) => {
-                            let height = maxHourCount > 0 ? (count / maxHourCount * 100) : 0;
-                            let color = count === maxHourCount && count > 0 ? '#e67e22' : '#3498db';
-                            let text = count > 0 ? count : '';
-                            let minH = count > 0 ? '4px' : '0';
-                            return '<div style="flex: 1; display: flex; flex-direction: column; align-items: center;" title="' + hour + 'h: ' + count + ' lượt">' +
-                                '<div style="font-size: 10px; color: #7f8c8d; margin-bottom: 4px;">' + text + '</div>' +
-                                '<div style="width: 100%; background: ' + color + '; height: ' + height + '%; border-radius: 3px 3px 0 0; min-height: ' + minH + '"></div>' +
-                                '<div style="font-size: 9px; color: #95a5a6; margin-top: 4px;">' + hour + '</div>' +
-                            '</div>';
-                        }).join('') + `
+            <div class="grid" style="gap: 25px; margin-bottom: 30px;">
+                <div class="card" style="padding: 25px;">
+                    <h3 style="margin-top: 0; color: #2c3e50; font-size: 16px;">📊 Phân Bố Lượt Nghe Theo Giờ</h3>
+                    <div class="chart-container" style="display: flex; align-items: flex-end; height: 160px; gap: 3px; margin-top: 20px; padding: 0 5px;">
+                        ${hourlyCounts.map((count, hour) => {
+                          const height = maxHourCount > 0 ? (count / maxHourCount * 100) : 0;
+                          const color = count === maxHourCount && count > 0 ? '#e67e22' : '#3498db';
+                          const text = count > 0 ? count : '';
+                          const minH = count > 0 ? '4px' : '0';
+                          return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center;" title="${hour}h: ${count} lượt">
+                                      <div style="font-size: 10px; color: #7f8c8d; margin-bottom: 4px; font-weight: 500;">${text}</div>
+                                      <div style="width: 100%; background: ${color}; height: ${height}%; border-radius: 3px 3px 0 0; min-height: ${minH}; transition: height 0.3s ease;"></div>
+                                      <div style="font-size: 10px; color: #95a5a6; margin-top: 5px;">${hour}</div>
+                                  </div>`;
+                        }).join('')}
                     </div>
                 </div>
 
-                <div class="card" style="padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #ecf0f1;">
-                    <h3 style="margin-top: 0; color: #2c3e50; font-size: 15px;">📅 Lượt Nghe Theo Ngày Trong Tuần</h3>
-                    <div style="display: flex; align-items: flex-end; height: 150px; gap: 10px; margin-top: 20px;">
-                        ` + Object.entries(weeklyCounts).map(([day, count]) => {
-                            let height = maxWeekCount > 0 ? (count / maxWeekCount * 100) : 0;
-                            let color = count === maxWeekCount && count > 0 ? '#e74c3c' : '#2ecc71';
-                            let text = count > 0 ? count : '';
-                            let minH = count > 0 ? '4px' : '0';
-                            return '<div style="flex: 1; display: flex; flex-direction: column; align-items: center;" title="' + day + ': ' + count + ' lượt">' +
-                                '<div style="font-size: 12px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;">' + text + '</div>' +
-                                '<div style="width: 100%; background: ' + color + '; height: ' + height + '%; border-radius: 4px 4px 0 0; min-height: ' + minH + '"></div>' +
-                                '<div style="font-size: 12px; font-weight: bold; color: #7f8c8d; margin-top: 8px;">' + day + '</div>' +
-                            '</div>';
-                        }).join('') + `
+                <div class="card" style="padding: 25px;">
+                    <h3 style="margin-top: 0; color: #2c3e50; font-size: 16px;">📅 Phân Bố Lượt Nghe Trong Tuần</h3>
+                    <div class="chart-container" style="display: flex; align-items: flex-end; height: 160px; gap: 12px; margin-top: 20px; padding: 0 10px;">
+                        ${Object.entries(weeklyCounts).map(([day, count]) => {
+                          const height = maxWeekCount > 0 ? (count / maxWeekCount * 100) : 0;
+                          const color = count === maxWeekCount && count > 0 ? '#e74c3c' : '#2ecc71';
+                          const text = count > 0 ? count : '';
+                          const minH = count > 0 ? '4px' : '0';
+                          return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center;" title="${day}: ${count} lượt">
+                                      <div style="font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;">${text}</div>
+                                      <div style="width: 100%; background: ${color}; height: ${height}%; border-radius: 4px 4px 0 0; min-height: ${minH}; transition: height 0.3s ease;"></div>
+                                      <div style="font-size: 13px; font-weight: bold; color: #7f8c8d; margin-top: 8px;">${day}</div>
+                                  </div>`;
+                        }).join('')}
                     </div>
                 </div>
             </div>
             
-            <h3 style="margin-bottom: 15px; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px;">📋 Danh Sách Chi Tiết</h3>
+            <h3 style="margin-bottom: 15px; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px;">📋 Danh Sách Lịch Sử Chi Tiết</h3>
           `;
 
           container.innerHTML = statsHtml + `
-            <table>
+            <table class="payment-table">
               <thead>
                 <tr>
                   <th>Mã</th>
@@ -1074,12 +1162,12 @@
               <tbody>
                 ${history.map(h => `
                   <tr>
-                    <td style="color: #bdc3c7;">#${h.id}</td>
-                    <td style="font-weight: 500;">${h.userId || h.userName || 'Khách vãng lai'}</td>
-                    <td><span style="background: #f1f2f6; padding: 4px 10px; border-radius: 12px; font-size: 13px;">${h.poiName || 'N/A'}</span></td>
-                    <td style="color: #7f8c8d;">${h.playedAt ? new Date(h.playedAt).toLocaleString('vi-VN') : 'N/A'}</td>
+                    <td style="color: #bdc3c7; font-weight: 500;">#${h.id}</td>
+                    <td style="font-weight: 500;">${h.userName || h.userId || 'Khách vãng lai'}</td>
+                    <td><span style="background: #f1f2f6; padding: 5px 12px; border-radius: 14px; font-size: 13px; font-weight: 500;">${h.poiName || 'N/A'}</span></td>
+                    <td class="date-text">${h.playedAt ? new Date(h.playedAt).toLocaleString('vi-VN') : 'N/A'}</td>
                     <td>
-                      <span style="color: #27ae60; background: #eafaf1; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                      <span style="color: #27ae60; background: #eafaf1; padding: 5px 12px; border-radius: 14px; font-size: 12px; font-weight: bold;">
                         ▶️ Đã phát
                       </span>
                     </td>
