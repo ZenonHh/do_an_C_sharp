@@ -38,7 +38,7 @@ $success = $false
 
 while ($retries -lt $maxRetries) {
     try {
-        $response = Invoke-WebRequest -Uri "http://172.20.10.2:5000/api/pois/debug/all" -ErrorAction Stop
+        $response = Invoke-WebRequest -Uri "http://192.168.69.13:5000/api/pois/debug/all" -ErrorAction Stop
         $data = $response.Content | ConvertFrom-Json
         
         Write-Host "   ✅ Server đang chạy, POIs được seed:" -ForegroundColor Green
@@ -73,13 +73,13 @@ else {
     Write-Host ""
     Write-Host "📱 Cách test QR Code scan:" -ForegroundColor Cyan
     Write-Host "1. Mở trình duyệt trên máy tính hoặc điện thoại" -ForegroundColor White
-    Write-Host "2. Truy cập: http://172.20.10.2:5000" -ForegroundColor Yellow
+    Write-Host "2. Truy cập: http://192.168.69.13:5000" -ForegroundColor Yellow
     Write-Host "3. Vào tab 'POIs' để xem mã QR cho mỗi quán" -ForegroundColor White
     Write-Host "4. Quét mã QR bằng camera điện thoại" -ForegroundColor White
     Write-Host "5. Nó sẽ mở trang thông tin quán ăn" -ForegroundColor White
     Write-Host ""
     Write-Host "⚠️ Lưu ý về QR Code:" -ForegroundColor Yellow
-    Write-Host "   • QR Code bây giờ chứa full URL: http://172.20.10.2:5000/qr/POI_XXXXX" -ForegroundColor White
+    Write-Host "   • QR Code bây giờ chứa full URL: http://192.168.69.13:5000/qr/POI_XXXXX" -ForegroundColor White
     Write-Host "   • Điện thoại quét được URL đầy đủ → có thể mở ngay" -ForegroundColor White
     Write-Host "   • Không cần copy/paste nữa!" -ForegroundColor White
     Write-Host ""

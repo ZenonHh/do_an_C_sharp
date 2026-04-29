@@ -294,7 +294,6 @@
               <button class="filter-btn" id="historyBtnWeb" onclick="setHistorySource('web', this)">🌐 Web</button>
               <button class="filter-btn" id="historyBtnApp" onclick="setHistorySource('app', this)">📱 App</button>
             </div>
-            <button onclick="resetHistoryFilter()" style="padding:8px 16px; background:#f3f4f6; border:1px solid #e0e0e0; border-radius:6px; font-size:14px; cursor:pointer; color:#6b7280; font-weight:600;">↺ Đặt Lại</button>
             <button class="refresh-btn" onclick="loadHistory()" style="padding:8px 16px;">🔄 Làm Mới</button>
           </div>
 
@@ -1013,9 +1012,8 @@
 
       // ===== HISTORY FUNCTIONS =====
       let allHistoryData = [];
+      let allPoisData = [];
       let historySourceFilter = 'all';
-      let currentHistoryPage = 0;
-      const HISTORY_PER_PAGE = 15;
       let hourlyChartInstance = null;
       let weeklyChartInstance = null;
 
@@ -1026,9 +1024,12 @@
         document.getElementById("historyCharts").innerHTML = '';
 
         try {
-          const res = await fetch(`${API_BASE}/history`);
-          allHistoryData = await res.json();
-          currentHistoryPage = 0;
+          const [histRes, poisRes] = await Promise.all([
+            fetch(`${API_BASE}/history`),
+            fetch(`${API_BASE}/pois`)
+          ]);
+          allHistoryData = await histRes.json();
+          allPoisData = await poisRes.json();
           applyHistoryFilter();
         } catch {
           container.innerHTML = '<p style="text-align:center; color:#e74c3c; padding:40px;">❌ Lỗi tải lịch sử</p>';
@@ -1039,7 +1040,6 @@
         historySourceFilter = source;
         document.querySelectorAll('#history .filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        currentHistoryPage = 0;
         applyHistoryFilter();
       }
 
@@ -1071,12 +1071,10 @@
         if (btnWeb) btnWeb.innerHTML = `🌐 Web (${webC})`;
         if (btnApp) btnApp.innerHTML = `📱 App (${appC})`;
 
-        // Apply source filter
         const filtered = historySourceFilter !== 'all'
           ? base.filter(h => h.source === historySourceFilter)
           : base;
 
-        currentHistoryPage = 0;
         renderHistoryStats(filtered);
         renderHistoryCharts(filtered);
         renderHistoryTable(filtered);
@@ -1088,7 +1086,6 @@
         document.getElementById("historyTo").value = '';
         historySourceFilter = 'all';
         document.querySelectorAll('#history .filter-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
-        currentHistoryPage = 0;
         applyHistoryFilter();
       }
 
@@ -1138,173 +1135,184 @@
         const el = document.getElementById("historyCharts");
         if (!data.length) { el.innerHTML = ''; return; }
 
+        if (hourlyChartInstance) { hourlyChartInstance.destroy(); hourlyChartInstance = null; }
+        if (weeklyChartInstance) { weeklyChartInstance.destroy(); weeklyChartInstance = null; }
+
         el.innerHTML = `
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
-            <div style="background:white; border-radius:10px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); height: 320px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+            <div style="background:white; border-radius:10px; padding:16px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); height:200px;">
               <canvas id="hourlyListenChart"></canvas>
             </div>
-            <div style="background:white; border-radius:10px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); height: 320px;">
+            <div style="background:white; border-radius:10px; padding:16px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); height:200px;">
               <canvas id="weeklyListenChart"></canvas>
             </div>
           </div>
         `;
 
-        const ctxHourly = document.getElementById('hourlyListenChart').getContext('2d');
-        const ctxWeekly = document.getElementById('weeklyListenChart').getContext('2d');
-
-        if (hourlyChartInstance) hourlyChartInstance.destroy();
-        if (weeklyChartInstance) weeklyChartInstance.destroy();
-
         const hourlyApp = new Array(24).fill(0);
         const hourlyWeb = new Array(24).fill(0);
-        
         const weeklyApp = new Array(7).fill(0);
         const weeklyWeb = new Array(7).fill(0);
-        // Date.getDay() trả về 0 cho Chủ Nhật. Ánh xạ sang index: 0=T2, 1=T3... 6=CN
-        const dayMapIndex = [6, 0, 1, 2, 3, 4, 5]; 
+        const dayMapIndex = [6, 0, 1, 2, 3, 4, 5]; // Sun→6, Mon→0 … Sat→5
 
         data.forEach(h => {
           if (h.playedAt) {
             const d = new Date(h.playedAt);
             const hour = d.getHours();
             const dayIdx = dayMapIndex[d.getDay()];
-            
-            if (h.source === 'app') {
-              hourlyApp[hour]++;
-              weeklyApp[dayIdx]++;
-            } else {
-              hourlyWeb[hour]++;
-              weeklyWeb[dayIdx]++;
+            if (h.source === 'app') { hourlyApp[hour]++; weeklyApp[dayIdx]++; }
+            else                    { hourlyWeb[hour]++;  weeklyWeb[dayIdx]++;  }
+          }
+        });
+
+        const sharedOptions = (titleText) => ({
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: titleText,
+              font: { size: 12, weight: '600' },
+              color: '#374151',
+              padding: { bottom: 8 }
+            },
+            legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1, font: { size: 9 }, color: '#9ca3af' },
+              grid: { color: '#f3f4f6' }
+            },
+            x: {
+              ticks: { font: { size: 9 }, color: '#6b7280', maxRotation: 0 },
+              grid: { display: false }
             }
           }
         });
 
-        hourlyChartInstance = new Chart(ctxHourly, {
-          type: 'bar',
-          data: {
-            labels: Array.from({length: 24}, (_, i) => `${i}h`),
-            datasets: [
-              { label: '📱 App', data: hourlyApp, backgroundColor: '#10b981' },
-              { label: '🌐 Web', data: hourlyWeb, backgroundColor: '#3b82f6' }
-            ]
-          },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { title: { display: true, text: 'Phân bố lượt nghe theo giờ', font: { size: 14 } } },
-            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-          }
+        const barStyle = (color) => ({
+          backgroundColor: color,
+          borderRadius: 3,
+          borderSkipped: false
         });
 
-        weeklyChartInstance = new Chart(ctxWeekly, {
-          type: 'bar',
-          data: {
-            labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-            datasets: [
-              { label: '📱 App', data: weeklyApp, backgroundColor: '#10b981' },
-              { label: '🌐 Web', data: weeklyWeb, backgroundColor: '#3b82f6' }
-            ]
-          },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { title: { display: true, text: 'Phân bố lượt nghe theo ngày trong tuần', font: { size: 14 } } },
-            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        hourlyChartInstance = new Chart(
+          document.getElementById('hourlyListenChart').getContext('2d'),
+          {
+            type: 'bar',
+            data: {
+              labels: Array.from({length: 24}, (_, i) => `${i}h`),
+              datasets: [
+                { label: '📱 App', data: hourlyApp, ...barStyle('rgba(16,185,129,0.82)') },
+                { label: '🌐 Web', data: hourlyWeb, ...barStyle('rgba(59,130,246,0.82)') }
+              ]
+            },
+            options: sharedOptions('Lượt nghe theo giờ trong ngày')
           }
-        });
+        );
+
+        weeklyChartInstance = new Chart(
+          document.getElementById('weeklyListenChart').getContext('2d'),
+          {
+            type: 'bar',
+            data: {
+              labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+              datasets: [
+                { label: '📱 App', data: weeklyApp, ...barStyle('rgba(16,185,129,0.82)') },
+                { label: '🌐 Web', data: weeklyWeb, ...barStyle('rgba(59,130,246,0.82)') }
+              ]
+            },
+            options: sharedOptions('Lượt nghe theo ngày trong tuần')
+          }
+        );
+      }
+
+      function getHistoryFiltered() {
+        const q = (document.getElementById("historySearch")?.value || '').toLowerCase().trim();
+        const from = document.getElementById("historyFrom")?.value;
+        const to = document.getElementById("historyTo")?.value;
+
+        let base = allHistoryData;
+        if (from) base = base.filter(h => h.playedAt && new Date(h.playedAt) >= new Date(from));
+        if (to) {
+          const d = new Date(to); d.setDate(d.getDate() + 1);
+          base = base.filter(h => h.playedAt && new Date(h.playedAt) < d);
+        }
+        if (q) base = base.filter(h =>
+          h.poiName?.toLowerCase().includes(q) ||
+          h.userName?.toLowerCase().includes(q) ||
+          h.userEmail?.toLowerCase().includes(q)
+        );
+        return historySourceFilter !== 'all'
+          ? base.filter(h => h.source === historySourceFilter)
+          : base;
       }
 
       function renderHistoryTable(data) {
         const container = document.getElementById("historyList");
-        const existing = container.parentElement.querySelector('.history-pagination');
-        if (existing) existing.remove();
 
-        if (!data.length) {
+        // Build per-restaurant tallies from all POIs
+        const rows = allPoisData.map(poi => {
+          const webC = data.filter(h => h.poiId === poi.id && h.source === 'web').length;
+          const appC = data.filter(h => h.poiId === poi.id && h.source === 'app').length;
+          return { name: poi.name, webC, appC, total: webC + appC };
+        });
+
+        // Include any history records whose POI is not in allPoisData (edge case)
+        const knownIds = new Set(allPoisData.map(p => p.id));
+        data.forEach(h => {
+          if (!knownIds.has(h.poiId)) {
+            const existing = rows.find(r => r.name === (h.poiName || '?'));
+            if (existing) {
+              h.source === 'app' ? existing.appC++ : existing.webC++;
+              existing.total++;
+            } else {
+              rows.push({ name: h.poiName || '?', webC: h.source === 'web' ? 1 : 0, appC: h.source === 'app' ? 1 : 0, total: 1 });
+            }
+          }
+        });
+
+        rows.sort((a, b) => b.total - a.total);
+
+        if (!data.length && !allPoisData.length) {
           container.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Không tìm thấy lịch sử nào trong điều kiện lọc này.</p>';
           return;
         }
 
-        const totalPages = Math.ceil(data.length / HISTORY_PER_PAGE);
-        const start = currentHistoryPage * HISTORY_PER_PAGE;
-        const paged = data.slice(start, start + HISTORY_PER_PAGE);
-
         container.innerHTML = `
           <h4 style="margin:0 0 12px; color:#2c3e50; font-size:15px; font-weight:700; border-bottom:1px solid #f0f0f0; padding-bottom:10px;">
-            📋 Danh Sách Chi Tiết <span style="color:#9ca3af; font-weight:400; font-size:13px;">(${data.length} bản ghi)</span>
+            🍽️ Thống Kê Theo Quán Ăn <span style="color:#9ca3af; font-weight:400; font-size:13px;">(${data.length} lượt nghe)</span>
           </h4>
           <table>
             <thead>
               <tr>
-                <th style="width:50px;">ID</th>
-                <th>Người Dùng</th>
+                <th style="width:40px; text-align:center;">#</th>
                 <th>Quán Ăn</th>
-                <th style="text-align:center;">Nguồn</th>
-                <th>Thời Gian</th>
-                <th style="text-align:center;">Thao Tác</th>
+                <th style="text-align:center; width:100px;">🌐 Web</th>
+                <th style="text-align:center; width:100px;">📱 App</th>
+                <th style="text-align:center; width:80px;">Tổng</th>
               </tr>
             </thead>
             <tbody>
-              ${paged.map(h => {
-                const src = h.source === 'app'
-                  ? '<span style="background:#dcfce7;color:#15803d;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;">📱 App</span>'
-                  : '<span style="background:#dbeafe;color:#1d4ed8;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;">🌐 Web</span>';
-                const dateStr = h.playedAt ? new Date(h.playedAt).toLocaleString('vi-VN') : '—';
+              ${rows.map((r, i) => {
+                const pct = data.length > 0 ? Math.round(r.total / data.length * 100) : 0;
+                const rankStyle = i === 0 && r.total > 0 ? 'color:#f59e0b; font-weight:800;' : 'color:#9ca3af;';
                 return `
-                <tr>
-                  <td style="text-align:center;color:#9ca3af;">${h.id}</td>
+                <tr style="${r.total === 0 ? 'opacity:0.45;' : ''}">
+                  <td style="text-align:center; ${rankStyle}">${i + 1}</td>
                   <td>
-                    <div style="font-weight:600;color:#2c3e50;">${h.userName || 'Khách'}</div>
-                    <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${h.userEmail || ''}</div>
+                    <div style="font-weight:600; color:#2c3e50;">${r.name}</div>
+                    ${r.total > 0 ? `<div style="margin-top:4px; height:4px; background:#f3f4f6; border-radius:2px;"><div style="width:${pct}%; height:100%; background:linear-gradient(90deg,#3b82f6,#10b981); border-radius:2px;"></div></div>` : ''}
                   </td>
-                  <td style="font-weight:500;">${h.poiName || '<span style="color:#9ca3af;">—</span>'}</td>
-                  <td style="text-align:center;">${src}</td>
-                  <td style="font-size:13px;color:#6b7280;">${dateStr}</td>
-                  <td style="text-align:center;">
-                    <button onclick="deleteHistory(${h.id})" class="small danger">🗑️ Xóa</button>
-                  </td>
+                  <td style="text-align:center; color:#1d4ed8; font-weight:600;">${r.webC > 0 ? r.webC : '<span style="color:#d1d5db;">—</span>'}</td>
+                  <td style="text-align:center; color:#15803d; font-weight:600;">${r.appC > 0 ? r.appC : '<span style="color:#d1d5db;">—</span>'}</td>
+                  <td style="text-align:center; font-weight:700; font-size:15px; color:${r.total > 0 ? '#2c3e50' : '#d1d5db'};">${r.total || '—'}</td>
                 </tr>`;
               }).join('')}
             </tbody>
           </table>
         `;
-
-        if (totalPages > 1) {
-          const pag = document.createElement('div');
-          pag.className = 'pagination history-pagination';
-          pag.style.marginTop = '20px';
-          let html = `<button ${currentHistoryPage === 0 ? 'disabled' : ''} onclick="changeHistoryPage(${currentHistoryPage - 1})">◀ Trước</button>`;
-          for (let i = 0; i < totalPages; i++)
-            html += `<button class="${i === currentHistoryPage ? 'active' : ''}" onclick="changeHistoryPage(${i})">${i + 1}</button>`;
-          html += `<button ${currentHistoryPage >= totalPages - 1 ? 'disabled' : ''} onclick="changeHistoryPage(${currentHistoryPage + 1})">Sau ▶</button>`;
-          pag.innerHTML = html;
-          container.parentElement.appendChild(pag);
-        }
-      }
-
-      function changeHistoryPage(page) {
-        const q = (document.getElementById("historySearch")?.value || '').toLowerCase().trim();
-        const from = document.getElementById("historyFrom")?.value;
-        const to = document.getElementById("historyTo")?.value;
-        let filtered = allHistoryData;
-        if (historySourceFilter !== 'all') filtered = filtered.filter(h => h.source === historySourceFilter);
-        if (from) filtered = filtered.filter(h => h.playedAt && new Date(h.playedAt) >= new Date(from));
-        if (to) { const d = new Date(to); d.setDate(d.getDate()+1); filtered = filtered.filter(h => h.playedAt && new Date(h.playedAt) < d); }
-        if (q) filtered = filtered.filter(h => h.poiName?.toLowerCase().includes(q) || h.userName?.toLowerCase().includes(q) || h.userEmail?.toLowerCase().includes(q));
-        const totalPages = Math.ceil(filtered.length / HISTORY_PER_PAGE);
-        if (page < 0 || page >= totalPages) return;
-        currentHistoryPage = page;
-        renderHistoryTable(filtered);
-        document.getElementById('historyList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
-      async function deleteHistory(id) {
-        if (!confirm('Xóa bản ghi lịch sử này?')) return;
-        try {
-          const res = await fetch(`${API_BASE}/history/${id}`, { method: 'DELETE' });
-          if (!res.ok) throw new Error();
-          allHistoryData = allHistoryData.filter(h => h.id !== id);
-          applyHistoryFilter();
-        } catch {
-          alert('Lỗi khi xóa lịch sử');
-        }
       }
 
       // ===== PAYMENTS FUNCTIONS =====

@@ -4,6 +4,7 @@ using DoAnCSharp.Services;
 using DoAnCSharp;
 using System; 
 using System.Threading.Tasks;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 
 namespace DoAnCSharp.ViewModels;

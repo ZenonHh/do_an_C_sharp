@@ -111,9 +111,7 @@ public partial class HomePage : ContentPage
     }
 private void UpdateUI_Language()
 {
-    // Giả sử HomePage của bạn có inject _langService, nếu chưa có thì lấy qua ServiceHelper hoặc App.Current
-    var langService = IPlatformApplication.Current.Services.GetService<ILanguageService>();
-    string lang = langService.CurrentLocale;
+    string lang = _lang.CurrentLocale;
 
     if (lang == "en")
     {

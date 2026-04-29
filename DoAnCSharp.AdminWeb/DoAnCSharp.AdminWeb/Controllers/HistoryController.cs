@@ -22,18 +22,20 @@ public class HistoryController : ControllerBase
         {
             var history = await _db.GetAllHistoryAsync();
             var users = await _db.GetAllUsersAsync();
+            var pois = await _db.GetAllPOIsAsync();
 
             var result = history
                 .OrderByDescending(h => h.PlayedAt)
                 .Select(h => {
                     var user = users.FirstOrDefault(u => u.Id == h.UserId);
+                    var poi = pois.FirstOrDefault(p => p.Id == h.POIId);
                     return new {
                         id = h.Id,
                         userId = h.UserId,
                         userName = user?.FullName ?? (h.UserId > 0 ? $"User #{h.UserId}" : "Khách"),
                         userEmail = user?.Email ?? "",
                         poiId = h.POIId,
-                        poiName = h.POIName,
+                        poiName = poi?.Name ?? h.POIName,
                         playedAt = h.PlayedAt,
                         source = h.Source ?? "web"
                     };

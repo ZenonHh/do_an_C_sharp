@@ -38,7 +38,7 @@ async function loadAllDevices() {
 function filterDevices(status) {
   currentFilterStatus = status;
   currentDevicePage = 0;
-  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('#devices .filter-btn').forEach(btn => btn.classList.remove('active'));
   event.target.classList.add('active');
   renderDevicesTable(getFilteredDevices());
 }
