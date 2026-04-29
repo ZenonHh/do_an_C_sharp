@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test FOODSTREET Route</title>
+</head>
+<body>
+    <h1>Test Routes</h1>
+    
+    <h2>Click one of these links to test:</h2>
+    
+    <ul>
+        <li>
+            <a href="/qr/FOODSTREET_VINHKHANH" target="_blank">
+                /qr/FOODSTREET_VINHKHANH (Should show restaurant list with "Xem Chi Tiết" button)
+            </a>
+        </li>
+        <li>
+            <a href="/qr/POI_TEST" target="_blank">
+                /qr/POI_TEST (Should show single restaurant)
+            </a>
+        </li>
+    </ul>
+    
+    <hr>
+    <h2>Or check what HTML the controller is returning:</h2>
+    <button onclick="testFoodStreetRoute()">Test FOODSTREET Route</button>
+    <button onclick="testPoiRoute()">Test POI Route</button>
+    
+    <div id="result" style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px; max-height: 500px; overflow: auto;">
+        <p>Result will appear here...</p>
+    </div>
+    
+    <script>
+        function testFoodStreetRoute() {
+            fetch('/qr/FOODSTREET_VINHKHANH')
+                .then(r => r.text())
+                .then(html => {
+                    const resultDiv = document.getElementById('result');
+                    // Check if it contains "Xem Chi Tiết"
+                    if (html.includes('Xem Chi Tiết')) {
+                        resultDiv.innerHTML = '<strong style="color:green;">✅ SUCCESS! Found "Xem Chi Tiết" button</strong><pre>' + html.substring(0, 500) + '...</pre>';
+                    } else if (html.includes('Phát Thuyết Minh')) {
+                        resultDiv.innerHTML = '<strong style="color:red;">❌ WRONG! Still showing old "Phát Thuyết Minh"</strong><pre>' + html.substring(0, 500) + '...</pre>';
+                    } else {
+                        resultDiv.innerHTML = '<strong>Response preview:</strong><pre>' + html.substring(0, 1000) + '</pre>';
+                    }
+                });
+        }
+        
+        function testPoiRoute() {
+            fetch('/qr/POI_TEST')
+                .then(r => r.text())
+                .then(html => {
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = '<strong>POI Route Response:</strong><pre>' + html.substring(0, 1000) + '</pre>';
+                });
+        }
+    </script>
+</body>
+</html>
