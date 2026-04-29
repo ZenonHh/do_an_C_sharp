@@ -2,8 +2,16 @@
 
 let devicesData = [];
 let currentDevicePage = 0;
+let currentFilterStatus = 'all';
 const DEVICES_PER_PAGE = 10;
 let devicesRefreshInterval;
+
+const DESKTOP_OS = ['Windows', 'macOS', 'Linux'];
+
+function isOnline(device) {
+  const sixtySecAgo = new Date(Date.now() - 60 * 1000);
+  return new Date(device.lastOnlineAt) >= sixtySecAgo && !DESKTOP_OS.includes(device.deviceOS);
+}
 
 document.addEventListener('DOMContentLoaded', function () {
   if (document.getElementById('devices')) {
@@ -21,21 +29,36 @@ async function loadAllDevices() {
     if (!res.ok) throw new Error();
     devicesData = await res.json();
     currentDevicePage = 0;
-    renderDevicesTable(devicesData);
+    renderDevicesTable(getFilteredDevices());
   } catch {
     if (container) container.innerHTML = '<p style="text-align:center;color:#e74c3c;padding:40px;">❌ Lỗi tải danh sách thiết bị</p>';
   }
 }
 
+function filterDevices(status) {
+  currentFilterStatus = status;
+  currentDevicePage = 0;
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  renderDevicesTable(getFilteredDevices());
+}
+
 function getFilteredDevices() {
+  let filtered = devicesData;
+
+  if (currentFilterStatus === 'online') filtered = filtered.filter(isOnline);
+  else if (currentFilterStatus === 'offline') filtered = filtered.filter(d => !isOnline(d));
+
   const q = (document.getElementById('devicesSearchInput')?.value || '').toLowerCase().trim();
-  if (!q) return devicesData;
-  return devicesData.filter(d =>
-    d.deviceName?.toLowerCase().includes(q) ||
-    d.deviceModel?.toLowerCase().includes(q) ||
-    d.ipAddress?.toLowerCase().includes(q) ||
-    d.deviceOS?.toLowerCase().includes(q)
-  );
+  if (q) {
+    filtered = filtered.filter(d =>
+      d.deviceName?.toLowerCase().includes(q) ||
+      d.deviceModel?.toLowerCase().includes(q) ||
+      d.ipAddress?.toLowerCase().includes(q) ||
+      d.deviceOS?.toLowerCase().includes(q)
+    );
+  }
+  return filtered;
 }
 
 function renderDevicesTable(devices) {

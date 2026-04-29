@@ -16,12 +16,30 @@ public class HistoryController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<PlayHistory>>> GetAll()
+    public async Task<ActionResult> GetAll()
     {
         try
         {
             var history = await _db.GetAllHistoryAsync();
-            return Ok(history);
+            var users = await _db.GetAllUsersAsync();
+
+            var result = history
+                .OrderByDescending(h => h.PlayedAt)
+                .Select(h => {
+                    var user = users.FirstOrDefault(u => u.Id == h.UserId);
+                    return new {
+                        id = h.Id,
+                        userId = h.UserId,
+                        userName = user?.FullName ?? (h.UserId > 0 ? $"User #{h.UserId}" : "Khách"),
+                        userEmail = user?.Email ?? "",
+                        poiId = h.POIId,
+                        poiName = h.POIName,
+                        playedAt = h.PlayedAt,
+                        source = h.Source ?? "web"
+                    };
+                }).ToList();
+
+            return Ok(result);
         }
         catch (Exception ex)
         {

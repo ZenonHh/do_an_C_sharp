@@ -9,8 +9,12 @@ public class AdminSyncService
     // Local (điện thoại): http://192.168.x.x:5000  (cùng WiFi)
     // ngrok:              https://abc123.ngrok-free.app
     // Railway (vĩnh viễn): https://ten-app.railway.app
-    // LƯU Ý: Hãy sửa IP dưới đây thành IP trùng với IP bạn đang chạy Web Admin (VD: 172.20.10.2)
-    private const string ServerUrl = "http://192.168.69.13:5000";
+    // LƯU Ý: IP hiện tại được lấy động từ Preferences, giúp bạn đổi IP từ cài đặt App mà không cần build lại
+    public string ServerUrl
+    {
+        get => Microsoft.Maui.Storage.Preferences.Default.Get("ServerIP", "http://192.168.69.13:5000");
+        set => Microsoft.Maui.Storage.Preferences.Default.Set("ServerIP", value);
+    }
 
     private static readonly HttpClient _http = new HttpClient
     {
@@ -40,9 +44,10 @@ public class AdminSyncService
             };
             await _http.PostAsJsonAsync($"{ServerUrl}/api/sync/history", payload);
         }
-        catch
+        catch (Exception ex)
         {
             // Bỏ qua lỗi mạng — app vẫn hoạt động bình thường khi server tắt
+            System.Diagnostics.Debug.WriteLine($"[SyncPlayHistory] Lỗi mạng: {ex.Message}");
         }
     }
 

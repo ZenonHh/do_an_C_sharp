@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/css/devices.css?v=2.0" />
     <script src="/js/admin-features.js?v=2.0" defer></script>
     <script src="/js/qr-scanner.js?v=1.0" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body style="margin: 0; padding: 0;">
     <header style="position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: white; border-bottom: 2px solid #4f46e5; padding: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
@@ -85,7 +86,10 @@
 
           <!-- Top POIs -->
           <h3 style="margin-top:30px;">🏆 Top Quán Được Nghe Nhiều Nhất</h3>
-          <div id="topScannedPOIs" class="loading"><div class="spinner"></div></div>
+          <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;">
+            <div id="topScannedPOIs" style="flex:1; min-width:300px;" class="loading"><div class="spinner"></div></div>
+            <div id="topPOIsChart" style="flex:0 0 320px; background:white; border-radius:10px; padding:22px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); align-self:flex-start;"></div>
+          </div>
 
         </div>
 
@@ -236,6 +240,11 @@
             <div class="search-box">
               <input type="text" id="devicesSearchInput" placeholder="Tìm kiếm thiết bị (tên, model, IP)..."/>
             </div>
+            <div class="filter-buttons">
+              <button class="filter-btn active" onclick="filterDevices('all')">Tất Cả</button>
+              <button class="filter-btn" onclick="filterDevices('online')">🟢 Online</button>
+              <button class="filter-btn" onclick="filterDevices('offline')">🔴 Offline</button>
+            </div>
             <button class="refresh-btn" id="devicesRefreshBtn">🔄 Làm Mới</button>
           </div>
           <div id="devicesList"></div>
@@ -266,8 +275,32 @@
         <!-- HISTORY TAB -->
         <div id="history" class="tab-content">
           <h2>📜 Lịch Sử Phát Audio</h2>
-          <div class="message" id="historyMessage"></div>
-          <div id="historyList" class="loading"><div class="spinner"></div></div>
+
+          <!-- Controls bar -->
+          <div style="background:white; padding:16px 20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:20px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+            <div class="search-box" style="flex:1; min-width:200px;">
+              <input type="text" id="historySearch" placeholder="Tìm theo quán hoặc người dùng..." oninput="applyHistoryFilter()" />
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:14px; font-weight:600; color:#2c3e50; white-space:nowrap;">Từ ngày:</label>
+              <input type="date" id="historyFrom" style="padding:8px 12px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" onchange="applyHistoryFilter()" />
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:14px; font-weight:600; color:#2c3e50; white-space:nowrap;">Đến ngày:</label>
+              <input type="date" id="historyTo" style="padding:8px 12px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" onchange="applyHistoryFilter()" />
+            </div>
+            <div class="filter-buttons">
+              <button class="filter-btn active" id="historyBtnAll" onclick="setHistorySource('all', this)">Tất Cả</button>
+              <button class="filter-btn" id="historyBtnWeb" onclick="setHistorySource('web', this)">🌐 Web</button>
+              <button class="filter-btn" id="historyBtnApp" onclick="setHistorySource('app', this)">📱 App</button>
+            </div>
+            <button onclick="resetHistoryFilter()" style="padding:8px 16px; background:#f3f4f6; border:1px solid #e0e0e0; border-radius:6px; font-size:14px; cursor:pointer; color:#6b7280; font-weight:600;">↺ Đặt Lại</button>
+            <button class="refresh-btn" onclick="loadHistory()" style="padding:8px 16px;">🔄 Làm Mới</button>
+          </div>
+
+          <div id="historyStats" style="margin-bottom:20px;"></div>
+          <div id="historyCharts" style="margin-bottom:24px;"></div>
+          <div id="historyList"></div>
         </div>
 
       </div><!-- end .content -->
@@ -388,12 +421,14 @@
 
       function renderTopPOIs(list) {
         const el = document.getElementById("topScannedPOIs");
+        el.className = "";
+
         if (!list.length) {
           el.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Chưa có lượt nghe nào được ghi nhận</p>';
-          el.className = "";
+          document.getElementById("topPOIsChart").innerHTML = '';
           return;
         }
-        el.className = "";
+
         el.innerHTML = `
           <table>
             <thead>
@@ -408,8 +443,8 @@
             <tbody>
               ${list.map((poi, i) => {
                 const medal = ["🥇","🥈","🥉"][i] || `<strong style="color:#95a5a6;">${i+1}</strong>`;
-                const webBadge = (poi.webCount > 0) ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;">🌐 Web ${poi.webCount}</span>` : '';
-                const appBadge = (poi.appCount > 0) ? `<span style="background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;margin-left:4px;">📱 App ${poi.appCount}</span>` : '';
+                const webBadge = poi.webCount > 0 ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;">🌐 Web ${poi.webCount}</span>` : '';
+                const appBadge = poi.appCount > 0 ? `<span style="background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;margin-left:4px;">📱 App ${poi.appCount}</span>` : '';
                 return `
                   <tr>
                     <td style="text-align:center; font-size:18px;">${medal}</td>
@@ -421,6 +456,72 @@
               }).join('')}
             </tbody>
           </table>`;
+
+        renderTopPOIsChart(list);
+      }
+
+      function renderTopPOIsChart(list) {
+        const el = document.getElementById("topPOIsChart");
+        if (!el || !list.length) return;
+
+        const W = 300, H = 240;
+        const ml = 36, mr = 14, mt = 24, mb = 72;
+        const pw = W - ml - mr;
+        const ph = H - mt - mb;
+        const n = list.length;
+
+        const yMax = Math.ceil(list[0].scanCount * 1.15) || 1;
+        const TICK_COUNT = 4;
+
+        const pts = list.map((poi, i) => ({
+          x: ml + (n === 1 ? pw / 2 : (i / (n - 1)) * pw),
+          y: mt + ph - (poi.scanCount / yMax) * ph,
+          poi
+        }));
+
+        const yTicks = Array.from({ length: TICK_COUNT + 1 }, (_, i) => {
+          const val = Math.round((yMax / TICK_COUNT) * i);
+          return { val, y: mt + ph - (val / yMax) * ph };
+        });
+
+        const linePoints = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+        const areaPath = [
+          `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`,
+          ...pts.slice(1).map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`),
+          `L ${pts[n-1].x.toFixed(1)},${(mt+ph).toFixed(1)}`,
+          `L ${pts[0].x.toFixed(1)},${(mt+ph).toFixed(1)} Z`
+        ].join(' ');
+
+        el.innerHTML = `
+          <h4 style="margin:0 0 14px; font-size:14px; color:#2c3e50; font-weight:700; border-bottom:1px solid #f0f0f0; padding-bottom:10px;">📈 Biểu Đồ Lượt Nghe</h4>
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block; overflow:visible;">
+            <defs>
+              <linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#6366f1" stop-opacity="0.22"/>
+                <stop offset="100%" stop-color="#6366f1" stop-opacity="0.02"/>
+              </linearGradient>
+            </defs>
+
+            ${yTicks.map(t => `
+              <line x1="${ml}" y1="${t.y.toFixed(1)}" x2="${ml+pw}" y2="${t.y.toFixed(1)}" stroke="#f0f0f0" stroke-width="1"/>
+              <text x="${(ml-6).toFixed(1)}" y="${(t.y+3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="#9ca3af">${t.val}</text>
+            `).join('')}
+
+            <line x1="${ml}" y1="${mt}" x2="${ml}" y2="${mt+ph}" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="${ml}" y1="${mt+ph}" x2="${ml+pw}" y2="${mt+ph}" stroke="#e5e7eb" stroke-width="1"/>
+
+            <path d="${areaPath}" fill="url(#lineAreaGrad)"/>
+            <polyline points="${linePoints}" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+
+            ${pts.map(p => {
+              const shortName = p.poi.poiName.length > 9 ? p.poi.poiName.slice(0, 8) + '…' : p.poi.poiName;
+              return `
+              <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="white" stroke="#6366f1" stroke-width="2.5"/>
+              <text x="${p.x.toFixed(1)}" y="${(p.y - 9).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="#6366f1">${p.poi.scanCount}</text>
+              <text transform="translate(${p.x.toFixed(1)},${(mt+ph+10).toFixed(1)}) rotate(-40)" text-anchor="end" font-size="9" fill="#6b7280">${shortName}</text>
+            `}).join('')}
+          </svg>
+        `;
       }
 
       // ===== ONLINE DEVICES LIST =====
@@ -911,121 +1012,298 @@
       }
 
       // ===== HISTORY FUNCTIONS =====
+      let allHistoryData = [];
+      let historySourceFilter = 'all';
+      let currentHistoryPage = 0;
+      const HISTORY_PER_PAGE = 15;
+      let hourlyChartInstance = null;
+      let weeklyChartInstance = null;
+
       async function loadHistory() {
         const container = document.getElementById("historyList");
-        container.innerHTML = '<div class="loading" style="padding: 50px 0;"><div class="spinner"></div></div>';
+        container.innerHTML = '<div class="loading" style="padding:40px 0;"><div class="spinner"></div></div>';
+        document.getElementById("historyStats").innerHTML = '';
+        document.getElementById("historyCharts").innerHTML = '';
 
         try {
-          const response = await fetch(`${API_BASE}/history`);
-          const history = await response.json();
-
-          if (!history || history.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#999; padding:60px; background: #fafafa; border-radius: 8px;"><div style="font-size: 40px; margin-bottom: 15px;">🚫</div><h4 style="margin:0;">Chưa có lịch sử phát audio nào</h4><p style="margin: 5px 0 0 0; font-size: 14px;">Dữ liệu sẽ được ghi nhận khi người dùng đi gần một quán ăn trên app.</p></div>';
-            return;
-          }
-
-          // ===== XỬ LÝ THỐNG KÊ TỪ DỮ LIỆU LỊCH SỬ =====
-          const hourlyCounts = Array(24).fill(0);
-          const weeklyCounts = { 'T2': 0, 'T3': 0, 'T4': 0, 'T5': 0, 'T6': 0, 'T7': 0, 'CN': 0 };
-          const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-
-          history.forEach(h => {
-            if (h.playedAt) {
-              const d = new Date(h.playedAt);
-              hourlyCounts[d.getHours()]++;
-              weeklyCounts[dayMap[d.getDay()]]++;
-            }
-          });
-
-          let maxHourCount = Math.max(...hourlyCounts);
-          let peakHours = hourlyCounts.map((count, index) => count === maxHourCount && count > 0 ? index : -1).filter(h => h !== -1);
-          let peakHourText = peakHours.length > 0 ? peakHours.map(h => `${h}h`).join(', ') : 'Chưa có';
-          let maxWeekCount = Math.max(...Object.values(weeklyCounts));
-
-          let statsHtml = `
-            <div class="dashboard-grid" style="margin-bottom: 30px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
-              <div class="stat-card" style="border-left-color: #e67e22;">
-                <h3 style="color:#7f8c8d; font-size: 14px;">⏰ GIỜ CAO ĐIỂM</h3>
-                <div class="value" style="color: #e67e22; font-size: 28px;">${peakHourText}</div>
-                <p>Khung giờ có nhiều lượt nghe nhất (${maxHourCount} lượt)</p>
-              </div>
-              <div class="stat-card" style="border-left-color: #3498db;">
-                <h3 style="color:#7f8c8d; font-size: 14px;">🎧 TỔNG LƯỢT NGHE</h3>
-                <div class="value" style="color: #3498db; font-size: 28px;">${history.length}</div>
-                <p>Tổng số lần audio được phát thành công</p>
-              </div>
-            </div>
-            
-            <div class="grid" style="gap: 25px; margin-bottom: 30px;">
-                <div class="card" style="padding: 25px;">
-                    <h3 style="margin-top: 0; color: #2c3e50; font-size: 16px;">📊 Phân Bố Lượt Nghe Theo Giờ</h3>
-                    <div class="chart-container" style="display: flex; align-items: flex-end; height: 160px; gap: 3px; margin-top: 20px; padding: 0 5px;">
-                        ${hourlyCounts.map((count, hour) => {
-                          const height = maxHourCount > 0 ? (count / maxHourCount * 100) : 0;
-                          const color = count === maxHourCount && count > 0 ? '#e67e22' : '#3498db';
-                          const text = count > 0 ? count : '';
-                          const minH = count > 0 ? '4px' : '0';
-                          return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center;" title="${hour}h: ${count} lượt">
-                                      <div style="font-size: 10px; color: #7f8c8d; margin-bottom: 4px; font-weight: 500;">${text}</div>
-                                      <div style="width: 100%; background: ${color}; height: ${height}%; border-radius: 3px 3px 0 0; min-height: ${minH}; transition: height 0.3s ease;"></div>
-                                      <div style="font-size: 10px; color: #95a5a6; margin-top: 5px;">${hour}</div>
-                                  </div>`;
-                        }).join('')}
-                    </div>
-                </div>
-
-                <div class="card" style="padding: 25px;">
-                    <h3 style="margin-top: 0; color: #2c3e50; font-size: 16px;">📅 Phân Bố Lượt Nghe Trong Tuần</h3>
-                    <div class="chart-container" style="display: flex; align-items: flex-end; height: 160px; gap: 12px; margin-top: 20px; padding: 0 10px;">
-                        ${Object.entries(weeklyCounts).map(([day, count]) => {
-                          const height = maxWeekCount > 0 ? (count / maxWeekCount * 100) : 0;
-                          const color = count === maxWeekCount && count > 0 ? '#e74c3c' : '#2ecc71';
-                          const text = count > 0 ? count : '';
-                          const minH = count > 0 ? '4px' : '0';
-                          return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center;" title="${day}: ${count} lượt">
-                                      <div style="font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;">${text}</div>
-                                      <div style="width: 100%; background: ${color}; height: ${height}%; border-radius: 4px 4px 0 0; min-height: ${minH}; transition: height 0.3s ease;"></div>
-                                      <div style="font-size: 13px; font-weight: bold; color: #7f8c8d; margin-top: 8px;">${day}</div>
-                                  </div>`;
-                        }).join('')}
-                    </div>
-                </div>
-            </div>
-            
-            <h3 style="margin-bottom: 15px; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px;">📋 Danh Sách Lịch Sử Chi Tiết</h3>
-          `;
-
-          container.innerHTML = statsHtml + `
-            <table class="payment-table">
-              <thead>
-                <tr>
-                  <th>Mã</th>
-                  <th>Khách Hàng</th>
-                  <th>Quán</th>
-                  <th>Thời Gian</th>
-                  <th>Trạng Thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${history.map(h => `
-                  <tr>
-                    <td style="color: #bdc3c7; font-weight: 500;">#${h.id}</td>
-                    <td style="font-weight: 500;">${h.userName || h.userId || 'Khách vãng lai'}</td>
-                    <td><span style="background: #f1f2f6; padding: 5px 12px; border-radius: 14px; font-size: 13px; font-weight: 500;">${h.poiName || 'N/A'}</span></td>
-                    <td class="date-text">${h.playedAt ? new Date(h.playedAt).toLocaleString('vi-VN') : 'N/A'}</td>
-                    <td>
-                      <span style="color: #27ae60; background: #eafaf1; padding: 5px 12px; border-radius: 14px; font-size: 12px; font-weight: bold;">
-                        ▶️ Đã phát
-                      </span>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          `;
-        } catch (error) {
-          console.error("Error loading history:", error);
+          const res = await fetch(`${API_BASE}/history`);
+          allHistoryData = await res.json();
+          currentHistoryPage = 0;
+          applyHistoryFilter();
+        } catch {
           container.innerHTML = '<p style="text-align:center; color:#e74c3c; padding:40px;">❌ Lỗi tải lịch sử</p>';
+        }
+      }
+
+      function setHistorySource(source, btn) {
+        historySourceFilter = source;
+        document.querySelectorAll('#history .filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentHistoryPage = 0;
+        applyHistoryFilter();
+      }
+
+      function applyHistoryFilter() {
+        const q = (document.getElementById("historySearch")?.value || '').toLowerCase().trim();
+        const from = document.getElementById("historyFrom")?.value;
+        const to = document.getElementById("historyTo")?.value;
+
+        // Apply date + search first (before source filter) to compute per-source counts
+        let base = allHistoryData;
+        if (from) base = base.filter(h => h.playedAt && new Date(h.playedAt) >= new Date(from));
+        if (to) {
+          const toDate = new Date(to); toDate.setDate(toDate.getDate() + 1);
+          base = base.filter(h => h.playedAt && new Date(h.playedAt) < toDate);
+        }
+        if (q) base = base.filter(h =>
+          h.poiName?.toLowerCase().includes(q) ||
+          h.userName?.toLowerCase().includes(q) ||
+          h.userEmail?.toLowerCase().includes(q)
+        );
+
+        // Update filter button labels with live counts
+        const webC = base.filter(h => h.source === 'web').length;
+        const appC = base.filter(h => h.source === 'app').length;
+        const btnAll = document.getElementById('historyBtnAll');
+        const btnWeb = document.getElementById('historyBtnWeb');
+        const btnApp = document.getElementById('historyBtnApp');
+        if (btnAll) btnAll.textContent = `Tất Cả (${base.length})`;
+        if (btnWeb) btnWeb.innerHTML = `🌐 Web (${webC})`;
+        if (btnApp) btnApp.innerHTML = `📱 App (${appC})`;
+
+        // Apply source filter
+        const filtered = historySourceFilter !== 'all'
+          ? base.filter(h => h.source === historySourceFilter)
+          : base;
+
+        currentHistoryPage = 0;
+        renderHistoryStats(filtered);
+        renderHistoryCharts(filtered);
+        renderHistoryTable(filtered);
+      }
+
+      function resetHistoryFilter() {
+        document.getElementById("historySearch").value = '';
+        document.getElementById("historyFrom").value = '';
+        document.getElementById("historyTo").value = '';
+        historySourceFilter = 'all';
+        document.querySelectorAll('#history .filter-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
+        currentHistoryPage = 0;
+        applyHistoryFilter();
+      }
+
+      function renderHistoryStats(data) {
+        const el = document.getElementById("historyStats");
+        if (!data.length) { el.innerHTML = ''; return; }
+
+        const hourlyCounts = Array(24).fill(0);
+        const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+        data.forEach(h => {
+          if (h.playedAt) hourlyCounts[new Date(h.playedAt).getHours()]++;
+        });
+        const maxHour = Math.max(...hourlyCounts);
+        const peakText = maxHour > 0
+          ? hourlyCounts.map((c, i) => c === maxHour ? `${i}h` : null).filter(Boolean).join(', ')
+          : '—';
+        const webCount = data.filter(h => h.source === 'web').length;
+        const appCount = data.filter(h => h.source === 'app').length;
+
+        el.innerHTML = `
+          <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom:0;">
+            <div class="stat-card" style="border-left-color:#3498db;">
+              <h3>🎧 Tổng Lượt Nghe</h3>
+              <div class="value" style="color:#3498db;">${data.length}</div>
+              <p>Lần audio được phát</p>
+            </div>
+            <div class="stat-card" style="border-left-color:#e67e22;">
+              <h3>⏰ Giờ Cao Điểm</h3>
+              <div class="value" style="color:#e67e22; font-size:22px;">${peakText}</div>
+              <p>${maxHour > 0 ? maxHour + ' lượt' : 'Chưa có dữ liệu'}</p>
+            </div>
+            <div class="stat-card" style="border-left-color:#1d4ed8;">
+              <h3>🌐 Từ Web</h3>
+              <div class="value" style="color:#1d4ed8;">${webCount}</div>
+              <p>Lượt nghe qua trang web</p>
+            </div>
+            <div class="stat-card" style="border-left-color:#15803d;">
+              <h3>📱 Từ App</h3>
+              <div class="value" style="color:#15803d;">${appCount}</div>
+              <p>Lượt nghe qua ứng dụng</p>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderHistoryCharts(data) {
+        const el = document.getElementById("historyCharts");
+        if (!data.length) { el.innerHTML = ''; return; }
+
+        el.innerHTML = `
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
+            <div style="background:white; border-radius:10px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); height: 320px;">
+              <canvas id="hourlyListenChart"></canvas>
+            </div>
+            <div style="background:white; border-radius:10px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); height: 320px;">
+              <canvas id="weeklyListenChart"></canvas>
+            </div>
+          </div>
+        `;
+
+        const ctxHourly = document.getElementById('hourlyListenChart').getContext('2d');
+        const ctxWeekly = document.getElementById('weeklyListenChart').getContext('2d');
+
+        if (hourlyChartInstance) hourlyChartInstance.destroy();
+        if (weeklyChartInstance) weeklyChartInstance.destroy();
+
+        const hourlyApp = new Array(24).fill(0);
+        const hourlyWeb = new Array(24).fill(0);
+        
+        const weeklyApp = new Array(7).fill(0);
+        const weeklyWeb = new Array(7).fill(0);
+        // Date.getDay() trả về 0 cho Chủ Nhật. Ánh xạ sang index: 0=T2, 1=T3... 6=CN
+        const dayMapIndex = [6, 0, 1, 2, 3, 4, 5]; 
+
+        data.forEach(h => {
+          if (h.playedAt) {
+            const d = new Date(h.playedAt);
+            const hour = d.getHours();
+            const dayIdx = dayMapIndex[d.getDay()];
+            
+            if (h.source === 'app') {
+              hourlyApp[hour]++;
+              weeklyApp[dayIdx]++;
+            } else {
+              hourlyWeb[hour]++;
+              weeklyWeb[dayIdx]++;
+            }
+          }
+        });
+
+        hourlyChartInstance = new Chart(ctxHourly, {
+          type: 'bar',
+          data: {
+            labels: Array.from({length: 24}, (_, i) => `${i}h`),
+            datasets: [
+              { label: '📱 App', data: hourlyApp, backgroundColor: '#10b981' },
+              { label: '🌐 Web', data: hourlyWeb, backgroundColor: '#3b82f6' }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { title: { display: true, text: 'Phân bố lượt nghe theo giờ', font: { size: 14 } } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+          }
+        });
+
+        weeklyChartInstance = new Chart(ctxWeekly, {
+          type: 'bar',
+          data: {
+            labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+            datasets: [
+              { label: '📱 App', data: weeklyApp, backgroundColor: '#10b981' },
+              { label: '🌐 Web', data: weeklyWeb, backgroundColor: '#3b82f6' }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { title: { display: true, text: 'Phân bố lượt nghe theo ngày trong tuần', font: { size: 14 } } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+          }
+        });
+      }
+
+      function renderHistoryTable(data) {
+        const container = document.getElementById("historyList");
+        const existing = container.parentElement.querySelector('.history-pagination');
+        if (existing) existing.remove();
+
+        if (!data.length) {
+          container.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Không tìm thấy lịch sử nào trong điều kiện lọc này.</p>';
+          return;
+        }
+
+        const totalPages = Math.ceil(data.length / HISTORY_PER_PAGE);
+        const start = currentHistoryPage * HISTORY_PER_PAGE;
+        const paged = data.slice(start, start + HISTORY_PER_PAGE);
+
+        container.innerHTML = `
+          <h4 style="margin:0 0 12px; color:#2c3e50; font-size:15px; font-weight:700; border-bottom:1px solid #f0f0f0; padding-bottom:10px;">
+            📋 Danh Sách Chi Tiết <span style="color:#9ca3af; font-weight:400; font-size:13px;">(${data.length} bản ghi)</span>
+          </h4>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:50px;">ID</th>
+                <th>Người Dùng</th>
+                <th>Quán Ăn</th>
+                <th style="text-align:center;">Nguồn</th>
+                <th>Thời Gian</th>
+                <th style="text-align:center;">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${paged.map(h => {
+                const src = h.source === 'app'
+                  ? '<span style="background:#dcfce7;color:#15803d;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;">📱 App</span>'
+                  : '<span style="background:#dbeafe;color:#1d4ed8;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;">🌐 Web</span>';
+                const dateStr = h.playedAt ? new Date(h.playedAt).toLocaleString('vi-VN') : '—';
+                return `
+                <tr>
+                  <td style="text-align:center;color:#9ca3af;">${h.id}</td>
+                  <td>
+                    <div style="font-weight:600;color:#2c3e50;">${h.userName || 'Khách'}</div>
+                    <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${h.userEmail || ''}</div>
+                  </td>
+                  <td style="font-weight:500;">${h.poiName || '<span style="color:#9ca3af;">—</span>'}</td>
+                  <td style="text-align:center;">${src}</td>
+                  <td style="font-size:13px;color:#6b7280;">${dateStr}</td>
+                  <td style="text-align:center;">
+                    <button onclick="deleteHistory(${h.id})" class="small danger">🗑️ Xóa</button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+
+        if (totalPages > 1) {
+          const pag = document.createElement('div');
+          pag.className = 'pagination history-pagination';
+          pag.style.marginTop = '20px';
+          let html = `<button ${currentHistoryPage === 0 ? 'disabled' : ''} onclick="changeHistoryPage(${currentHistoryPage - 1})">◀ Trước</button>`;
+          for (let i = 0; i < totalPages; i++)
+            html += `<button class="${i === currentHistoryPage ? 'active' : ''}" onclick="changeHistoryPage(${i})">${i + 1}</button>`;
+          html += `<button ${currentHistoryPage >= totalPages - 1 ? 'disabled' : ''} onclick="changeHistoryPage(${currentHistoryPage + 1})">Sau ▶</button>`;
+          pag.innerHTML = html;
+          container.parentElement.appendChild(pag);
+        }
+      }
+
+      function changeHistoryPage(page) {
+        const q = (document.getElementById("historySearch")?.value || '').toLowerCase().trim();
+        const from = document.getElementById("historyFrom")?.value;
+        const to = document.getElementById("historyTo")?.value;
+        let filtered = allHistoryData;
+        if (historySourceFilter !== 'all') filtered = filtered.filter(h => h.source === historySourceFilter);
+        if (from) filtered = filtered.filter(h => h.playedAt && new Date(h.playedAt) >= new Date(from));
+        if (to) { const d = new Date(to); d.setDate(d.getDate()+1); filtered = filtered.filter(h => h.playedAt && new Date(h.playedAt) < d); }
+        if (q) filtered = filtered.filter(h => h.poiName?.toLowerCase().includes(q) || h.userName?.toLowerCase().includes(q) || h.userEmail?.toLowerCase().includes(q));
+        const totalPages = Math.ceil(filtered.length / HISTORY_PER_PAGE);
+        if (page < 0 || page >= totalPages) return;
+        currentHistoryPage = page;
+        renderHistoryTable(filtered);
+        document.getElementById('historyList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      async function deleteHistory(id) {
+        if (!confirm('Xóa bản ghi lịch sử này?')) return;
+        try {
+          const res = await fetch(`${API_BASE}/history/${id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error();
+          allHistoryData = allHistoryData.filter(h => h.id !== id);
+          applyHistoryFilter();
+        } catch {
+          alert('Lỗi khi xóa lịch sử');
         }
       }
 
