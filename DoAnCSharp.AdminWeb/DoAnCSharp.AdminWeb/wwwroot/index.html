@@ -32,10 +32,7 @@
             📱 Thiết Bị
           </button>
           <button class="tab-btn" onclick="switchTab('payments')">
-            💳 Thanh Toán
-          </button>
-          <button class="tab-btn" onclick="switchTab('qrscans')">
-            📱 QR Limits
+            💳 Thanh Toán Lượt Nghe
           </button>
           <button class="tab-btn" onclick="switchTab('history')">
             📜 Lịch Sử
@@ -239,35 +236,31 @@
             <div class="search-box">
               <input type="text" id="devicesSearchInput" placeholder="Tìm kiếm thiết bị (tên, model, IP)..."/>
             </div>
-            <div class="filter-buttons">
-              <button class="filter-btn active" onclick="filterDevices('all')">Tất Cả</button>
-              <button class="filter-btn" onclick="filterDevices('online')">🟢 Online</button>
-              <button class="filter-btn" onclick="filterDevices('offline')">🔴 Offline</button>
-            </div>
             <button class="refresh-btn" id="devicesRefreshBtn">🔄 Làm Mới</button>
           </div>
-          <div id="devicesStats" class="devices-stats"></div>
           <div id="devicesList"></div>
         </div>
 
         <!-- PAYMENTS TAB -->
         <div id="payments" class="tab-content">
-          <h2>💳 Quản Lý Thanh Toán</h2>
+          <h2>💳 Thanh Toán Theo Lượt Nghe</h2>
           <div class="message" id="paymentMessage"></div>
-          <div id="paymentStats" style="margin-bottom: 20px;"></div>
-          <h3 style="margin-top:0; margin-bottom:15px;">Danh Sách Giao Dịch</h3>
-          <div id="paymentList" class="loading"><div class="spinner"></div></div>
-        </div>
 
-        <!-- QR SCANS TAB -->
-        <div id="qrscans" class="tab-content">
-          <h2>📱 Giới Hạn QR Scan</h2>
-          <div class="message" id="qrMessage"></div>
-          <p style="color: #666; background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-            • 💳 <strong>Người THANH TOÁN</strong>: Quét QR <strong>không giới hạn</strong><br />
-            • 🆓 <strong>Người KHÔNG THANH TOÁN</strong>: Giới hạn <strong>5 lần/ngày</strong>
-          </p>
-          <div id="qrLimitList" class="loading"><div class="spinner"></div></div>
+          <!-- Date filter bar -->
+          <div style="background:white; padding:16px 20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:20px; display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:14px; font-weight:600; color:#2c3e50; white-space:nowrap;">Từ ngày:</label>
+              <input type="date" id="paymentFrom" style="padding:8px 12px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" onchange="applyPaymentFilter()" />
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:14px; font-weight:600; color:#2c3e50; white-space:nowrap;">Đến ngày:</label>
+              <input type="date" id="paymentTo" style="padding:8px 12px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" onchange="applyPaymentFilter()" />
+            </div>
+            <button onclick="resetPaymentFilter()" style="padding:8px 16px; background:#f3f4f6; border:1px solid #e0e0e0; border-radius:6px; font-size:14px; cursor:pointer; color:#6b7280; font-weight:600;">↺ Đặt Lại</button>
+          </div>
+
+          <div id="paymentStats" style="margin-bottom:20px;"></div>
+          <div id="paymentList"></div>
         </div>
 
         <!-- HISTORY TAB -->
@@ -308,7 +301,6 @@
         else if (tabName === "devices") loadDevicesQuickStats(); 
         else if (tabName === "history") loadHistory();
         else if (tabName === "payments") loadPayments();
-        else if (tabName === "qrscans") loadQRLimits();
       }
 
       function showMessage(elementId, message, isSuccess = true) {
@@ -1038,155 +1030,108 @@
       }
 
       // ===== PAYMENTS FUNCTIONS =====
+      let allPaymentsData = [];
+
       async function loadPayments() {
         const container = document.getElementById("paymentList");
-        const statsContainer = document.getElementById("paymentStats");
-        container.innerHTML = '<div class="spinner"></div><p>Đang tải...</p>';
+        container.innerHTML = '<div class="loading" style="padding:40px 0;"><div class="spinner"></div></div>';
 
         try {
-          const response = await fetch(`${API_BASE}/payments`);
-          const payments = await response.json();
-
-          if (!payments || payments.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Chưa có giao dịch nạp lượt quét nào từ App.</p>';
-            if(statsContainer) statsContainer.innerHTML = '';
-            return;
-          }
-
-          // Tính tổng doanh thu
-          const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-          const totalStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalRevenue);
-
-          if (statsContainer) {
-            statsContainer.innerHTML = `
-              <div class="stat-card warning" style="flex: 1; max-width: 300px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #e74c3c;">
-                <h3 style="margin-top:0; color: #7f8c8d; font-size: 14px;">💰 TỔNG DOANH THU</h3>
-                <div class="value" style="color: #27ae60; font-size: 28px; font-weight: bold; margin: 10px 0;">${totalStr}</div>
-                <p style="margin:0; color: #95a5a6; font-size: 13px;">Từ ${payments.length} lượt giao dịch trên App</p>
-              </div>
-            `;
-          }
-
-          container.innerHTML = `
-            <style>
-              .pkg-basic { color: #3498db; font-weight: bold; background: #ebf5fb; padding: 6px 12px; border-radius: 20px; font-size: 12px;}
-              .pkg-premium { color: #e67e22; font-weight: bold; background: #fdf2e9; padding: 6px 12px; border-radius: 20px; font-size: 12px;}
-              .pkg-vip { color: #9b59b6; font-weight: bold; background: #f5eef8; padding: 6px 12px; border-radius: 20px; font-size: 12px;}
-              .amount { color: #27ae60; font-weight: bold; font-size: 15px; }
-              .date-text { color: #95a5a6; font-size: 14px; }
-              .user-info { display: flex; flex-direction: column; }
-              .user-name { font-weight: 600; color: #2c3e50; }
-              .user-email { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
-              .payment-table { width: 100%; border-collapse: collapse; text-align: left; }
-              .payment-table th { background-color: #f8f9fa; color: #7f8c8d; padding: 16px 20px; border-bottom: 2px solid #ecf0f1; font-weight: 600; font-size: 13px; text-transform: uppercase;}
-              .payment-table td { padding: 16px 20px; border-bottom: 1px solid #ecf0f1; vertical-align: middle; }
-              .payment-table tr:hover { background-color: #fcfcfc; }
-            </style>
-            <table class="payment-table">
-              <thead>
-                <tr>
-                  <th>Mã GD</th>
-                  <th>Khách Hàng</th>
-                  <th>Gói Đã Nạp</th>
-                  <th>Số Tiền</th>
-                  <th>Thời Gian Giao Dịch</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${payments.map(p => {
-                  let pkgClass = 'pkg-basic';
-                  let pkgName = p.packageName;
-                  
-                  if (pkgName === 'premium') { pkgClass = 'pkg-premium'; pkgName = 'Gói Cao Cấp (+20 lượt)'; }
-                  else if (pkgName === 'vip') { pkgClass = 'pkg-vip'; pkgName = 'Gói VIP (Không giới hạn)'; }
-                  else if (pkgName === 'basic') { pkgName = 'Gói Cơ Bản (+5 lượt)'; }
-                  else { pkgName = pkgName || 'Khác'; }
-
-                  let dateStr = p.paymentDate ? new Date(p.paymentDate).toLocaleString('vi-VN') : 'N/A';
-                  let amountStr = p.amount ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.amount) : '0 ₫';
-
-                  return `
-                  <tr>
-                    <td style="color: #bdc3c7; font-weight: 500;">#${p.id}</td>
-                    <td class="user-info">
-                        <span class="user-name">${p.userName || 'Khách vãng lai'}</span>
-                        <span class="user-email">${p.userEmail || 'Không có email'}</span>
-                    </td>
-                    <td><span class="${pkgClass}">${pkgName}</span></td>
-                    <td class="amount">${amountStr}</td>
-                    <td class="date-text">${dateStr}</td>
-                  </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          `;
-        } catch (error) {
-          console.error("Error loading payments:", error);
+          const res = await fetch(`${API_BASE}/payments`);
+          allPaymentsData = await res.json();
+          renderPayments(allPaymentsData);
+        } catch {
           container.innerHTML = '<p style="text-align:center; color:#e74c3c; padding:40px;">❌ Lỗi tải danh sách thanh toán</p>';
         }
       }
 
-      // ===== QR LIMITS FUNCTIONS =====
-      async function loadQRLimits() {
-        const container = document.getElementById("qrLimitList");
-        container.innerHTML = '<div class="spinner"></div><p>Đang tải...</p>';
+      function applyPaymentFilter() {
+        const from = document.getElementById("paymentFrom").value;
+        const to = document.getElementById("paymentTo").value;
 
-        try {
-          const response = await fetch(`${API_BASE}/qrscans/limits`);
-          const limits = await response.json();
-
-          if (!limits || limits.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Chưa có dữ liệu QR scan</p>';
-            return;
-          }
-
-          container.innerHTML = `
-            <table>
-              <thead>
-                <tr>
-                  <th>User ID</th>
-                  <th>Tên</th>
-                  <th>Đã Thanh Toán</th>
-                  <th>Số Lần Quét Hôm Nay</th>
-                  <th>Giới Hạn</th>
-                  <th>Trạng Thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${limits.map(l => {
-                  const limit = l.hasPaid ? '∞ (Không giới hạn)' : '5 lần/ngày';
-                  const remaining = l.hasPaid ? '∞' : Math.max(0, 5 - (l.todayScans || 0));
-                  const status = l.hasPaid ? '💳 Paid' : (remaining > 0 ? `🆓 Còn ${remaining} lần` : '⛔ Hết lượt');
-                  const statusColor = l.hasPaid ? '#27ae60' : (remaining > 0 ? '#f39c12' : '#e74c3c');
-
-                  return `
-                    <tr>
-                      <td>${l.userId}</td>
-                      <td>${l.userName || 'N/A'}</td>
-                      <td>
-                        <span style="color: ${l.hasPaid ? '#27ae60' : '#999'};">
-                          ${l.hasPaid ? '✅ Có' : '❌ Chưa'}
-                        </span>
-                      </td>
-                      <td style="text-align: center; font-weight: 600;">${l.todayScans || 0}</td>
-                      <td>${limit}</td>
-                      <td>
-                        <span style="color: ${statusColor}; font-weight: 600;">
-                          ${status}
-                        </span>
-                      </td>
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          `;
-        } catch (error) {
-          console.error("Error loading QR limits:", error);
-          container.innerHTML = '<p style="text-align:center; color:#e74c3c; padding:40px;">❌ Lỗi tải dữ liệu QR limits</p>';
+        let filtered = allPaymentsData;
+        if (from) {
+          const fromDate = new Date(from);
+          filtered = filtered.filter(p => p.paymentDate && new Date(p.paymentDate) >= fromDate);
         }
+        if (to) {
+          const toDate = new Date(to);
+          toDate.setDate(toDate.getDate() + 1);
+          filtered = filtered.filter(p => p.paymentDate && new Date(p.paymentDate) < toDate);
+        }
+        renderPayments(filtered);
       }
+
+      function resetPaymentFilter() {
+        document.getElementById("paymentFrom").value = "";
+        document.getElementById("paymentTo").value = "";
+        renderPayments(allPaymentsData);
+      }
+
+      function renderPayments(payments) {
+        const container = document.getElementById("paymentList");
+        const statsContainer = document.getElementById("paymentStats");
+
+        if (!payments || payments.length === 0) {
+          container.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Không có giao dịch nào trong khoảng thời gian này.</p>';
+          if (statsContainer) statsContainer.innerHTML = '';
+          return;
+        }
+
+        const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        const totalStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalRevenue);
+
+        if (statsContainer) {
+          statsContainer.innerHTML = `
+            <div style="background:white; border-radius:12px; padding:20px 24px; box-shadow:0 4px 6px rgba(0,0,0,0.05); border-left:5px solid #27ae60; display:inline-block; min-width:240px;">
+              <h3 style="margin:0 0 6px; color:#7f8c8d; font-size:13px; font-weight:600; text-transform:uppercase;">💰 Tổng Doanh Thu</h3>
+              <div style="color:#27ae60; font-size:28px; font-weight:bold; margin:8px 0;">${totalStr}</div>
+              <p style="margin:0; color:#95a5a6; font-size:13px;">Từ ${payments.length} giao dịch</p>
+            </div>
+          `;
+        }
+
+        container.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th style="width:50px;">ID</th>
+                <th>Khách Hàng</th>
+                <th>Gói Lượt Nghe</th>
+                <th>Số Tiền</th>
+                <th>Thời Gian Giao Dịch</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${payments.map(p => {
+                let pkgName = p.packageName || 'Khác';
+                let pkgStyle = 'background:#ebf5fb;color:#3498db;';
+                if (pkgName === 'premium') { pkgStyle = 'background:#fdf2e9;color:#e67e22;'; pkgName = 'Gói Cao Cấp (+20 lượt)'; }
+                else if (pkgName === 'vip') { pkgStyle = 'background:#f5eef8;color:#9b59b6;'; pkgName = 'Gói VIP (Không giới hạn)'; }
+                else if (pkgName === 'basic') { pkgName = 'Gói Cơ Bản (+5 lượt)'; }
+
+                const dateStr = p.paymentDate ? new Date(p.paymentDate).toLocaleString('vi-VN') : '—';
+                const amountStr = p.amount
+                  ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.amount)
+                  : '0 ₫';
+
+                return `
+                <tr>
+                  <td style="text-align:center;color:#999;">${p.id}</td>
+                  <td>
+                    <div style="font-weight:600;color:#2c3e50;">${p.userName || 'Khách vãng lai'}</div>
+                    <div style="font-size:12px;color:#7f8c8d;margin-top:3px;">${p.userEmail || ''}</div>
+                  </td>
+                  <td><span style="${pkgStyle}padding:4px 12px;border-radius:12px;font-size:12px;font-weight:700;">${pkgName}</span></td>
+                  <td style="font-weight:bold;color:#27ae60;">${amountStr}</td>
+                  <td style="font-size:13px;color:#6b7280;">${dateStr}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+
 
       // Initialize
       window.onload = () => {

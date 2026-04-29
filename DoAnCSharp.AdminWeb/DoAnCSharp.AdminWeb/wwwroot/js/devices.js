@@ -1,17 +1,9 @@
 // ===== DEVICES MANAGEMENT =====
 
 let devicesData = [];
-let currentFilterStatus = 'all';
 let currentDevicePage = 0;
 const DEVICES_PER_PAGE = 10;
 let devicesRefreshInterval;
-
-const DESKTOP_OS = ['Windows', 'macOS', 'Linux'];
-
-function isOnline(device) {
-  const sixtySecAgo = new Date(Date.now() - 60 * 1000);
-  return new Date(device.lastOnlineAt) >= sixtySecAgo && !DESKTOP_OS.includes(device.deviceOS);
-}
 
 document.addEventListener('DOMContentLoaded', function () {
   if (document.getElementById('devices')) {
@@ -29,54 +21,21 @@ async function loadAllDevices() {
     if (!res.ok) throw new Error();
     devicesData = await res.json();
     currentDevicePage = 0;
-    renderDevicesUI();
+    renderDevicesTable(devicesData);
   } catch {
     if (container) container.innerHTML = '<p style="text-align:center;color:#e74c3c;padding:40px;">❌ Lỗi tải danh sách thiết bị</p>';
   }
 }
 
-function applyFilter(devices) {
-  let filtered = devices;
-  if (currentFilterStatus === 'online') filtered = devices.filter(isOnline);
-  else if (currentFilterStatus === 'offline') filtered = devices.filter(d => !isOnline(d));
-
+function getFilteredDevices() {
   const q = (document.getElementById('devicesSearchInput')?.value || '').toLowerCase().trim();
-  if (q) {
-    filtered = filtered.filter(d =>
-      d.deviceName?.toLowerCase().includes(q) ||
-      d.deviceModel?.toLowerCase().includes(q) ||
-      d.ipAddress?.toLowerCase().includes(q) ||
-      d.deviceOS?.toLowerCase().includes(q)
-    );
-  }
-  return filtered;
-}
-
-function renderDevicesUI() {
-  const filtered = applyFilter(devicesData);
-  renderDevicesStats(filtered);
-  renderDevicesTable(filtered);
-}
-
-function renderDevicesStats(devices) {
-  const statsContainer = document.getElementById('devicesStats');
-  if (!statsContainer) return;
-  const online = devices.filter(isOnline).length;
-  const offline = devices.length - online;
-  statsContainer.innerHTML = `
-    <div class="device-stat-card online">
-      <h4>🟢 Online</h4>
-      <div class="count">${online}</div>
-    </div>
-    <div class="device-stat-card offline">
-      <h4>🔴 Offline</h4>
-      <div class="count">${offline}</div>
-    </div>
-    <div class="device-stat-card">
-      <h4>📱 Tổng</h4>
-      <div class="count">${devices.length}</div>
-    </div>
-  `;
+  if (!q) return devicesData;
+  return devicesData.filter(d =>
+    d.deviceName?.toLowerCase().includes(q) ||
+    d.deviceModel?.toLowerCase().includes(q) ||
+    d.ipAddress?.toLowerCase().includes(q) ||
+    d.deviceOS?.toLowerCase().includes(q)
+  );
 }
 
 function renderDevicesTable(devices) {
@@ -105,7 +64,6 @@ function renderDevicesTable(devices) {
           <th>Hệ Điều Hành</th>
           <th>Phiên Bản App</th>
           <th>IP Address</th>
-          <th style="text-align:center;">Trạng Thái</th>
           <th>Cuối Online</th>
           <th>Đăng Ký</th>
           <th style="text-align:center;">Thao Tác</th>
@@ -113,7 +71,6 @@ function renderDevicesTable(devices) {
       </thead>
       <tbody>
         ${paged.map(d => {
-          const online = isOnline(d);
           const osIcon = d.deviceOS === 'Android' ? '🤖' : d.deviceOS === 'iOS' ? '🍎' : '💻';
           return `
           <tr>
@@ -123,11 +80,6 @@ function renderDevicesTable(devices) {
             <td>${osIcon} ${d.deviceOS || '—'}</td>
             <td>${d.appVersion || '—'}</td>
             <td style="font-size:13px;color:#6b7280;">${d.ipAddress || '—'}</td>
-            <td style="text-align:center;">
-              <span style="background:${online ? '#dcfce7' : '#f3f4f6'};color:${online ? '#15803d' : '#6b7280'};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;">
-                ${online ? '🟢 Online' : '🔴 Offline'}
-              </span>
-            </td>
             <td style="font-size:13px;color:#6b7280;">${formatDeviceTime(d.lastOnlineAt)}</td>
             <td style="font-size:13px;color:#6b7280;">${formatDeviceTime(d.registeredAt)}</td>
             <td style="text-align:center;">
@@ -161,7 +113,7 @@ function renderDevicesPagination(totalPages) {
 }
 
 function changeDevicePage(page) {
-  const filtered = applyFilter(devicesData);
+  const filtered = getFilteredDevices();
   const totalPages = Math.ceil(filtered.length / DEVICES_PER_PAGE);
   if (page < 0 || page >= totalPages) return;
   currentDevicePage = page;
@@ -175,18 +127,10 @@ async function deleteDevice(deviceId) {
     const res = await fetch(`/api/devices/${deviceId}`, { method: 'DELETE' });
     if (!res.ok) throw new Error();
     devicesData = devicesData.filter(d => d.id !== deviceId);
-    renderDevicesUI();
+    renderDevicesTable(getFilteredDevices());
   } catch {
     alert('Lỗi khi xóa thiết bị');
   }
-}
-
-function filterDevices(status) {
-  currentFilterStatus = status;
-  currentDevicePage = 0;
-  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-  event.target.classList.add('active');
-  renderDevicesUI();
 }
 
 function setupDevicesEventListeners() {
@@ -194,7 +138,7 @@ function setupDevicesEventListeners() {
   if (searchInput) {
     searchInput.addEventListener('input', () => {
       currentDevicePage = 0;
-      renderDevicesUI();
+      renderDevicesTable(getFilteredDevices());
     });
   }
 
