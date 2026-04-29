@@ -12,7 +12,7 @@ public partial class PaymentViewModel : ObservableObject
     public ILanguageService Lang { get; }
 
     [ObservableProperty]
-    private int _remainingScans;
+    private int _remainingListens;
 
     [ObservableProperty]
     private bool _isProcessing = false;
@@ -24,25 +24,22 @@ public partial class PaymentViewModel : ObservableObject
     }
 
     public void Refresh()
-        => RemainingScans = _quotaService.GetRemaining();
+        => RemainingListens = _quotaService.GetRemaining();
 
     [RelayCommand]
     private async Task BuyPackage(string packageId)
     {
-        // 1. KIỂM TRA ĐĂNG NHẬP
         string currentEmail = Microsoft.Maui.Storage.Preferences.Default.Get("CurrentUserEmail", "");
         if (string.IsNullOrEmpty(currentEmail) || currentEmail == "guest")
         {
-            await Application.Current!.MainPage!.DisplayAlert("Yêu cầu đăng nhập", "Bạn cần đăng nhập tài khoản để có thể mua thêm lượt quét!", "OK");
+            await Application.Current!.MainPage!.DisplayAlert("Yêu cầu đăng nhập", "Bạn cần đăng nhập tài khoản để có thể mua thêm lượt nghe!", "OK");
             var authPage = ServiceHelper.GetService<Views.AuthPage>();
             if (authPage != null)
-            {
                 Application.Current.MainPage = authPage;
-            }
             return;
         }
 
-        (string name, int scans, string price) = packageId switch
+        (string name, int listens, string price) = packageId switch
         {
             "basic"   => ("Gói Cơ Bản",   5,    "5.000đ"),
             "premium" => ("Gói Cao Cấp",  20,   "15.000đ"),
@@ -50,25 +47,23 @@ public partial class PaymentViewModel : ObservableObject
             _         => ("", 0, "")
         };
 
-        if (scans == 0) return;
+        if (listens == 0) return;
 
         bool confirm = await Application.Current!.MainPage!.DisplayAlert(
             "Xác nhận thanh toán",
-            $"{name}\n+{(scans == 999 ? "Không giới hạn" : scans.ToString())} lượt quét\nGiá: {price}",
+            $"{name}\n+{(listens == 999 ? "Không giới hạn" : listens.ToString())} lượt nghe\nGiá: {price}",
             "Thanh toán", "Hủy");
 
         if (!confirm) return;
 
         IsProcessing = true;
 
-        // Mô phỏng xử lý cổng thanh toán
         await Task.Delay(2000);
 
-        _quotaService.AddScans(scans);
-        RemainingScans = _quotaService.GetRemaining();
+        _quotaService.AddListens(listens);
+        RemainingListens = _quotaService.GetRemaining();
 
-        // 2. ĐỒNG BỘ DỮ LIỆU THANH TOÁN LÊN WEB ADMIN
-        try 
+        try
         {
             var dbService = ServiceHelper.GetService<DatabaseService>();
             var syncService = ServiceHelper.GetService<AdminSyncService>();
@@ -77,14 +72,11 @@ public partial class PaymentViewModel : ObservableObject
             {
                 var user = await dbService.GetUserByEmailAsync(currentEmail);
                 string fullName = user?.FullName ?? "Người dùng App";
-                
                 decimal amount = packageId == "vip" ? 50000 : (packageId == "premium" ? 15000 : 5000);
-                
-                // Gửi thông tin lên Web Admin
                 await syncService.SyncPaymentToServerAsync(currentEmail, fullName, packageId, amount);
             }
         }
-        catch (System.Exception ex) 
+        catch (System.Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Lỗi đồng bộ thanh toán: {ex.Message}");
         }
@@ -93,7 +85,7 @@ public partial class PaymentViewModel : ObservableObject
 
         await Application.Current!.MainPage!.DisplayAlert(
             "✅ Thành công",
-            $"Thanh toán {price} thành công!\nBạn có {RemainingScans} lượt quét.",
+            $"Thanh toán {price} thành công!\nBạn có {RemainingListens} lượt nghe.",
             "OK");
     }
 
@@ -102,7 +94,7 @@ public partial class PaymentViewModel : ObservableObject
     private void DevReset()
     {
         _quotaService.ResetToFree();
-        RemainingScans = _quotaService.GetRemaining();
+        RemainingListens = _quotaService.GetRemaining();
     }
 #endif
 }

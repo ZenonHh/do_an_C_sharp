@@ -12,13 +12,13 @@ namespace DoAnCSharp.Views
     public partial class ScanQRPage : ContentPage
     {
         private static readonly Regex _poiPathRegex = new(@"^/POI_\w+$", RegexOptions.Compiled);
-        private readonly ScanQuotaService _quotaService;
+        private readonly DatabaseService _dbService;
         private bool _hasScanned = false;
 
-        public ScanQRPage(ScanQuotaService quotaService)
+        public ScanQRPage(DatabaseService dbService)
         {
             InitializeComponent();
-            _quotaService = quotaService;
+            _dbService = dbService;
 
             cameraBarcodeReaderView.Options = new BarcodeReaderOptions
             {
@@ -28,26 +28,9 @@ namespace DoAnCSharp.Views
             };
         }
 
-        protected override async void OnAppearing()
+        protected override void OnAppearing()
         {
             base.OnAppearing();
-
-            // Kiểm tra quota trước khi cho phép quét
-            if (_quotaService.GetRemaining() <= 0)
-            {
-                cameraBarcodeReaderView.IsDetecting = false;
-                bool goPayment = await DisplayAlert(
-                    "Hết lượt quét",
-                    "Bạn đã dùng hết lượt quét QR miễn phí.\nMua thêm lượt để tiếp tục?",
-                    "Mua ngay", "Hủy");
-
-                if (goPayment)
-                    await Shell.Current.GoToAsync("PaymentPage");
-
-                await Navigation.PopAsync();
-                return;
-            }
-
             _hasScanned = false;
             cameraBarcodeReaderView.IsDetecting = true;
         }
@@ -70,26 +53,25 @@ namespace DoAnCSharp.Views
                 cameraBarcodeReaderView.IsDetecting = false;
 
                 string scannedValue = result.Value;
+
+                if (IsFoodStreetQR(scannedValue))
+                {
+                    await HandleFoodStreetScanAsync();
+                    return;
+                }
+
                 string? poiName = await ExtractPoiNameAsync(scannedValue);
 
                 if (poiName != null)
                 {
-                    // App đã cài → phát audio trực tiếp qua messaging
-                    _quotaService.TryUseOne();
-                    int remaining = _quotaService.GetRemaining();
-
                     // Pop trước → MapPage.OnAppearing re-register handler → rồi mới gửi message
                     await Navigation.PopAsync();
-                    await Task.Delay(300); // đợi OnAppearing của MapPage hoàn tất
+                    await Task.Delay(300);
                     WeakReferenceMessenger.Default.Send(new QrScannedMessage(poiName));
-
-                    if (remaining <= 1)
-                        await Shell.Current.DisplayAlert("Sắp hết lượt",
-                            $"Bạn còn {remaining} lượt quét. Hãy mua thêm để không bị gián đoạn!", "OK");
                 }
                 else
                 {
-                    // QR không hợp lệ / không phải của ứng dụng → hiện tải app
+                    // QR không hợp lệ → hiện tải app
                     bool download = await DisplayAlert(
                         "Không nhận ra mã QR",
                         "Mã QR này không thuộc ứng dụng VinhKhanhFoodTour.\nBạn có muốn tải ứng dụng để trải nghiệm đầy đủ?",
@@ -100,25 +82,68 @@ namespace DoAnCSharp.Views
                             "https://play.google.com/store/apps/details?id=com.companyname.doancsharp_clean",
                             BrowserLaunchMode.SystemPreferred);
 
-                    // Reset để cho phép quét lại
                     _hasScanned = false;
                     cameraBarcodeReaderView.IsDetecting = true;
                 }
             });
         }
 
-        // Trích xuất poi_name từ các định dạng QR hỗ trợ:
-        // 1. vinhkhanhtour://play_audio?poi_name=xxx
-        // 2. https://any-domain.com/any-path?poi_name=xxx
-        // 3. QR từ Web Admin: http://172.20.10.2:5000/qr/POI_XXX (Sẽ gọi API lấy tên)
-        // 3. Tên POI thuần (nếu không phải URL)
+        // Nhận dạng mã QR của phố ẩm thực (khác với QR của từng quán ăn)
+        private static bool IsFoodStreetQR(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return false;
+
+            if (value.StartsWith("vinhkhanhtour://foodstreet", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            {
+                var last = uri.AbsolutePath.Split('/').LastOrDefault() ?? "";
+                return last.StartsWith("FOODSTREET", StringComparison.OrdinalIgnoreCase);
+            }
+
+            return value.Trim().StartsWith("FOODSTREET", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Xử lý khi quét QR phố ẩm thực: tải danh sách quán → người dùng chọn → phát audio
+        private async Task HandleFoodStreetScanAsync()
+        {
+            var pois = await _dbService.GetPOIsAsync();
+
+            if (pois.Count == 0)
+            {
+                await DisplayAlert("Thông báo", "Chưa có dữ liệu quán ăn. Vui lòng thử lại sau.", "OK");
+                _hasScanned = false;
+                cameraBarcodeReaderView.IsDetecting = true;
+                return;
+            }
+
+            string[] names = pois.Select(p => p.Name).ToArray();
+            string selected = await DisplayActionSheet(
+                "🍜 Phố Ẩm Thực Vĩnh Khánh\nChọn quán ăn muốn nghe thuyết minh",
+                "Hủy", null,
+                names);
+
+            if (string.IsNullOrEmpty(selected) || selected == "Hủy")
+            {
+                _hasScanned = false;
+                cameraBarcodeReaderView.IsDetecting = true;
+                return;
+            }
+
+            await Navigation.PopAsync();
+            await Task.Delay(300);
+            WeakReferenceMessenger.Default.Send(new QrScannedMessage(selected));
+        }
+
+        // Trích xuất poi_name từ các định dạng QR hỗ trợ
         private async Task<string?> ExtractPoiNameAsync(string value)
         {
             if (string.IsNullOrWhiteSpace(value)) return null;
 
             if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
             {
-                // 1. Xử lý deep link cũ chứa tham số poi_name
+                // 1. Xử lý deep link chứa tham số poi_name
                 string query = uri.Query.TrimStart('?');
                 foreach (var pair in query.Split('&'))
                 {
@@ -135,21 +160,16 @@ namespace DoAnCSharp.Views
                 {
                     try
                     {
-                        string code = uri.AbsolutePath.Split('/').Last(); // Lấy "POI_ABC"
-                        
-                        // Gọi nhanh API của Web Admin để lấy tên Quán Ăn
+                        string code = uri.AbsolutePath.Split('/').Last();
                         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
                         string apiUrl = $"{uri.Scheme}://{uri.Authority}/api/pois/qr/{code}";
-                        
                         var response = await http.GetAsync(apiUrl);
                         if (response.IsSuccessStatusCode)
                         {
                             var jsonString = await response.Content.ReadAsStringAsync();
                             var json = System.Text.Json.JsonDocument.Parse(jsonString);
                             if (json.RootElement.TryGetProperty("name", out var nameElement))
-                            {
-                                return nameElement.GetString(); // Trả về tên quán để App phát Audio
-                            }
+                                return nameElement.GetString();
                         }
                     }
                     catch (Exception ex)
@@ -159,7 +179,6 @@ namespace DoAnCSharp.Views
                 }
             }
 
-            // Không phải URL → coi là tên POI thuần
             return value.Trim();
         }
     }

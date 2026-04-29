@@ -71,8 +71,19 @@ public class UsersController : ControllerBase
             if (existing == null)
                 return NotFound(new { error = "User not found" });
 
-            user.Id = id;
-            await _db.UpdateUserAsync(user);
+            existing.FullName = user.FullName;
+            existing.Email = user.Email;
+            existing.Phone = user.Phone;
+            existing.Language = user.Language;
+
+            if (user.IsPaid && !existing.IsPaid)
+                existing.PaidAt = DateTime.Now;
+            else if (!user.IsPaid)
+                existing.PaidAt = null;
+
+            existing.IsPaid = user.IsPaid;
+
+            await _db.UpdateUserAsync(existing);
             return Ok(new { message = "User updated successfully" });
         }
         catch (Exception ex)
@@ -107,15 +118,15 @@ public class UsersController : ControllerBase
         {
             var summary = await _db.GetDashboardSummaryAsync();
 
-            // Dùng cùng nguồn dữ liệu với DevicesController.GetStats() để đồng nhất
-            // Thiết bị hoạt động: quét QR trong vòng 5 phút gần nhất
+            // Thiết bị online: heartbeat mỗi 30s, coi offline nếu miss (35s)
             var allDevices = await _db.GetAllUserDevicesAsync();
             var onlineDeviceCount = allDevices.Count(d =>
-                (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 300);
+                (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 60 &&
+                d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux");
 
-            // Mỗi máy hiển thị 2 người dùng
-            summary.TotalOnlineUsers = onlineDeviceCount * 2;
+            summary.TotalOnlineUsers = onlineDeviceCount;
             summary.OnlineDevices = onlineDeviceCount;
+            summary.TodayQRScans = 0; // Ẩn số lượt nghe hôm nay
 
             return Ok(summary);
         }
@@ -130,11 +141,11 @@ public class UsersController : ControllerBase
     {
         try
         {
-            // Dùng cùng nguồn dữ liệu với DevicesController.GetStats()
-            // Thiết bị hoạt động: quét QR trong vòng 5 phút gần nhất
+            // Thiết bị hoạt động: gửi heartbeat trong 35s qua
             var allDevices = await _db.GetAllUserDevicesAsync();
             var realOnlineDevices = allDevices
-                .Where(d => (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 300)
+                .Where(d => (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 60 &&
+                            d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux")
                 .ToList();
 
             return Ok(realOnlineDevices);
@@ -150,12 +161,11 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var activity = await _db.GetQRActivityTodayAsync();
             return Ok(new 
             { 
-                totalScans = activity.Item1,
-                uniqueUsers = activity.Item2,
-                topPOIs = activity.Item3
+                totalScans = 0, // Trả về 0 để ẩn lượt quét trên Dashboard
+                uniqueUsers = 0,
+                topPOIs = new List<object>() // Trả về mảng rỗng để ẩn danh sách
             });
         }
         catch (Exception ex)

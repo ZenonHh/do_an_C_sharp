@@ -10,7 +10,7 @@ public class AdminSyncService
     // ngrok:              https://abc123.ngrok-free.app
     // Railway (vĩnh viễn): https://ten-app.railway.app
     // LƯU Ý: Hãy sửa IP dưới đây thành IP trùng với IP bạn đang chạy Web Admin (VD: 172.20.10.2)
-    private const string ServerUrl = "http://192.168.31.102:5000";
+    private const string ServerUrl = "http://192.168.69.13:5000";
 
     private static readonly HttpClient _http = new HttpClient
     {
@@ -94,7 +94,14 @@ public class AdminSyncService
     {
         try
         {
-            var payload = new { DeviceId = _deviceId, UserId = _userId };
+            var payload = new 
+            { 
+                DeviceId = _deviceId, 
+                UserId = _userId,
+                DeviceName = Microsoft.Maui.Devices.DeviceInfo.Current.Name,
+                DeviceModel = Microsoft.Maui.Devices.DeviceInfo.Current.Model,
+                DeviceOS = Microsoft.Maui.Devices.DeviceInfo.Current.Platform.ToString()
+            };
             var response = await _http.PostAsJsonAsync($"{ServerUrl}/api/devices/heartbeat", payload);
             
             if (response.IsSuccessStatusCode)

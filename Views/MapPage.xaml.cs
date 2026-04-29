@@ -291,6 +291,21 @@ public partial class MapPage : ContentPage, IQueryAttributable
     {
         try
         {
+            // Kiểm tra lượt nghe trước khi phát
+            if (!_quotaService.TryUseOne())
+            {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    bool goPayment = await DisplayAlert(
+                        "Hết lượt nghe",
+                        "Bạn đã dùng hết lượt nghe miễn phí hôm nay.\nMua thêm lượt để tiếp tục?",
+                        "Mua ngay", "Hủy");
+                    if (goPayment)
+                        await Shell.Current.GoToAsync("PaymentPage");
+                });
+                return;
+            }
+
             _currentPoi = poi;
             _isPlaying = true;
             await _dbService.SavePlayHistoryAsync(poi);
@@ -498,7 +513,7 @@ public partial class MapPage : ContentPage, IQueryAttributable
 
     private async void OnScanQRClicked(object sender, EventArgs e)
     {
-        try { await Navigation.PushAsync(new ScanQRPage(_quotaService)); }
+        try { await Navigation.PushAsync(new ScanQRPage(_dbService)); }
         catch (Exception ex) { await DisplayAlert("Lỗi", "Không thể mở camera: " + ex.Message, "OK"); }
     }
 

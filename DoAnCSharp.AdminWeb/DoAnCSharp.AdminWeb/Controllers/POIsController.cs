@@ -34,6 +34,27 @@ public class POIsController : ControllerBase
         }
     }
 
+    [HttpGet("main-images")]
+    public async Task<ActionResult> GetMainImages()
+    {
+        try
+        {
+            var pois = await _db.GetAllPOIsAsync();
+            var uploaded = await _db.GetAllMainImagePathsAsync();
+            var result = pois.ToDictionary(
+                p => p.Id,
+                p => uploaded.TryGetValue(p.Id, out var url) && !string.IsNullOrEmpty(url)
+                    ? url
+                    : (string.IsNullOrWhiteSpace(p.ImageAsset) ? null : $"/images/restaurants/{p.ImageAsset}")
+            );
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<AudioPOI>> GetById(int id)
     {
@@ -162,6 +183,20 @@ public class POIsController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Trả về URL và ảnh QR của mã phố ẩm thực — dùng để in và đặt tại lối vào phố Vĩnh Khánh.
+    /// Người dùng chỉ cần quét một lần, app hiển thị toàn bộ danh sách quán để chọn.
+    /// </summary>
+    [HttpGet("foodstreet-qr")]
+    public ActionResult<object> GetFoodStreetQRInfo()
+    {
+        string publicUrl = (_configuration["ServerSettings:PublicUrl"] ??
+                           $"{Request.Scheme}://{Request.Host}").TrimEnd('/');
+        string webUrl = $"{publicUrl}/qr/FOODSTREET_VINHKHANH";
+        string qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={Uri.EscapeDataString(webUrl)}";
+        return Ok(new { webUrl, qrImageUrl, description = "Mã QR lối vào Phố Ẩm Thực Vĩnh Khánh" });
     }
 
     [HttpGet("config/server")]
@@ -494,38 +529,27 @@ public class POIsController : ControllerBase
                 .Distinct()
                 .Count();
 
-            // Top 10 most scanned POIs
-            var topPOIs = allHistory
-                .GroupBy(h => h.POIId)
-                .Select(g => new 
+            // Top 10 most listened POIs — group by name to merge web and app records
+            var topScannedPOIs = allHistory
+                .Where(h => !string.IsNullOrEmpty(h.POIName))
+                .GroupBy(h => h.POIName)
+                .Select(g => new
                 {
-                    POIId = g.Key,
-                    ScanCount = g.Count(),
-                    LastScanned = g.Max(h => h.PlayedAt)
+                    poiName = g.Key,
+                    scanCount = g.Count(),
+                    lastScanned = g.Max(h => h.PlayedAt),
+                    webCount = g.Count(h => h.Source == "web"),
+                    appCount = g.Count(h => h.Source == "app" || h.Source == null)
                 })
-                .OrderByDescending(x => x.ScanCount)
+                .OrderByDescending(x => x.scanCount)
                 .Take(10)
                 .ToList();
 
-            // Get POI names
-            var topPOIsWithNames = new List<object>();
-            foreach (var item in topPOIs)
+            return Ok(new
             {
-                var poi = await _db.GetPOIByIdAsync(item.POIId);
-                topPOIsWithNames.Add(new
-                {
-                    poiId = item.POIId,
-                    poiName = poi?.Name ?? "Unknown",
-                    scanCount = item.ScanCount,
-                    lastScanned = item.LastScanned
-                });
-            }
-
-            return Ok(new 
-            { 
                 poisScannedToday = poisToday,
                 poisScannedWeek = poisWeek,
-                topScannedPOIs = topPOIsWithNames
+                topScannedPOIs
             });
         }
         catch (Exception ex)

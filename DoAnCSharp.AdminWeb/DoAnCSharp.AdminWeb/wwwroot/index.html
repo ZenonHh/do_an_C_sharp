@@ -6,30 +6,11 @@
     <title>Vĩnh Khánh Tour - Admin Dashboard</title>
     <link rel="stylesheet" href="/css/admin_modern.css?v=2.0" />
     <link rel="stylesheet" href="/css/devices.css?v=2.0" />
-    <script src="/js/qrcode.min.js"></script>
-    <script>
-      // Verify QRCode.js is loaded, fallback to CDN if not
-      if (typeof QRCode === 'undefined') {
-        console.warn('QRCode library not found locally, attempting CDN fallback...');
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-        script.onerror = function() {
-          console.error('Failed to load QRCode library from both local and CDN');
-          window.QRCodeLoadError = true;
-        };
-        script.onload = function() {
-          console.log('QRCode library loaded from CDN');
-        };
-        document.head.appendChild(script);
-      } else {
-        console.log('QRCode library loaded from local source');
-      }
-    </script>
     <script src="/js/admin-features.js?v=2.0" defer></script>
     <script src="/js/qr-scanner.js?v=1.0" defer></script>
   </head>
   <body style="margin: 0; padding: 0;">
-    <header style="position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: white; border-bottom: 2px solid #667eea; padding: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+    <header style="position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: white; border-bottom: 2px solid #4f46e5; padding: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
       <div style="max-width: 1400px; margin: 0 auto; padding: 15px 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <div>
@@ -68,57 +49,47 @@
         <!-- DASHBOARD TAB -->
         <div id="dashboard" class="tab-content active">
           <h2>📊 Tổng Quan Hệ Thống</h2>
+
+          <!-- Stat Cards -->
           <div class="dashboard-grid" id="dashboardStats">
             <div class="stat-card online">
-              <h3>👥 Người Online</h3>
-              <div class="value" id="onlineCount">0</div>
-              <p>Đang kết nối</p>
-            </div>
-            <div class="stat-card info">
               <h3>📱 Thiết Bị Online</h3>
               <div class="value" id="devicesOnlineCount">0</div>
-              <p>Thiết bị hoạt động</p>
+              <p>Đang kết nối</p>
             </div>
             <div class="stat-card info">
               <h3>👤 Tổng Users</h3>
               <div class="value" id="totalUserCount">0</div>
-              <p>Đã đăng ký</p>
+              <p>Tài khoản đã đăng ký</p>
             </div>
             <div class="stat-card warning">
-              <h3>💳 Thanh Toán</h3>
+              <h3>💳 Đã Thanh Toán</h3>
               <div class="value" id="paidCount">0</div>
-              <p>Người trả phí</p>
+              <p>Người dùng trả tiền</p>
             </div>
-            <div class="stat-card danger">
-              <h3>📊 QR Hôm Nay</h3>
-              <div class="value" id="todayScans">0</div>
-              <p>Lần quét</p>
+            <div class="stat-card" style="border-left-color:#8b5cf6;">
+              <h3>🏪 Quán Ăn</h3>
+              <div class="value" style="color:#8b5cf6;" id="poisCount">0</div>
+              <p>Quán trong hệ thống</p>
             </div>
-          </div>
-
-          <h3>🟢 Người Dùng Online</h3>
-          <div id="onlineUsersList" class="loading">
-            <div class="spinner"></div>
-          </div>
-
-          <h3 style="margin-top: 30px">📊 Thống Kê Quét QR Theo Quán</h3>
-          <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: 30px;">
-            <div class="stat-card info">
-              <h4>🏪 Quán Được Quét Hôm Nay</h4>
-              <div class="value" id="poisScannedToday">0</div>
-              <p>Quán ăn</p>
-            </div>
-            <div class="stat-card warning">
-              <h4>📅 Quán Được Quét Tuần Này</h4>
-              <div class="value" id="poisScannedWeek">0</div>
-              <p>Quán ăn</p>
+            <div class="stat-card" style="border-left-color:#e74c3c;">
+              <h3>🔊 Lượt Nghe Hôm Nay</h3>
+              <div class="value" style="color:#e74c3c;" id="poisScannedToday">0</div>
+              <p>Lần nghe thuyết minh</p>
             </div>
           </div>
 
-          <h3>📋 Top Quán Được Quét Nhiều Nhất</h3>
-          <div id="topScannedPOIs" class="loading">
-            <div class="spinner"></div>
+          <!-- Online Devices Table -->
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:28px; margin-bottom:10px;">
+            <h3 style="margin:0;">🟢 Thiết Bị Đang Online</h3>
+            <span id="onlineBadge" style="background:#dcfce7; color:#16a34a; font-size:12px; font-weight:700; padding:4px 12px; border-radius:20px; border:1px solid #bbf7d0;">0 thiết bị</span>
           </div>
+          <div id="onlineDevicesList" class="loading"><div class="spinner"></div></div>
+
+          <!-- Top POIs -->
+          <h3 style="margin-top:30px;">🏆 Top Quán Được Nghe Nhiều Nhất</h3>
+          <div id="topScannedPOIs" class="loading"><div class="spinner"></div></div>
+
         </div>
 
         <!-- POIS TAB - WITH GRID LAYOUT -->
@@ -174,15 +145,6 @@
                 <input type="number" id="poiPriority" value="1" min="1" />
               </div>
               <div class="form-group">
-                <label>Mã QR Code</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                  <input type="text" id="poiQRCode" placeholder="Sẽ tự động sinh nếu để trống" readonly style="background: #f8f9fa;" />
-                  <button type="button" class="success" onclick="generateQRCode()" style="flex-shrink: 0;">
-                    🔄 Tạo
-                  </button>
-                </div>
-              </div>
-              <div class="form-group">
                 <label>Hình Ảnh Quán Ăn</label>
                 <div class="image-upload-area" id="imageUploadArea">
                   <input type="file" id="poiImages" multiple accept="image/*" onchange="handleImageSelect(event)" />
@@ -206,19 +168,6 @@
           </div>
         </div>
 
-        <!-- QR CODE VIEWER MODAL -->
-        <div id="qrViewModal" class="modal" style="display: none;">
-          <div class="modal-content" style="max-width: 500px; text-align: center;">
-            <h3>📱 Mã QR Code</h3>
-            <p style="color: #666; margin-bottom: 20px;">Quét mã để xem thông tin quán</p>
-            <div id="qrCodeDisplay" style="background: white; padding: 20px; border-radius: 8px; display: inline-block; min-height: 256px;"></div>
-            <div id="qrCodeText" style="margin-top: 15px; font-family: monospace; font-size: 16px; font-weight: 600; color: #333; background: #f5f5f5; padding: 10px; border-radius: 6px;"></div>
-            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
-              <button onclick="downloadQRCode()" class="success">📥 Tải QR Code</button>
-              <button onclick="closeQRViewModal()" class="secondary">❌ Đóng</button>
-            </div>
-          </div>
-        </div>
 
         <!-- QR SCANNER MODAL -->
         <div id="qrScannerModal" class="modal" style="display: none;">
@@ -241,10 +190,46 @@
         <div id="users" class="tab-content">
           <h2>👥 Quản Lý Người Dùng</h2>
           <div class="message" id="userMessage"></div>
-          <p style="color: #666; margin-bottom: 20px">
-            🟢 Online | 🔴 Offline | 💳 Thanh toán | 🆓 Miễn phí
-          </p>
           <div id="userList" class="loading"><div class="spinner"></div></div>
+        </div>
+
+        <!-- USER EDIT MODAL -->
+        <div id="userModal" class="modal" style="display: none;">
+          <div class="modal-content">
+            <h3>✏️ Sửa Thông Tin Người Dùng</h3>
+            <div class="message" id="userFormMessage" style="margin-bottom: 15px;"></div>
+            <form id="userForm" onsubmit="handleUserFormSubmit(event)">
+              <div class="form-group">
+                <label>Họ Tên</label>
+                <input type="text" id="editFullName" />
+              </div>
+              <div class="form-group">
+                <label>Email *</label>
+                <input type="email" id="editEmail" required />
+              </div>
+              <div class="form-group">
+                <label>Số Điện Thoại</label>
+                <input type="text" id="editPhone" />
+              </div>
+              <div class="form-group">
+                <label>Ngôn Ngữ</label>
+                <select id="editLanguage">
+                  <option value="vi">🇻🇳 Tiếng Việt</option>
+                  <option value="en">🇬🇧 English</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                  <input type="checkbox" id="editIsPaid" style="width:auto; margin:0;" />
+                  Đã thanh toán gói Premium
+                </label>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="success">💾 Lưu</button>
+                <button type="button" onclick="closeUserModal()" class="secondary">❌ Đóng</button>
+              </div>
+            </form>
+          </div>
         </div>
 
         <!-- DEVICES TAB -->
@@ -255,55 +240,23 @@
               <input type="text" id="devicesSearchInput" placeholder="Tìm kiếm thiết bị (tên, model, IP)..."/>
             </div>
             <div class="filter-buttons">
-              <button class="filter-btn active" onclick="filterDevices('all')">🟢 Tất Cả</button>
+              <button class="filter-btn active" onclick="filterDevices('all')">Tất Cả</button>
               <button class="filter-btn" onclick="filterDevices('online')">🟢 Online</button>
               <button class="filter-btn" onclick="filterDevices('offline')">🔴 Offline</button>
-            </div>
-            <div class="view-toggle">
-              <button class="view-btn active" data-view="card" onclick="setViewMode('card')">📇 Card</button>
-              <button class="view-btn" data-view="table" onclick="setViewMode('table')">📊 Table</button>
             </div>
             <button class="refresh-btn" id="devicesRefreshBtn">🔄 Làm Mới</button>
           </div>
           <div id="devicesStats" class="devices-stats"></div>
-          <div id="devicesList" class="devices-loading"><div class="spinner"></div></div>
+          <div id="devicesList"></div>
         </div>
 
         <!-- PAYMENTS TAB -->
         <div id="payments" class="tab-content">
           <h2>💳 Quản Lý Thanh Toán</h2>
           <div class="message" id="paymentMessage"></div>
-          <div class="grid">
-            <div>
-              <h3>Thêm/Cập Nhật Thanh Toán</h3>
-              <form id="paymentForm">
-                <div class="form-group">
-                  <label>ID Người Dùng *</label>
-                  <input type="number" id="paymentUserId" required />
-                </div>
-                <div class="form-group">
-                  <label>Đã Thanh Toán *</label>
-                  <select id="paymentStatus" required>
-                    <option value="true">✅ Có (Paid)</option>
-                    <option value="false">❌ Chưa (Not Paid)</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Phương Thức</label>
-                  <input type="text" id="paymentMethod" value="Credit Card" />
-                </div>
-                <div class="form-group">
-                  <label>Số Tiền</label>
-                  <input type="number" id="paymentAmount" step="0.01" value="0"/>
-                </div>
-                <button type="submit" class="success">💾 Lưu Thanh Toán</button>
-              </form>
-            </div>
-            <div>
-              <h3>Danh Sách Thanh Toán</h3>
-              <div id="paymentList" class="loading"><div class="spinner"></div></div>
-            </div>
-          </div>
+          <div id="paymentStats" style="margin-bottom: 20px;"></div>
+          <h3 style="margin-top:0; margin-bottom:15px;">Danh Sách Giao Dịch</h3>
+          <div id="paymentList" class="loading"><div class="spinner"></div></div>
         </div>
 
         <!-- QR SCANS TAB -->
@@ -375,176 +328,160 @@
         }
       }
 
-      // ===== DASHBOARD with Devices Stats =====
+      // ===== DASHBOARD =====
       async function loadDashboard() {
         try {
-          const [userResponse, deviceResponse, poisStatsResponse] = await Promise.all([
+          const [userRes, deviceRes, poisRes, poisStatsRes] = await Promise.all([
             fetch(`${API_BASE}/users/dashboard/summary`),
             fetch(`${API_BASE}/devices/stats`),
+            fetch(`${API_BASE}/pois`),
             fetch(`${API_BASE}/pois/stats/scanned`)
           ]);
 
-          const userData = await userResponse.json();
-          const deviceData = await deviceResponse.json();
-          const poisStats = await poisStatsResponse.json();
+          const userData   = await userRes.json();
+          const deviceData = await deviceRes.json();
+          const poisList   = await poisRes.json();
+          const poisStats  = await poisStatsRes.json();
 
-          // Users
-          document.getElementById("onlineCount").textContent = userData.totalOnlineUsers || 0;
-          document.getElementById("totalUserCount").textContent = userData.totalRegisteredUsers || 0;
-          document.getElementById("paidCount").textContent = userData.totalPaidUsers || 0;
-          document.getElementById("todayScans").textContent = userData.todayQRScans || 0;
+          // Stat cards — dùng nguồn dữ liệu đúng
+          animateValue("devicesOnlineCount", deviceData.online || 0);       // thiết bị online thực tế (90s gần nhất)
+          animateValue("totalUserCount",     userData.totalRegisteredUsers || 0);
+          animateValue("paidCount",          userData.totalPaidUsers || 0);
+          animateValue("poisCount",          Array.isArray(poisList) ? poisList.length : 0);
+          animateValue("poisScannedToday",   poisStats.poisScannedToday || 0);
 
-          // Devices - Real-time count
-          document.getElementById("devicesOnlineCount").textContent = deviceData.online || 0;
+          // Top nghe nhiều nhất
+          renderTopPOIs(poisStats.topScannedPOIs || []);
 
-          // POIs Stats
-          document.getElementById("poisScannedToday").textContent = poisStats.poisScannedToday || 0;
-          document.getElementById("poisScannedWeek").textContent = poisStats.poisScannedWeek || 0;
+          // Danh sách thiết bị online
+          await loadOnlineDevicesList();
 
-          // Top Scanned POIs
-          const topContainer = document.getElementById("topScannedPOIs");
-          if (poisStats.topScannedPOIs && poisStats.topScannedPOIs.length > 0) {
-            topContainer.innerHTML = `
-              <table>
-                <thead>
-                  <tr>
-                    <th>STT</th>
-                    <th>Tên Quán</th>
-                    <th>Số Lần Quét</th>
-                    <th>Lần Quét Cuối</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${poisStats.topScannedPOIs.map((poi, index) => `
-                    <tr>
-                      <td>${index + 1}</td>
-                      <td>${poi.poiName}</td>
-                      <td style="text-align: center; font-weight: 600; color: #3498db;">${poi.scanCount}</td>
-                      <td>${new Date(poi.lastScanned).toLocaleString('vi-VN')}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            `;
-          } else {
-            topContainer.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Chưa có quán nào được quét</p>';
-          }
-
-          // Load danh sách người dùng online (2 người mỗi máy)
-          await loadOnlineUsersList();
-
-          // Setup auto-refresh every 5 seconds
+          // Auto-refresh mỗi 20s — chỉ cập nhật số, không reload toàn trang
           if (!dashboardRefreshInterval) {
             dashboardRefreshInterval = setInterval(async () => {
               try {
-                const devResponse = await fetch(`${API_BASE}/devices/stats`);
-                if (devResponse.ok) {
-                  const devData = await devResponse.json();
-                  const newDeviceCount = devData.online || 0;
-                  const newPeopleCount = newDeviceCount * 2;
-
-                  // Cập nhật số thiết bị online
-                  const devEl = document.getElementById("devicesOnlineCount");
-                  if (devEl.textContent != newDeviceCount) {
-                    devEl.style.transition = "color 0.3s ease";
-                    devEl.style.color = "#27ae60";
-                    devEl.textContent = newDeviceCount;
-                    setTimeout(() => { devEl.style.color = "inherit"; }, 300);
-                  }
-
-                  // Cập nhật số người online (2 người mỗi máy)
-                  const peopleEl = document.getElementById("onlineCount");
-                  if (peopleEl.textContent != newPeopleCount) {
-                    peopleEl.style.transition = "color 0.3s ease";
-                    peopleEl.style.color = "#27ae60";
-                    peopleEl.textContent = newPeopleCount;
-                    setTimeout(() => { peopleEl.style.color = "inherit"; }, 300);
-
-                    // Làm mới danh sách khi có thay đổi
-                    await loadOnlineUsersList();
-                  }
+                const [dRes, uRes] = await Promise.all([
+                  fetch(`${API_BASE}/devices/stats`),
+                  fetch(`${API_BASE}/users/dashboard/summary`)
+                ]);
+                if (dRes.ok) {
+                  const d = await dRes.json();
+                  const newOnline = d.online || 0;
+                  animateValue("devicesOnlineCount", newOnline);
+                  await loadOnlineDevicesList(); // always refresh
                 }
-              } catch (error) {
-                console.error("Dashboard auto-refresh error:", error);
-              }
-            }, 5000); // Refresh every 5 seconds
+                if (uRes.ok) {
+                  const u = await uRes.json();
+                  animateValue("totalUserCount", u.totalRegisteredUsers || 0);
+                  animateValue("paidCount",      u.totalPaidUsers || 0);
+                }
+              } catch (e) { console.error("Auto-refresh error:", e); }
+            }, 20000);
           }
         } catch (error) {
           console.error("Dashboard error:", error);
         }
       }
 
-      // ===== ONLINE USERS LIST (2 người dùng mỗi máy) =====
-      async function loadOnlineUsersList() {
-        const container = document.getElementById("onlineUsersList");
+      function animateValue(id, newVal) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const old = parseInt(el.textContent) || 0;
+        if (old === newVal) return;
+        el.textContent = newVal;
+        el.style.transition = "color 0.3s";
+        el.style.color = newVal > old ? "#16a34a" : "#dc2626";
+        setTimeout(() => { el.style.color = ""; }, 600);
+      }
+
+      function renderTopPOIs(list) {
+        const el = document.getElementById("topScannedPOIs");
+        if (!list.length) {
+          el.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Chưa có lượt nghe nào được ghi nhận</p>';
+          el.className = "";
+          return;
+        }
+        el.className = "";
+        el.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th style="width:50px;">Hạng</th>
+                <th>Tên Quán</th>
+                <th style="text-align:center;">Tổng Lượt Nghe</th>
+                <th style="text-align:center;">Nguồn</th>
+                <th>Lần Nghe Cuối</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map((poi, i) => {
+                const medal = ["🥇","🥈","🥉"][i] || `<strong style="color:#95a5a6;">${i+1}</strong>`;
+                const webBadge = (poi.webCount > 0) ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;">🌐 Web ${poi.webCount}</span>` : '';
+                const appBadge = (poi.appCount > 0) ? `<span style="background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;margin-left:4px;">📱 App ${poi.appCount}</span>` : '';
+                return `
+                  <tr>
+                    <td style="text-align:center; font-size:18px;">${medal}</td>
+                    <td style="font-weight:600;">${poi.poiName}</td>
+                    <td style="text-align:center; font-weight:700; color:#3498db; font-size:16px;">${poi.scanCount}</td>
+                    <td style="text-align:center;">${webBadge}${appBadge}</td>
+                    <td style="color:#95a5a6;">${new Date(poi.lastScanned).toLocaleString('vi-VN')}</td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+      }
+
+      // ===== ONLINE DEVICES LIST =====
+      async function loadOnlineDevicesList() {
+        const container = document.getElementById("onlineDevicesList");
+        const badge     = document.getElementById("onlineBadge");
         try {
           const response = await fetch(`${API_BASE}/users/dashboard/online-users`);
-          if (!response.ok) throw new Error("Lỗi tải danh sách");
-
+          if (!response.ok) throw new Error();
+          // API trả về thiết bị có LastOnlineAt trong 90 giây — đây là thiết bị "đang online"
           const devices = await response.json();
+
+          badge.textContent = `${devices.length} thiết bị`;
+          badge.style.background  = devices.length > 0 ? "#dcfce7" : "#f3f4f6";
+          badge.style.color       = devices.length > 0 ? "#16a34a" : "#6b7280";
+          badge.style.borderColor = devices.length > 0 ? "#bbf7d0" : "#e5e7eb";
           container.className = "";
 
-          if (!devices || devices.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#999; padding:30px;">Không có người dùng nào đang online</p>';
+          if (!devices.length) {
+            container.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">Không có thiết bị nào đang online</p>';
             return;
           }
-
-          // Mỗi thiết bị hiển thị 2 người dùng
-          const rows = devices.flatMap((device, idx) => [
-            {
-              stt: idx * 2 + 1,
-              name: device.deviceName || `Người dùng ${idx * 2 + 1}`,
-              device: device.deviceModel || device.deviceOS || "Không rõ",
-              ip: device.ipAddress || "N/A",
-              location: device.locationInfo || "Không rõ",
-              lastOnline: device.lastOnlineAt,
-              os: device.deviceOS
-            },
-            {
-              stt: idx * 2 + 2,
-              name: `Khách - ${device.deviceName || `Máy ${idx + 1}`}`,
-              device: device.deviceModel || device.deviceOS || "Không rõ",
-              ip: device.ipAddress || "N/A",
-              location: device.locationInfo || "Không rõ",
-              lastOnline: device.lastOnlineAt,
-              os: device.deviceOS
-            }
-          ]);
 
           container.innerHTML = `
             <table>
               <thead>
                 <tr>
                   <th>STT</th>
-                  <th>Tên Người Dùng</th>
-                  <th>Thiết Bị</th>
+                  <th>Tên / Model Thiết Bị</th>
                   <th>Hệ Điều Hành</th>
                   <th>Địa Chỉ IP</th>
                   <th>Vị Trí</th>
-                  <th>Lần Cuối Online</th>
                   <th>Trạng Thái</th>
                 </tr>
               </thead>
               <tbody>
-                ${rows.map(u => `
-                  <tr>
-                    <td>${u.stt}</td>
-                    <td>${u.name}</td>
-                    <td>${u.device}</td>
-                    <td>${u.os}</td>
-                    <td>${u.ip}</td>
-                    <td>${u.location}</td>
-                    <td>${new Date(u.lastOnline).toLocaleString('vi-VN')}</td>
-                    <td><span style="color:#27ae60; font-weight:600;">🟢 Online</span></td>
-                  </tr>
-                `).join('')}
+                ${devices.map((d, i) => {
+                  const osIcon = d.deviceOS === "iOS" ? "🍎" : d.deviceOS === "Android" ? "🤖" : "📱";
+                  return `
+                    <tr>
+                      <td>${i + 1}</td>
+                      <td style="font-weight:600;">${d.deviceName || d.deviceModel || "Thiết bị không rõ"}</td>
+                      <td>${osIcon} ${d.deviceOS || "—"}</td>
+                      <td style="font-family:monospace; font-size:13px;">${d.ipAddress || "—"}</td>
+                      <td>${d.locationInfo || "Không rõ"}</td>
+                      <td><span style="color:#27ae60; font-weight:600;">🟢 Online</span></td>
+                    </tr>`;
+                }).join('')}
               </tbody>
-            </table>
-          `;
-        } catch (error) {
-          console.error("Error loading online users list:", error);
+            </table>`;
+        } catch {
           container.className = "";
-          container.innerHTML = '<p style="text-align:center; color:#e74c3c; padding:30px;">Lỗi tải danh sách người dùng online</p>';
+          container.innerHTML = '<p style="text-align:center; color:#e74c3c; padding:30px;">Lỗi tải danh sách thiết bị</p>';
         }
       }
 
@@ -555,11 +492,16 @@
       let currentPoiPage = 0;
       const POIS_PER_PAGE = 6;
       let allPois = [];
+      let poiMainImages = {};
 
       async function loadPOIs() {
         try {
-          const response = await fetch(`${API_BASE}/pois`);
-          allPois = await response.json();
+          const [poisRes, imagesRes] = await Promise.all([
+            fetch(`${API_BASE}/pois`),
+            fetch(`${API_BASE}/pois/main-images`)
+          ]);
+          allPois = await poisRes.json();
+          if (imagesRes.ok) poiMainImages = await imagesRes.json();
           currentPoiPage = 0;
           renderPOIGrid();
         } catch (error) {
@@ -578,91 +520,32 @@
           return;
         }
 
-        // Calculate pagination
         const totalPages = Math.ceil(allPois.length / POIS_PER_PAGE);
         const startIdx = currentPoiPage * POIS_PER_PAGE;
-        const endIdx = startIdx + POIS_PER_PAGE;
-        const poisToShow = allPois.slice(startIdx, endIdx);
+        const poisToShow = allPois.slice(startIdx, startIdx + POIS_PER_PAGE);
 
         container.className = "poi-grid";
-        container.innerHTML = poisToShow.map((poi, index) => {
-          const qrLoader = poi.qrCode ? `<div id="qr-loader-${poi.id}" style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; color:#999; flex-direction:column; gap:10px;"><div class="small-spinner"></div><div style="font-size:12px;">Tạo QR...</div></div>` : '<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; color:#ccc; font-size:40px;">📸</div>';
-
-          const qrDisplay = poi.qrCode ? `
-                <div class="poi-qr-display">
-                  <div class="qr-label">Mã QR Code:</div>
-                  <div class="qr-value">${poi.qrCode}</div>
-                  <div class="qr-hint">Nhấn "👁️ Xem QR" để quét</div>
-                </div>
-              ` : '<div class="poi-no-qr">⚠️ Chưa có mã QR - Nhấn "Sửa" để tạo</div>';
+        container.innerHTML = poisToShow.map(poi => {
+          const imgUrl = poiMainImages[poi.id] || "";
+          const imgHtml = imgUrl
+            ? `<img src="${imgUrl}" alt="${poi.name}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;color:#ccc;\\'>🍽️</div>'">`
+            : `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;color:#ccc;">🍽️</div>`;
 
           return `
           <div class="poi-card">
-            <div class="poi-qr" id="qr-container-${poi.id}">
-              ${qrLoader}
-            </div>
+            <div class="poi-qr">${imgHtml}</div>
             <div class="poi-info">
               <div class="poi-name">${poi.name}</div>
               <div class="poi-address">${poi.address}</div>
               <div class="poi-description">${poi.description || 'Không có mô tả'}</div>
-              ${qrDisplay}
               <div class="poi-actions">
-                <button onclick="viewQRCode('${poi.qrCode || ''}')" class="small" style="background: #27ae60; color: white;" ${!poi.qrCode ? 'disabled' : ''}>👁️ Xem QR</button>
                 <button onclick="editPOI(${poi.id})" class="small">✏️ Sửa</button>
                 <button onclick="deletePOI(${poi.id})" class="small danger">🗑️ Xóa</button>
               </div>
             </div>
-          </div>
-        `;
+          </div>`;
         }).join("");
 
-        // Generate QR codes for each POI after DOM is ready
-        setTimeout(() => {
-          poisToShow.forEach(poi => {
-            if (poi.qrCode) {
-              const container = document.getElementById(`qr-container-${poi.id}`);
-              const loader = document.getElementById(`qr-loader-${poi.id}`);
-
-              if (container && typeof QRCode !== 'undefined') {
-                try {
-                  // Hide loader
-                  if (loader) loader.style.display = 'none';
-
-                  // Generate QR code at 170x170 to fit nicely in 210px container with padding
-                  new QRCode(container, {
-                    text: poi.qrCode,
-                    width: 170,
-                    height: 170,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                  });
-
-                  // Style the canvas for better appearance
-                  const canvas = container.querySelector('canvas');
-                  if (canvas) {
-                    canvas.style.margin = '0 auto';
-                    canvas.style.display = 'block';
-                    canvas.style.borderRadius = '4px';
-                    canvas.style.maxWidth = '100%';
-                    canvas.style.height = 'auto';
-                  }
-                } catch (e) {
-                  console.warn('QR Code generation failed for POI ' + poi.id, e);
-                  if (loader) loader.style.display = 'none';
-                  container.innerHTML = '<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; color:#ccc; font-size:40px;">🔲</div>';
-                }
-              } else if (!container) {
-                console.warn('Container not found for POI ' + poi.id);
-              } else if (typeof QRCode === 'undefined') {
-                console.warn('QRCode library not loaded');
-                if (loader) loader.innerHTML = '<div style="color:#e74c3c; font-size:12px; text-align:center;">⚠️ Lỗi tải QR</div>';
-              }
-            }
-          });
-        }, 150);
-
-        // Render pagination
         renderPOIPagination(totalPages);
       }
 
@@ -699,91 +582,6 @@
         document.getElementById("poiList").scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
-      function viewQRCode(qrCode) {
-        if (!qrCode) {
-          alert("Quán này chưa có mã QR");
-          return;
-        }
-
-        // Show modal with loading state
-        const modal = document.getElementById("qrViewModal");
-        const displayDiv = document.getElementById("qrCodeDisplay");
-        const textDiv = document.getElementById("qrCodeText");
-
-        // Set text immediately
-        textDiv.textContent = qrCode;
-
-        // Clear and show loading message while generating QR
-        displayDiv.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:15px; width:100%; height:280px;"><div class="spinner"></div><div style="color:#999; font-size:14px;">Đang tạo mã QR...</div></div>';
-        modal.style.display = "flex";
-
-        // Wait for DOM to be ready and QRCode library to be available
-        const checkQRLibrary = setInterval(() => {
-          if (typeof QRCode !== 'undefined') {
-            clearInterval(checkQRLibrary);
-            generateQRCodeInModal(displayDiv, qrCode);
-          }
-        }, 50);
-
-        // Fallback timeout
-        setTimeout(() => {
-          clearInterval(checkQRLibrary);
-          if (typeof QRCode === 'undefined') {
-            displayDiv.innerHTML = '<div style="color:#e74c3c; text-align:center; padding:30px;"><div style="font-size:32px; margin-bottom:15px;">❌</div><div style="font-size:14px; font-weight:600; margin-bottom:10px;">Lỗi: Thư viện QRCode.js chưa được tải</div><div style="font-size:12px; color:#999;">Vui lòng tải lại trang (F5) và thử lại</div></div>';
-          }
-        }, 2000);
-      }
-
-      function generateQRCodeInModal(displayDiv, qrCode) {
-        try {
-          // Clear previous content
-          displayDiv.innerHTML = "";
-
-          // Create a wrapper for better centering
-          const wrapper = document.createElement('div');
-          wrapper.style.cssText = 'display:flex; align-items:center; justify-content:center; width:100%; padding:10px;';
-          displayDiv.appendChild(wrapper);
-
-          // Generate QR code at 250x250 for better fit
-          new QRCode(wrapper, {
-            text: qrCode,
-            width: 250,
-            height: 250,
-            colorDark: "#000000",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-          });
-
-          // Style the canvas for better appearance
-          const canvas = wrapper.querySelector('canvas');
-          if (canvas) {
-            canvas.style.display = 'block';
-            canvas.style.border = '3px solid #667eea';
-            canvas.style.borderRadius = '10px';
-            canvas.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
-            canvas.style.maxWidth = '100%';
-            canvas.style.height = 'auto';
-          }
-        } catch (error) {
-          console.error('QR Code generation error:', error);
-          displayDiv.innerHTML = '<div style="color:#e74c3c; text-align:center; padding:30px;"><div style="font-size:32px; margin-bottom:15px;">⚠️</div><div style="font-size:14px; font-weight:600; margin-bottom:5px;">Lỗi tạo mã QR</div><div style="font-size:11px; color:#999; font-family:monospace;">' + (error.message || 'Lỗi không xác định') + '</div></div>';
-        }
-      }
-
-      function closeQRViewModal() {
-        document.getElementById("qrViewModal").style.display = "none";
-      }
-
-      function downloadQRCode() {
-        const canvas = document.querySelector("#qrCodeDisplay canvas");
-        if (canvas) {
-          const url = canvas.toDataURL("image/png");
-          const link = document.createElement('a');
-          link.download = `QRCode_${document.getElementById("qrCodeText").textContent}.png`;
-          link.href = url;
-          link.click();
-        }
-      }
 
       async function editPOI(id) {
         try {
@@ -801,7 +599,6 @@
           document.getElementById("poiLng").value = poi.lng || "";
           document.getElementById("poiRadius").value = poi.radius || 50;
           document.getElementById("poiPriority").value = poi.priority || 1;
-          document.getElementById("poiQRCode").value = poi.qrCode || "";
 
           // Change modal title and store editing ID
           document.querySelector("#poiModal h3").textContent = "✏️ Sửa Quán Ăn";
@@ -850,7 +647,6 @@
         document.getElementById("poiLng").value = "";
         document.getElementById("poiRadius").value = "50";
         document.getElementById("poiPriority").value = "1";
-        document.getElementById("poiQRCode").value = "";
 
         // Clear image previews
         selectedImages = [];
@@ -882,18 +678,6 @@
         }
       }
 
-      function generateQRCode() {
-        const poiName = document.getElementById("poiName")?.value?.trim();
-        if (!poiName) {
-          alert('Hãy nhập tên quán trước khi tạo mã QR.');
-          document.getElementById("poiName").focus();
-          return;
-        }
-        // Deep link QR: phone camera opens the app directly without browser
-        const deepLink = `vinhkhanhtour://play_audio?poi_name=${encodeURIComponent(poiName)}`;
-        document.getElementById("poiQRCode").value = deepLink;
-        console.log('[QR] Generated deep-link QR:', deepLink);
-      }
 
       async function handlePOIFormSubmit(e) {
         e.preventDefault();
@@ -937,8 +721,7 @@
             lat: parseFloat(poiLat),
             lng: parseFloat(poiLng),
             radius: parseInt(document.getElementById("poiRadius").value) || 50,
-            priority: parseInt(document.getElementById("poiPriority").value) || 1,
-            qrCode: document.getElementById("poiQRCode").value || undefined
+            priority: parseInt(document.getElementById("poiPriority").value) || 1
           };
 
           const url = isEdit ? `${API_BASE}/pois/${editingId}` : `${API_BASE}/pois`;
@@ -1012,7 +795,7 @@
       // ===== USERS FUNCTIONS =====
       async function loadUsers() {
         const container = document.getElementById("userList");
-        container.innerHTML = '<div class="spinner"></div><p>Đang tải...</p>';
+        container.innerHTML = '<div class="loading" style="padding:40px 0;"><div class="spinner"></div></div>';
 
         try {
           const response = await fetch(`${API_BASE}/users`);
@@ -1027,33 +810,40 @@
             <table>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Tên</th>
+                  <th style="width:50px;">ID</th>
+                  <th>Họ Tên</th>
                   <th>Email</th>
-                  <th>Trạng Thái</th>
-                  <th>Thanh Toán</th>
-                  <th>Ngày Tạo</th>
+                  <th>Số Điện Thoại</th>
+                  <th>Ngôn Ngữ</th>
+                  <th style="text-align:center;">Gói</th>
+                  <th>Ngày Thanh Toán</th>
+                  <th style="text-align:center;">Thao Tác</th>
                 </tr>
               </thead>
               <tbody>
-                ${users.map(user => `
+                ${users.map(user => {
+                  const paidAt = user.paidAt ? new Date(user.paidAt).toLocaleDateString('vi-VN') : '—';
+                  const lang = user.language === 'en' ? '🇬🇧 EN' : '🇻🇳 VI';
+                  const safeName = (user.fullName || user.email || '').replace(/'/g, "\\'");
+                  return `
                   <tr>
-                    <td>${user.id}</td>
-                    <td>${user.username || user.name || 'N/A'}</td>
-                    <td>${user.email || 'N/A'}</td>
-                    <td>
-                      <span style="color: ${user.isOnline ? '#27ae60' : '#95a5a6'};">
-                        ${user.isOnline ? '🟢 Online' : '🔴 Offline'}
+                    <td style="text-align:center; color:#999;">${user.id}</td>
+                    <td style="font-weight:600;">${user.fullName || '<span style="color:#999;">—</span>'}</td>
+                    <td>${user.email || '—'}</td>
+                    <td>${user.phone || '<span style="color:#999;">—</span>'}</td>
+                    <td style="text-align:center;">${lang}</td>
+                    <td style="text-align:center;">
+                      <span style="background:${user.isPaid ? '#dcfce7' : '#f3f4f6'}; color:${user.isPaid ? '#15803d' : '#6b7280'}; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700;">
+                        ${user.isPaid ? '💳 Paid' : '🆓 Free'}
                       </span>
                     </td>
-                    <td>
-                      <span style="color: ${user.hasPaid ? '#27ae60' : '#999'};">
-                        ${user.hasPaid ? '💳 Paid' : '🆓 Free'}
-                      </span>
+                    <td style="color:#6b7280; font-size:13px;">${paidAt}</td>
+                    <td style="text-align:center;">
+                      <button onclick="editUser(${user.id})" class="small">✏️ Sửa</button>
+                      <button onclick="deleteUser(${user.id}, '${safeName}')" class="small danger">🗑️ Xóa</button>
                     </td>
-                    <td>${user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'N/A'}</td>
-                  </tr>
-                `).join('')}
+                  </tr>`;
+                }).join('')}
               </tbody>
             </table>
           `;
@@ -1061,6 +851,71 @@
           console.error("Error loading users:", error);
           container.innerHTML = '<p style="text-align:center; color:#e74c3c; padding:40px;">❌ Lỗi tải danh sách người dùng</p>';
         }
+      }
+
+      async function editUser(id) {
+        try {
+          const res = await fetch(`${API_BASE}/users/${id}`);
+          if (!res.ok) throw new Error();
+          const user = await res.json();
+
+          document.getElementById("editFullName").value = user.fullName || "";
+          document.getElementById("editEmail").value = user.email || "";
+          document.getElementById("editPhone").value = user.phone || "";
+          document.getElementById("editLanguage").value = user.language || "vi";
+          document.getElementById("editIsPaid").checked = !!user.isPaid;
+          document.getElementById("userForm").dataset.editingId = id;
+
+          const msg = document.getElementById("userFormMessage");
+          msg.className = "message"; msg.textContent = "";
+
+          document.getElementById("userModal").style.display = "flex";
+        } catch {
+          alert("Lỗi khi tải thông tin người dùng");
+        }
+      }
+
+      async function handleUserFormSubmit(e) {
+        e.preventDefault();
+        const id = e.target.dataset.editingId;
+        const payload = {
+          fullName: document.getElementById("editFullName").value.trim(),
+          email: document.getElementById("editEmail").value.trim(),
+          phone: document.getElementById("editPhone").value.trim(),
+          language: document.getElementById("editLanguage").value,
+          isPaid: document.getElementById("editIsPaid").checked
+        };
+
+        try {
+          const res = await fetch(`${API_BASE}/users/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error((await res.json()).error || "Lỗi cập nhật");
+
+          const msg = document.getElementById("userFormMessage");
+          msg.className = "message success"; msg.textContent = "✅ Đã lưu thành công";
+          setTimeout(() => { closeUserModal(); loadUsers(); }, 800);
+        } catch (err) {
+          const msg = document.getElementById("userFormMessage");
+          msg.className = "message error"; msg.textContent = "❌ " + err.message;
+        }
+      }
+
+      async function deleteUser(id, name) {
+        if (!confirm(`Xóa người dùng "${name}"?\nHành động này không thể hoàn tác.`)) return;
+        try {
+          const res = await fetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
+          if (!res.ok) throw new Error();
+          loadUsers();
+        } catch {
+          alert("Lỗi khi xóa người dùng");
+        }
+      }
+
+      function closeUserModal() {
+        document.getElementById("userModal").style.display = "none";
       }
 
       // ===== HISTORY FUNCTIONS =====
@@ -1336,7 +1191,6 @@
       // Initialize
       window.onload = () => {
         loadDashboard();
-        setInterval(loadDashboard, 10000); // 10s refresh
       };
     </script>
     <script src="/js/devices.js"></script>

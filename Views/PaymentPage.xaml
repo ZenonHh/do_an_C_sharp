@@ -19,7 +19,7 @@
                 <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
                     <Label Text="{Binding Lang[scans_remaining], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
                            FontSize="14" TextColor="#DDEEFF" HorizontalOptions="Center"/>
-                    <Label Text="{Binding RemainingScans}" FontSize="56" FontAttributes="Bold"
+                    <Label Text="{Binding RemainingListens}" FontSize="56" FontAttributes="Bold"
                            TextColor="White" HorizontalOptions="Center"/>
                     <Label Text="{Binding Lang[scans_unit], Source={RelativeSource AncestorType={x:Type views:PaymentPage}}}"
                            FontSize="14" TextColor="#DDEEFF" HorizontalOptions="Center"/>
@@ -115,7 +115,7 @@
 
             <!-- Nút reset Dev (IsVisible set từ code-behind #if DEBUG) -->
             <Button x:Name="DevResetButton"
-                    Text="🔧 Reset về 3 lượt (Dev only)"
+                    Text="🔧 Reset về 5 lượt (Dev only)"
                     BackgroundColor="#95A5A6" TextColor="White"
                     CornerRadius="10" HeightRequest="44"
                     FontSize="13" Margin="0,10,0,0"

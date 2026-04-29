@@ -2,8 +2,8 @@ namespace DoAnCSharp.Services;
 
 public class ScanQuotaService
 {
-    private const string QuotaKey = "scan_quota_remaining";
-    private const int FreeQuota = 3;
+    private const string QuotaKey = "listen_quota_remaining";
+    private const int FreeQuota = 5;
 
     private string GetUserQuotaKey()
     {
@@ -23,7 +23,7 @@ public class ScanQuotaService
         return true;
     }
 
-    public void AddScans(int count)
+    public void AddListens(int count)
     {
         int current = GetRemaining();
         Microsoft.Maui.Storage.Preferences.Default.Set(GetUserQuotaKey(), current + count);

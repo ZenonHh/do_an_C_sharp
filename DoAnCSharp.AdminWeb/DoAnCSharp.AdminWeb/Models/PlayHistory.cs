@@ -12,4 +12,5 @@ public class PlayHistory
     public string POIName { get; set; } = string.Empty;
     public string ImageAsset { get; set; } = string.Empty;
     public DateTime PlayedAt { get; set; }
+    public string? Source { get; set; } // "app" or "web"
 }

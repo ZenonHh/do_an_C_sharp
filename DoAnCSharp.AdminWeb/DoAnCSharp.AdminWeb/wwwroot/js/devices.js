@@ -1,163 +1,69 @@
-// ===== DEVICES MANAGEMENT WITH PAGINATION ===== 
+// ===== DEVICES MANAGEMENT =====
 
 let devicesData = [];
 let currentFilterStatus = 'all';
-let currentViewMode = 'card';
-let devicesRefreshInterval;
 let currentDevicePage = 0;
-const DEVICES_PER_PAGE = 5;
+const DEVICES_PER_PAGE = 10;
+let devicesRefreshInterval;
 
-// Load devices khi load trang
-document.addEventListener('DOMContentLoaded', function() {
-  // Only init if we're on devices tab
-  const devicesTab = document.getElementById('devices');
-  if (devicesTab) {
-    initDevicesSection();
+const DESKTOP_OS = ['Windows', 'macOS', 'Linux'];
+
+function isOnline(device) {
+  const sixtySecAgo = new Date(Date.now() - 60 * 1000);
+  return new Date(device.lastOnlineAt) >= sixtySecAgo && !DESKTOP_OS.includes(device.deviceOS);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (document.getElementById('devices')) {
+    setupDevicesEventListeners();
+    startDevicesAutoRefresh();
   }
 });
 
-function initDevicesSection() {
-  loadAllDevices();
-  setupDevicesEventListeners();
-  startDevicesAutoRefresh();
-}
-
-// ===== API CALLS =====
 async function loadAllDevices() {
-  try {
-    const response = await fetch('/api/devices');
-    if (!response.ok) throw new Error('Không lấy được danh sách thiết bị');
+  const container = document.getElementById('devicesList');
+  if (container) container.innerHTML = '<div class="loading" style="padding:40px 0;"><div class="spinner"></div></div>';
 
-    devicesData = await response.json();
+  try {
+    const res = await fetch('/api/devices');
+    if (!res.ok) throw new Error();
+    devicesData = await res.json();
     currentDevicePage = 0;
     renderDevicesUI();
-  } catch (error) {
-    console.error('❌ Lỗi khi lấy devices:', error);
-    showDevicesError('Lỗi khi tải danh sách thiết bị');
+  } catch {
+    if (container) container.innerHTML = '<p style="text-align:center;color:#e74c3c;padding:40px;">❌ Lỗi tải danh sách thiết bị</p>';
   }
-}
-
-async function toggleDeviceStatus(deviceId) {
-  try {
-    const device = devicesData.find(d => d.id === deviceId);
-    if (!device) return;
-    
-    const response = await fetch(`/api/devices/${deviceId}/toggle`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isActive: !device.isActive })
-    });
-    
-    if (!response.ok) throw new Error('Không thể cập nhật trạng thái');
-    
-    device.isActive = !device.isActive;
-    renderDevicesUI();
-    showDevicesSuccess(`Thiết bị ${device.isActive ? 'kích hoạt' : 'vô hiệu hóa'} thành công`);
-  } catch (error) {
-    console.error('❌ Lỗi khi cập nhật:', error);
-    showDevicesError('Lỗi khi cập nhật trạng thái');
-  }
-}
-
-async function deleteDevice(deviceId) {
-  if (!confirm('Bạn chắc chắn muốn xóa thiết bị này?')) return;
-  
-  try {
-    const response = await fetch(`/api/devices/${deviceId}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) throw new Error('Không thể xóa thiết bị');
-    
-    devicesData = devicesData.filter(d => d.id !== deviceId);
-    renderDevicesUI();
-    showDevicesSuccess('Xóa thiết bị thành công');
-  } catch (error) {
-    console.error('❌ Lỗi khi xóa:', error);
-    showDevicesError('Lỗi khi xóa thiết bị');
-  }
-}
-
-// ===== FILTER & SEARCH =====
-function filterDevices(status) {
-  currentFilterStatus = status;
-  currentDevicePage = 0;
-
-  // Update filter button states
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  event.target.classList.add('active');
-
-  renderDevicesUI();
-}
-
-function searchDevices(query) {
-  const filtered = devicesData.filter(device => {
-    const q = query.toLowerCase();
-    return (
-      device.deviceName?.toLowerCase().includes(q) ||
-      device.deviceModel?.toLowerCase().includes(q) ||
-      device.ipAddress?.toLowerCase().includes(q) ||
-      device.deviceOS?.toLowerCase().includes(q)
-    );
-  });
-
-  currentDevicePage = 0;
-  renderDevicesWithFilter(filtered);
 }
 
 function applyFilter(devices) {
-  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-  if (currentFilterStatus === 'online') {
-    return devices.filter(d => new Date(d.lastOnlineAt) >= fiveMinAgo);
-  } else if (currentFilterStatus === 'offline') {
-    return devices.filter(d => new Date(d.lastOnlineAt) < fiveMinAgo);
+  let filtered = devices;
+  if (currentFilterStatus === 'online') filtered = devices.filter(isOnline);
+  else if (currentFilterStatus === 'offline') filtered = devices.filter(d => !isOnline(d));
+
+  const q = (document.getElementById('devicesSearchInput')?.value || '').toLowerCase().trim();
+  if (q) {
+    filtered = filtered.filter(d =>
+      d.deviceName?.toLowerCase().includes(q) ||
+      d.deviceModel?.toLowerCase().includes(q) ||
+      d.ipAddress?.toLowerCase().includes(q) ||
+      d.deviceOS?.toLowerCase().includes(q)
+    );
   }
-  return devices;
+  return filtered;
 }
 
-// ===== VIEW MODES =====
-function setViewMode(mode) {
-  currentViewMode = mode;
-  
-  document.querySelectorAll('.view-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  document.querySelector(`[data-view="${mode}"]`).classList.add('active');
-  
-  renderDevicesUI();
-}
-
-// ===== RENDER UI WITH PAGINATION =====
 function renderDevicesUI() {
   const filtered = applyFilter(devicesData);
-  updateDevicesStats(filtered);
-
-  if (currentViewMode === 'card') {
-    renderDevicesCards(filtered);
-  } else {
-    renderDevicesTable(filtered);
-  }
+  renderDevicesStats(filtered);
+  renderDevicesTable(filtered);
 }
 
-function renderDevicesWithFilter(devices) {
-  updateDevicesStats(devices);
-
-  if (currentViewMode === 'card') {
-    renderDevicesCards(devices);
-  } else {
-    renderDevicesTable(devices);
-  }
-}
-
-function updateDevicesStats(devices) {
-  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-  const online = devices.filter(d => new Date(d.lastOnlineAt) >= fiveMinAgo).length;
+function renderDevicesStats(devices) {
+  const statsContainer = document.getElementById('devicesStats');
+  if (!statsContainer) return;
+  const online = devices.filter(isOnline).length;
   const offline = devices.length - online;
-  const total = devices.length;
-
-  const statsHtml = `
+  statsContainer.innerHTML = `
     <div class="device-stat-card online">
       <h4>🟢 Online</h4>
       <div class="count">${online}</div>
@@ -168,141 +74,67 @@ function updateDevicesStats(devices) {
     </div>
     <div class="device-stat-card">
       <h4>📱 Tổng</h4>
-      <div class="count">${total}</div>
+      <div class="count">${devices.length}</div>
     </div>
   `;
-
-  const statsContainer = document.getElementById('devicesStats');
-  if (statsContainer) {
-    statsContainer.innerHTML = statsHtml;
-  }
-}
-
-function renderDevicesCards(devices) {
-  const container = document.getElementById('devicesList');
-
-  if (!container) return;
-
-  if (devices.length === 0) {
-    container.innerHTML = '<div class="no-devices"><p>Không tìm thấy thiết bị</p></div>';
-    renderDevicesPagination(0);
-    return;
-  }
-
-  // Pagination
-  const totalPages = Math.ceil(devices.length / DEVICES_PER_PAGE);
-  const startIdx = currentDevicePage * DEVICES_PER_PAGE;
-  const endIdx = startIdx + DEVICES_PER_PAGE;
-  const devicesToShow = devices.slice(startIdx, endIdx);
-
-  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-  container.className = 'devices-container';
-  container.innerHTML = devicesToShow.map(device => {
-    const isActive = new Date(device.lastOnlineAt) >= fiveMinAgo;
-    return `
-    <div class="device-card">
-      <div class="device-header">
-        <div class="device-name">${device.deviceName || 'Unknown'}</div>
-        <div class="device-status ${isActive ? 'online pulsing' : 'offline'}">
-          ${isActive ? 'Online' : 'Offline'}
-        </div>
-      </div>
-
-      <div class="device-info">
-        <div class="device-info-row">
-          <span class="device-info-label">Model:</span>
-          <span class="device-info-value">${device.deviceModel || '-'}</span>
-        </div>
-        <div class="device-info-row">
-          <span class="device-info-label">OS:</span>
-          <span class="device-info-value">${device.deviceOS || '-'}</span>
-        </div>
-        <div class="device-info-row">
-          <span class="device-info-label">App:</span>
-          <span class="device-info-value">${device.appVersion || '-'}</span>
-        </div>
-        <div class="device-info-row">
-          <span class="device-info-label">IP:</span>
-          <span class="device-info-value">${device.ipAddress || '-'}</span>
-        </div>
-        <div class="device-info-row">
-          <span class="device-info-label">Cuối:</span>
-          <span class="device-info-value">${formatTime(device.lastOnlineAt)}</span>
-        </div>
-      </div>
-
-      ${device.locationInfo ? `<div class="device-location">${device.locationInfo}</div>` : ''}
-
-      <div class="device-actions">
-        <button onclick="toggleDeviceStatus(${device.id})">
-          ${device.isActive ? '✓ Kích Hoạt' : '✗ Vô Hiệu'}
-        </button>
-        <button class="danger" onclick="deleteDevice(${device.id})">🗑️ Xóa</button>
-      </div>
-    </div>
-  `;
-  }).join('');
-
-  renderDevicesPagination(totalPages);
 }
 
 function renderDevicesTable(devices) {
   const container = document.getElementById('devicesList');
-
   if (!container) return;
 
+  const existing = container.parentElement.querySelector('.devices-pagination');
+  if (existing) existing.remove();
+
   if (devices.length === 0) {
-    container.innerHTML = '<div class="no-devices"><p>Không tìm thấy thiết bị</p></div>';
-    renderDevicesPagination(0);
+    container.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Không tìm thấy thiết bị nào</p>';
     return;
   }
 
-  // Pagination
   const totalPages = Math.ceil(devices.length / DEVICES_PER_PAGE);
-  const startIdx = currentDevicePage * DEVICES_PER_PAGE;
-  const endIdx = startIdx + DEVICES_PER_PAGE;
-  const devicesToShow = devices.slice(startIdx, endIdx);
+  const start = currentDevicePage * DEVICES_PER_PAGE;
+  const paged = devices.slice(start, start + DEVICES_PER_PAGE);
 
-  container.className = '';
   container.innerHTML = `
-    <table class="devices-table">
+    <table>
       <thead>
         <tr>
+          <th style="width:50px;">ID</th>
           <th>Tên Thiết Bị</th>
           <th>Model</th>
-          <th>OS</th>
-          <th>App</th>
-          <th>Trạng Thái</th>
+          <th>Hệ Điều Hành</th>
+          <th>Phiên Bản App</th>
           <th>IP Address</th>
-          <th>Cuối Cùng Online</th>
-          <th>Hành Động</th>
+          <th style="text-align:center;">Trạng Thái</th>
+          <th>Cuối Online</th>
+          <th>Đăng Ký</th>
+          <th style="text-align:center;">Thao Tác</th>
         </tr>
       </thead>
       <tbody>
-        ${(() => {
-          const t = new Date(Date.now() - 5 * 60 * 1000);
-          return devicesToShow.map(device => {
-            const active = new Date(device.lastOnlineAt) >= t;
-            return `
+        ${paged.map(d => {
+          const online = isOnline(d);
+          const osIcon = d.deviceOS === 'Android' ? '🤖' : d.deviceOS === 'iOS' ? '🍎' : '💻';
+          return `
           <tr>
-            <td>${device.deviceName || '-'}</td>
-            <td>${device.deviceModel || '-'}</td>
-            <td>${device.deviceOS || '-'}</td>
-            <td>${device.appVersion || '-'}</td>
-            <td class="status-${active ? 'online' : 'offline'}">
-              ${active ? '🟢 Online' : '🔴 Offline'}
+            <td style="text-align:center;color:#999;">${d.id}</td>
+            <td style="font-weight:600;">${d.deviceName || '<span style="color:#999;">—</span>'}</td>
+            <td>${d.deviceModel || '—'}</td>
+            <td>${osIcon} ${d.deviceOS || '—'}</td>
+            <td>${d.appVersion || '—'}</td>
+            <td style="font-size:13px;color:#6b7280;">${d.ipAddress || '—'}</td>
+            <td style="text-align:center;">
+              <span style="background:${online ? '#dcfce7' : '#f3f4f6'};color:${online ? '#15803d' : '#6b7280'};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;">
+                ${online ? '🟢 Online' : '🔴 Offline'}
+              </span>
             </td>
-            <td>${device.ipAddress || '-'}</td>
-            <td>${formatTime(device.lastOnlineAt)}</td>
-            <td>
-              <button style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="toggleDeviceStatus(${device.id})">
-                ${device.isActive ? '✓' : '✗'}
-              </button>
-              <button style="padding: 4px 8px; font-size: 11px; background: #e74c3c; color: white; border: none;" onclick="deleteDevice(${device.id})">🗑️</button>
+            <td style="font-size:13px;color:#6b7280;">${formatDeviceTime(d.lastOnlineAt)}</td>
+            <td style="font-size:13px;color:#6b7280;">${formatDeviceTime(d.registeredAt)}</td>
+            <td style="text-align:center;">
+              <button onclick="deleteDevice(${d.id})" class="small danger">🗑️ Xóa</button>
             </td>
           </tr>`;
-          }).join('');
-        })()}
+        }).join('')}
       </tbody>
     </table>
   `;
@@ -311,35 +143,20 @@ function renderDevicesTable(devices) {
 }
 
 function renderDevicesPagination(totalPages) {
+  const container = document.getElementById('devicesList');
+  if (!container || totalPages <= 1) return;
+
   const paginationDiv = document.createElement('div');
-  paginationDiv.className = 'pagination';
+  paginationDiv.className = 'pagination devices-pagination';
   paginationDiv.style.marginTop = '20px';
 
-  if (totalPages <= 1) {
-    const container = document.getElementById('devicesList');
-    const existing = container.parentElement.querySelector('.pagination');
-    if (existing) existing.remove();
-    return;
-  }
-
-  let html = '';
-
-  // Previous
-  html += `<button ${currentDevicePage === 0 ? 'disabled' : ''} onclick="changeDevicePage(${currentDevicePage - 1})">◀ Trước</button>`;
-
-  // Pages
+  let html = `<button ${currentDevicePage === 0 ? 'disabled' : ''} onclick="changeDevicePage(${currentDevicePage - 1})">◀ Trước</button>`;
   for (let i = 0; i < totalPages; i++) {
     html += `<button class="${i === currentDevicePage ? 'active' : ''}" onclick="changeDevicePage(${i})">${i + 1}</button>`;
   }
-
-  // Next
   html += `<button ${currentDevicePage >= totalPages - 1 ? 'disabled' : ''} onclick="changeDevicePage(${currentDevicePage + 1})">Sau ▶</button>`;
 
   paginationDiv.innerHTML = html;
-
-  const container = document.getElementById('devicesList');
-  const existing = container.parentElement.querySelector('.pagination');
-  if (existing) existing.remove();
   container.parentElement.appendChild(paginationDiv);
 }
 
@@ -348,60 +165,65 @@ function changeDevicePage(page) {
   const totalPages = Math.ceil(filtered.length / DEVICES_PER_PAGE);
   if (page < 0 || page >= totalPages) return;
   currentDevicePage = page;
-  renderDevicesUI();
-  document.getElementById('devicesList').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  renderDevicesTable(filtered);
+  document.getElementById('devicesList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ===== EVENT LISTENERS =====
+async function deleteDevice(deviceId) {
+  if (!confirm('Xóa thiết bị này?\nHành động này không thể hoàn tác.')) return;
+  try {
+    const res = await fetch(`/api/devices/${deviceId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+    devicesData = devicesData.filter(d => d.id !== deviceId);
+    renderDevicesUI();
+  } catch {
+    alert('Lỗi khi xóa thiết bị');
+  }
+}
+
+function filterDevices(status) {
+  currentFilterStatus = status;
+  currentDevicePage = 0;
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  renderDevicesUI();
+}
+
 function setupDevicesEventListeners() {
   const searchInput = document.getElementById('devicesSearchInput');
   if (searchInput) {
-    searchInput.addEventListener('input', (e) => searchDevices(e.target.value));
+    searchInput.addEventListener('input', () => {
+      currentDevicePage = 0;
+      renderDevicesUI();
+    });
   }
-  
+
   const refreshBtn = document.getElementById('devicesRefreshBtn');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', () => {
       refreshBtn.classList.add('spinning');
-      loadAllDevices().finally(() => {
-        refreshBtn.classList.remove('spinning');
-      });
+      loadAllDevices().finally(() => refreshBtn.classList.remove('spinning'));
     });
   }
 }
 
-// ===== AUTO REFRESH =====
 function startDevicesAutoRefresh() {
   clearInterval(devicesRefreshInterval);
   devicesRefreshInterval = setInterval(() => {
-    loadAllDevices();
-  }, 5000); // Refresh mỗi 5 giây
+    if (document.getElementById('devices')?.classList.contains('active')) {
+      loadAllDevices();
+    }
+  }, 15000);
 }
 
-// ===== HELPERS =====
-function formatTime(date) {
-  if (!date) return '-';
-  const d = new Date(date);
-  return d.toLocaleString('vi-VN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-function showDevicesSuccess(msg) {
-  console.log('✅', msg);
-  // Có thể thêm toast notification sau
-}
-
-function showDevicesError(msg) {
-  console.error('❌', msg);
-  // Có thể thêm toast notification sau
-}
-
-// Cleanup khi đổi tab
 function stopDevicesAutoRefresh() {
   clearInterval(devicesRefreshInterval);
+}
+
+function formatDeviceTime(date) {
+  if (!date) return '—';
+  return new Date(date).toLocaleString('vi-VN', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  });
 }

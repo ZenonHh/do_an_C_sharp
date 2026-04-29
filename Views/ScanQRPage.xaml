@@ -19,13 +19,14 @@
                CornerRadius="10"
                InputTransparent="True" />
                
-        <Label Text="đưa mã qr của quán ăn vào khung hình" 
-               TextColor="White" 
-               HorizontalOptions="Center" 
-               VerticalOptions="End" 
-               Margin="0,0,0,50" 
-               FontSize="16" 
-               FontAttributes="Bold"/>
+        <Label Text="Đưa mã QR phố ẩm thực hoặc QR quán ăn vào khung hình"
+               TextColor="White"
+               HorizontalOptions="Center"
+               VerticalOptions="End"
+               Margin="20,0,20,50"
+               FontSize="16"
+               FontAttributes="Bold"
+               HorizontalTextAlignment="Center"/>
     </Grid>
 
 </ContentPage>

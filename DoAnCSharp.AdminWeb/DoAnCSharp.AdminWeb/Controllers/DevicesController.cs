@@ -175,8 +175,8 @@ public class DevicesController : ControllerBase
             // Filter by status
             var filtered = status switch
             {
-                "online" => allDevices.Where(d => d.IsOnline && (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 35).ToList(),
-                "offline" => allDevices.Where(d => !d.IsOnline || (DateTime.Now - d.LastOnlineAt).TotalSeconds > 35).ToList(),
+                "online" => allDevices.Where(d => (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 60 && d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux").ToList(),
+                "offline" => allDevices.Where(d => (DateTime.Now - d.LastOnlineAt).TotalSeconds > 60 || d.DeviceOS == "Windows" || d.DeviceOS == "macOS" || d.DeviceOS == "Linux").ToList(),
                 _ => allDevices
             };
 
@@ -220,8 +220,9 @@ public class DevicesController : ControllerBase
         try
         {
             var devices = await _dbService.GetAllUserDevicesAsync();
-            // Thiết bị hoạt động: quét QR trong vòng 5 phút gần nhất
-            var online = devices.Count(d => (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 300);
+            // Thiết bị hoạt động: quét QR hoặc app gửi heartbeat trong 90s qua
+            var online = devices.Count(d => (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 60 &&
+                d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux");
             return Ok(new
             {
                 total = devices.Count,
@@ -395,9 +396,9 @@ public class DevicesController : ControllerBase
                 device = new UserDevice
                 {
                     DeviceId = request.DeviceId,
-                    DeviceName = "Unknown Device", // We don't have more info from heartbeat
-                    DeviceModel = "Unknown",
-                    DeviceOS = "Unknown",
+                    DeviceName = !string.IsNullOrEmpty(request.DeviceName) ? request.DeviceName : "Unknown Device",
+                    DeviceModel = !string.IsNullOrEmpty(request.DeviceModel) ? request.DeviceModel : "Unknown",
+                    DeviceOS = !string.IsNullOrEmpty(request.DeviceOS) ? request.DeviceOS : "Unknown",
                     AppVersion = "1.0.0", // Default version
                     IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown",
                     UserAgent = Request.Headers["User-Agent"].ToString(),
@@ -415,6 +416,15 @@ public class DevicesController : ControllerBase
                 // Update online status for existing device
                 device.IsOnline = true;
                 device.LastOnlineAt = DateTime.Now;
+
+                // Update real device info if it was previously unknown
+                if ((device.DeviceName == "Unknown Device" || string.IsNullOrEmpty(device.DeviceName)) && !string.IsNullOrEmpty(request.DeviceName))
+                {
+                    device.DeviceName = request.DeviceName;
+                    device.DeviceModel = request.DeviceModel ?? "Unknown";
+                    device.DeviceOS = request.DeviceOS ?? "Unknown";
+                }
+
                 await _dbService.UpdateUserDeviceAsync(device);
             }
 
@@ -486,4 +496,7 @@ public class DeviceTrackingRequest
 public class DeviceHeartbeatRequest
 {
     public string DeviceId { get; set; } = string.Empty;
+    public string? DeviceName { get; set; }
+    public string? DeviceModel { get; set; }
+    public string? DeviceOS { get; set; }
 }

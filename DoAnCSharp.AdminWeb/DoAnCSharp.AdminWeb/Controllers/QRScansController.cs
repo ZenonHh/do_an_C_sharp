@@ -41,45 +41,19 @@ public class QRScansController : ControllerBase
             // 🔥 Theo dõi và lưu thông tin thiết bị khi App gọi API Verify QR
             await TrackDeviceInfoAsync(deviceId);
 
-            // LƯU Ý: Bạn cần triển khai các phương thức này trong DatabaseService của WebAdmin:
-            // - Task<DeviceScanLimit> GetDeviceScanLimitAsync(string deviceId)
-            // - Task SaveDeviceScanLimitAsync(DeviceScanLimit limit) // (Hàm này sẽ tự động Insert hoặc Update)
-            // - Task<AudioPOI> GetPOIByQRCodeAsync(string qrCode)
-
-            var scanLimit = await _db.GetDeviceScanLimitAsync(deviceId) ?? new DeviceScanLimit
-            {
-                DeviceId = deviceId,
-                LastResetDate = DateTime.UtcNow.Date
-            };
-
-            // Tự động reset lượt quét nếu đã sang ngày mới (tính theo giờ UTC)
-            if (scanLimit.LastResetDate < DateTime.UtcNow.Date)
-            {
-                scanLimit.ScanCount = 0;
-                scanLimit.LastResetDate = DateTime.UtcNow.Date;
-            }
-
-            // Kiểm tra nếu thiết bị đã hết lượt quét trong ngày
-            if (scanLimit.ScanCount >= scanLimit.MaxScans)
+            var (isAllowed, scanLimit, message) = await CheckScanLimitAsync(deviceId);
+            if (!isAllowed)
             {
                 // Trả về mã lỗi 429 Too Many Requests để frontend xử lý
                 return StatusCode(429, new
                 {
                     limitExceeded = true,
-                    message = "Bạn đã hết lượt quét trong ngày. Vui lòng tải ứng dụng và đăng ký gói để sử dụng không giới hạn."
+                    message
                 });
             }
 
             // 🔥 FIX: App gửi lên nguyên chuỗi URL chứa mã QR, ta cần tách lấy đúng phần mã code (VD: POI_12345)
-            string codeToSearch = qrCode;
-            if (codeToSearch.Contains("/qr/"))
-            {
-                codeToSearch = codeToSearch.Substring(codeToSearch.LastIndexOf("/qr/") + 4);
-            }
-            else if (codeToSearch.Contains("POI_"))
-            {
-                codeToSearch = codeToSearch.Substring(codeToSearch.IndexOf("POI_"));
-            }
+            string codeToSearch = SanitizeQRCode(qrCode);
 
             // Tìm quán ăn tương ứng với mã QR
             var poi = await _db.GetPOIByQRCodeAsync(codeToSearch);
@@ -89,7 +63,7 @@ public class QRScansController : ControllerBase
             }
 
             // Nếu hợp lệ, tăng số lượt quét và lưu lại
-            scanLimit.ScanCount++;
+            scanLimit!.ScanCount++;
             await _db.SaveDeviceScanLimitAsync(scanLimit);
 
             // Trả về dữ liệu quán ăn và số lượt quét còn lại
@@ -97,7 +71,7 @@ public class QRScansController : ControllerBase
             {
                 limitExceeded = false,
                 poi,
-                scansRemaining = scanLimit.MaxScans - scanLimit.ScanCount,
+                scansRemaining = scanLimit.MaxScans - scanLimit.ScanCount, // Đã tăng ở trên
                 message = "Xác minh thành công."
             });
         }
@@ -122,34 +96,14 @@ public class QRScansController : ControllerBase
         try
         {
             // Xác minh mã QR
-            var scanLimit = await _db.GetDeviceScanLimitAsync(deviceId) ?? new DeviceScanLimit
-            {
-                DeviceId = deviceId,
-                LastResetDate = DateTime.UtcNow.Date
-            };
-
-            if (scanLimit.LastResetDate < DateTime.UtcNow.Date)
-            {
-                scanLimit.ScanCount = 0;
-                scanLimit.LastResetDate = DateTime.UtcNow.Date;
-            }
-
-            // Kiểm tra giới hạn
-            if (scanLimit.ScanCount >= scanLimit.MaxScans)
+            var (isAllowed, scanLimit, _) = await CheckScanLimitAsync(deviceId);
+            if (!isAllowed)
             {
                 return Redirect($"/poi-public.html?error=limit_exceeded");
             }
 
             // 🔥 FIX: Xử lý chuỗi qrCode nếu nó chứa full URL
-            string codeToSearch = qrCode;
-            if (codeToSearch.Contains("/qr/"))
-            {
-                codeToSearch = codeToSearch.Substring(codeToSearch.LastIndexOf("/qr/") + 4);
-            }
-            else if (codeToSearch.Contains("POI_"))
-            {
-                codeToSearch = codeToSearch.Substring(codeToSearch.IndexOf("POI_"));
-            }
+            string codeToSearch = SanitizeQRCode(qrCode);
 
             // Tìm POI
             var poi = await _db.GetPOIByQRCodeAsync(codeToSearch);
@@ -159,7 +113,7 @@ public class QRScansController : ControllerBase
             }
 
             // Tăng lượt quét
-            scanLimit.ScanCount++;
+            scanLimit!.ScanCount++;
             await _db.SaveDeviceScanLimitAsync(scanLimit);
 
             // Redirect tới trang hiển thị
@@ -170,6 +124,55 @@ public class QRScansController : ControllerBase
             _logger.LogError(ex, "Lỗi khi quét QR từ camera");
             return Redirect($"/poi-public.html?error=system_error");
         }
+    }
+
+    /// <summary>
+    /// Cập nhật số lượt nghe trực tiếp trên trang danh sách mà không cần tải lại trang
+    /// </summary>
+    [HttpPost("track-listen")]
+    public async Task<IActionResult> TrackListen([FromQuery] string deviceId, [FromQuery] int poiId = 0, [FromQuery] string poiName = "")
+    {
+        if (string.IsNullOrWhiteSpace(deviceId)) return BadRequest();
+        try
+        {
+            var scanLimit = await _db.GetDeviceScanLimitAsync(deviceId);
+
+            // Device came in via FoodStreet QR (which returns early before persisting the limit),
+            // so the record may not exist yet — create it on the first listen call.
+            if (scanLimit == null)
+            {
+                scanLimit = new DeviceScanLimit
+                {
+                    DeviceId = deviceId,
+                    ScanCount = 0,
+                    MaxScans = 5,
+                    LastResetDate = DateTime.Now.Date,
+                    CreatedAt = DateTime.Now
+                };
+            }
+
+            if (scanLimit.ScanCount < scanLimit.MaxScans)
+            {
+                scanLimit.ScanCount++;
+                await _db.SaveDeviceScanLimitAsync(scanLimit);
+
+                if (poiId > 0 || !string.IsNullOrWhiteSpace(poiName))
+                {
+                    await _db.InsertPlayHistoryAsync(new PlayHistory
+                    {
+                        UserId = 0,
+                        POIId = poiId,
+                        POIName = poiName,
+                        PlayedAt = DateTime.Now,
+                        Source = "web"
+                    });
+                }
+
+                return Ok(new { success = true, scans = scanLimit.ScanCount });
+            }
+            return BadRequest(new { error = "Đã vượt quá giới hạn nghe" });
+        }
+        catch { return StatusCode(500); }
     }
 
     /// <summary>
@@ -213,36 +216,29 @@ public class QRScansController : ControllerBase
             // 🔥 NEW: Capture & Track Device Info
             await TrackDeviceInfoAsync(deviceId);
 
-            // Xác minh mã QR
-            var scanLimit = await _db.GetDeviceScanLimitAsync(deviceId) ?? new DeviceScanLimit
-            {
-                DeviceId = deviceId,
-                LastResetDate = DateTime.UtcNow.Date
-            };
+            // Lấy hoặc tạo mới giới hạn nghe cho thiết bị
+            var (isAllowed, scanLimit, _) = await CheckScanLimitAsync(deviceId);
 
-            if (scanLimit.LastResetDate < DateTime.UtcNow.Date)
+            string codeToSearch = SanitizeQRCode(code);
+
+            // Xử lý QR phố ẩm thực: trả về trang danh sách toàn bộ quán ăn
+            if (codeToSearch.StartsWith("FOODSTREET", StringComparison.OrdinalIgnoreCase))
             {
-                scanLimit.ScanCount = 0;
-                scanLimit.LastResetDate = DateTime.UtcNow.Date;
+                var allPois = await _db.GetAllPOIsAsync();
+                var mainImages = await _db.GetAllMainImagePathsAsync();
+                string baseUrl = $"{Request.Scheme}://{Request.Host}";
+                return Content(BuildFoodStreetHtml(allPois, mainImages, baseUrl, scanLimit!, deviceId), "text/html", System.Text.Encoding.UTF8);
             }
 
-            // Kiểm tra giới hạn
-            // [DEV TEST] Tạm thời comment/tắt khối lệnh này để test quét QR không bị giới hạn 5 lần/ngày
-            // if (scanLimit.ScanCount >= scanLimit.MaxScans)
-            // {
-            //     return Redirect($"/poi-public.html?error=limit_exceeded&code={code}");
-            // }
-
-            // 🔥 FIX: Đảm bảo chỉ tìm kiếm bằng mã POI_ (bỏ các thành phần URL dư thừa)
-            string codeToSearch = code;
-            if (codeToSearch.Contains("POI_"))
+            // Kiểm tra giới hạn (Chỉ áp dụng khi người dùng quét xem chi tiết một quán)
+            // isAllowed đã được kiểm tra ở trên
+            if (!isAllowed)
             {
-                codeToSearch = codeToSearch.Substring(codeToSearch.IndexOf("POI_"));
+                return Content(BuildLimitExceededHtml(), "text/html", System.Text.Encoding.UTF8);
             }
 
             // Tìm POI bằng cách search trực tiếp với full code (database stores with POI_ prefix)
-            AudioPOI poi = null;
-            poi = await _db.GetPOIByQRCodeAsync(codeToSearch);
+            var poi = await _db.GetPOIByQRCodeAsync(codeToSearch);
 
             if (poi == null)
             {
@@ -250,11 +246,25 @@ public class QRScansController : ControllerBase
                 return Redirect($"/poi-public.html?error=poi_not_found&code={Uri.EscapeDataString(code)}");
             }
 
-            // Tăng lượt quét
-            scanLimit.ScanCount++;
+            // Kiểm tra xem người dùng có đi từ danh sách tổng (FoodStreet) vào không
+            bool fromList = Request.Query["fromList"] == "1";
+            string ttsText = System.Web.HttpUtility.JavaScriptStringEncode(poi.Description ?? poi.Name ?? "");
+
+            // Tăng lượt quét và lưu lại
+            scanLimit!.ScanCount++;
             await _db.SaveDeviceScanLimitAsync(scanLimit);
 
-            _logger.LogInformation("Quét QR thành công: {QRCode} → POI {POIId} từ device {DeviceId}", code, poi.Id, deviceId);
+            // Record listen in play history (fire-and-forget, non-blocking)
+            _ = _db.InsertPlayHistoryAsync(new PlayHistory
+            {
+                UserId = 0,
+                POIId = poi.Id,
+                POIName = poi.Name ?? "",
+                PlayedAt = DateTime.Now,
+                Source = "web"
+            });
+
+            _logger.LogInformation("Quét QR thành công: {QRCode} → POI {POIId} từ device {DeviceId}. Lượt quét: {ScanCount}/{MaxScans}", code, poi.Id, deviceId, scanLimit.ScanCount, scanLimit.MaxScans);
 
             string appDeepLink = $"vinhkhanhtour://play_audio?poi_name={Uri.EscapeDataString(poi.Name ?? "")}";
             string downloadUrl = "/api/download/app-apk";
@@ -262,14 +272,79 @@ public class QRScansController : ControllerBase
                 ? $"https://www.google.com/maps/search/?api=1&query={poi.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{poi.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
                 : "";
             string addressHtml = !string.IsNullOrWhiteSpace(poi.Address)
-            ? $"<div class='meta-row'>📍 {System.Net.WebUtility.HtmlEncode(poi.Address)}</div>"
+            ? $"<div class='address'><span class='icon'>📍</span> <span>{System.Net.WebUtility.HtmlEncode(poi.Address)}</span></div>"
                 : "";
             string descHtml = !string.IsNullOrWhiteSpace(poi.Description)
-            ? $"<p class='desc'>{System.Net.WebUtility.HtmlEncode(poi.Description)}</p>"
+            ? $"<div class='desc'>{System.Net.WebUtility.HtmlEncode(poi.Description)}</div>"
                 : "";
             string mapsBtn = !string.IsNullOrEmpty(mapsUrl)
-                ? $"<a href='{mapsUrl}' target='_blank' class='btn btn-maps'>🗺️&nbsp; Xem trên bản đồ</a>"
+                ? $"<a href='{mapsUrl}' target='_blank' class='btn btn-secondary'>🗺️ Xem đường đi</a>"
                 : "";
+
+            string audioHtml = !string.IsNullOrWhiteSpace(poi.AudioUrl)
+                ? $@"
+                <div class='player-box'>
+                    <div class='player-title'><span>🎧 Nghe Thuyết Minh</span> <span class='badge-count'>{scanLimit.ScanCount}/{scanLimit.MaxScans} lượt</span></div>
+                    <audio controls style='width: 100%; height: 44px; outline: none; border-radius: 8px;'>
+                        <source src='{System.Net.WebUtility.HtmlEncode(poi.AudioUrl)}' type='audio/mpeg'>
+                        Trình duyệt của bạn không hỗ trợ phát audio.
+                    </audio>
+                </div>"
+                : $@"
+                <div class='player-box'>
+                    <div class='player-title'><span>🤖 Thuyết Minh AI</span> <span class='badge-count'>{scanLimit.ScanCount}/{scanLimit.MaxScans} lượt</span></div>
+                    <button onclick='playTTS()' id='ttsBtn' class='btn btn-primary' style='margin-bottom: 0;'>
+                        ▶️ Phát Âm Thanh
+                    </button>
+                    <script>
+                        var isPlaying = false;
+                        function playTTS() {{
+                            if (isPlaying) {{
+                                window.speechSynthesis.cancel();
+                                isPlaying = false;
+                                document.getElementById('ttsBtn').innerHTML = '▶️ Phát Âm Thanh';
+                                return;
+                            }}
+                            var text = '{ttsText}';
+                            var utterance = new SpeechSynthesisUtterance(text);
+                            utterance.lang = 'vi-VN';
+                            utterance.rate = 1.0;
+                            
+                            utterance.onend = function() {{
+                                isPlaying = false;
+                                document.getElementById('ttsBtn').innerHTML = '▶️ Phát Âm Thanh';
+                            }};
+                            
+                            window.speechSynthesis.speak(utterance);
+                            isPlaying = true;
+                            document.getElementById('ttsBtn').innerHTML = '⏸️ Đang phát... (Dừng)';
+                        }}
+                    </script>
+                </div>";
+
+            string loadingDisplay = fromList ? "none" : "flex";
+            string fallbackDisplay = fromList ? "block" : "none";
+
+            string scriptHtml = fromList ? "" : $@"
+                var appOpened = false;
+
+                document.addEventListener('visibilitychange', function () {{
+                    if (document.hidden) appOpened = true;
+                }});
+                window.addEventListener('blur', function () {{
+                    appOpened = true;
+                }});
+
+                setTimeout(function () {{
+                    window.location.href = '{appDeepLink}';
+                }}, 50);
+
+                setTimeout(function () {{
+                    if (!appOpened) {{
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('fallback').style.display = 'block';
+                    }}
+                }}, 2500);";
 
             string htmlContent = $@"
 <!DOCTYPE html>
@@ -279,160 +354,137 @@ public class QRScansController : ControllerBase
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <title>{System.Net.WebUtility.HtmlEncode(poi.Name)} - Vĩnh Khánh Food Tour</title>
     <style>
+        :root {{ --primary: #e74c3c; --primary-dark: #c0392b; --surface: #ffffff; --text: #1f2937; --text-light: #6b7280; --bg: #f3f4f6; }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #fff5f5 0%, #ffecd2 100%);
+            background-color: var(--bg);
             min-height: 100vh;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            padding: 16px;
+            padding: 24px 16px;
+            color: var(--text);
         }}
         .card {{
-            background: #fff;
-            border-radius: 20px;
+            background: var(--surface);
+            border-radius: 24px;
             overflow: hidden;
-            max-width: 360px;
+            max-width: 420px;
             width: 100%;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
         }}
-        .card-header {{
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            padding: 22px 20px 18px;
-            color: #fff;
+        .cover {{
+            height: 140px;
+            background: linear-gradient(135deg, var(--primary) 0%, #f97316 100%);
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            padding: 20px;
         }}
-        .brand {{
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            opacity: 0.85;
-            margin-bottom: 6px;
+        .brand-overlay {{
+            color: white; font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+            background: rgba(0,0,0,0.2); padding: 6px 12px; border-radius: 12px; backdrop-filter: blur(4px);
         }}
-        .poi-name {{
-            font-size: 24px;
-            font-weight: 800;
-            line-height: 1.25;
-            margin-bottom: 10px;
+        .content {{ padding: 24px; }}
+        .tag {{
+            background: rgba(231, 76, 60, 0.1); color: var(--primary); padding: 4px 12px;
+            border-radius: 12px; font-size: 12px; font-weight: 700; display: inline-block; margin-bottom: 12px;
         }}
-        .meta-row {{
-            font-size: 13px;
-            opacity: 0.9;
-            margin-top: 4px;
-        }}
-        .card-body {{ padding: 18px 20px 20px; }}
+        .title {{ font-size: 24px; font-weight: 800; margin: 0 0 12px 0; line-height: 1.2; color: #111827; }}
+        .address {{ display: flex; gap: 8px; color: var(--text-light); font-size: 14px; margin-bottom: 16px; align-items: flex-start; line-height: 1.4; }}
         .desc {{
-            font-size: 14px;
-            color: #555;
+            font-size: 15px;
             line-height: 1.6;
-            margin-bottom: 16px;
+            color: #4b5563;
+            margin-bottom: 24px;
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 16px;
         }}
-        .divider {{ height: 1px; background: #f0f0f0; margin: 16px 0; }}
-        #loading {{
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 0 4px;
+        .player-box {{
+            background: #fff1f0; border: 1px solid #ffe4e4; border-radius: 16px; padding: 16px; margin-bottom: 24px;
         }}
-        .spinner {{
-            width: 38px; height: 38px;
-            border: 3px solid #fee2e2;
-            border-top-color: #e74c3c;
-            border-radius: 50%;
-            animation: spin 0.9s linear infinite;
+        .player-title {{
+            font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center;
         }}
-        @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
-        .loading-text {{ font-size: 13px; color: #888; text-align: center; line-height: 1.5; }}
-        #fallback {{ display: none; }}
-        .notif-banner {{
-            background: #fff7ed;
-            border: 1.5px solid #fed7aa;
-            border-radius: 12px;
-            padding: 13px 15px;
-            margin-bottom: 14px;
-            display: flex;
-            gap: 11px;
-            align-items: flex-start;
-        }}
-        .notif-icon {{ font-size: 20px; line-height: 1.2; flex-shrink: 0; }}
-        .notif-title {{ font-weight: 700; color: #9a3412; font-size: 13px; margin-bottom: 3px; }}
-        .notif-body {{ color: #7c2d12; font-size: 12px; line-height: 1.5; }}
+        .badge-count {{ background: var(--primary); color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; }}
+        
         .btn {{
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             width: 100%;
-            padding: 13px 16px;
-            border-radius: 12px;
-            font-size: 15px;
+            padding: 14px;
+            border-radius: 14px;
+            font-size: 16px;
             font-weight: 600;
             text-decoration: none;
             border: none;
             cursor: pointer;
-            margin-top: 10px;
+            margin-bottom: 12px;
         }}
-        .btn-download {{ background: #e74c3c; color: #fff; }}
-        .btn-open {{ background: #f3f4f6; color: #374151; }}
-        .btn-maps {{ background: #eaf4ff; color: #1d6fa4; }}
+        .btn-primary {{ background: #111827; color: white; }}
+        .btn-secondary {{ background: #f3f4f6; color: #374151; }}
+        .btn-outline {{ background: transparent; color: #111827; border: 2px solid #e5e7eb; }}
+        
+        .spinner {{
+            width: 32px; height: 32px;
+            border: 3px solid #fee2e2;
+            border-top-color: #e74c3c;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }}
+        @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+        
+        .loading-box {{ display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0; }}
+        .loading-text {{ font-size: 14px; color: #6b7280; font-weight: 500; }}
+        
+        .promo-banner {{ background: linear-gradient(135deg, #1e3a8a, #3b82f6); border-radius: 16px; padding: 16px; color: white; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }}
+        .promo-icon {{ font-size: 32px; }}
+        .promo-text h4 {{ margin: 0 0 4px 0; font-size: 15px; font-weight: 700; }}
+        .promo-text p {{ margin: 0; font-size: 13px; opacity: 0.9; line-height: 1.4; }}
     </style>
 </head>
 <body>
     <div class='card'>
-        <div class='card-header'>
-            <div class='brand'>Vĩnh Khánh Food Tour</div>
-            <div class='poi-name'>{System.Net.WebUtility.HtmlEncode(poi.Name)}</div>
-            {addressHtml}
+        <div class='cover'>
+            <div class='brand-overlay'>VĨNH KHÁNH FOOD TOUR</div>
         </div>
 
-        <div class='card-body'>
+        <div class='content'>
+            <div class='tag'>Khám Phá</div>
+            <h1 class='title'>{System.Net.WebUtility.HtmlEncode(poi.Name)}</h1>
+            {addressHtml}
             {descHtml}
 
-            <div id='loading'>
+            <div id='loading' class='loading-box' style='display: {loadingDisplay};'>
                 <div class='spinner'></div>
-                <div class='loading-text'>Đang mở ứng dụng để<br>phát audio thuyết minh...</div>
+                <div class='loading-text'>Đang kết nối ứng dụng...</div>
             </div>
 
-            <div id='fallback'>
-                <div class='notif-banner'>
-                    <span class='notif-icon'>🔔</span>
-                    <div>
-                        <div class='notif-title'>Chưa có ứng dụng?</div>
-                        <div class='notif-body'>
-                            Tải <strong>Vĩnh Khánh Food Tour</strong> để nghe thuyết minh audio
-                            và khám phá bản đồ ẩm thực Vĩnh Khánh.
-                        </div>
+            <div id='fallback' style='display: {fallbackDisplay};'>
+                {audioHtml}
+                
+                <div class='promo-banner'>
+                    <div class='promo-icon'>🎁</div>
+                    <div class='promo-text'>
+                        <h4>Trải nghiệm trọn vẹn</h4>
+                        <p>Tải ứng dụng để nghe không giới hạn & xem bản đồ tương tác trực quan.</p>
                     </div>
                 </div>
-                <a href='{downloadUrl}' class='btn btn-download'>⬇️&nbsp; Tải ứng dụng ngay</a>
-                <a href='{appDeepLink}' class='btn btn-open'>📱&nbsp; Mở ứng dụng (nếu đã cài)</a>
+                
+                <a href='{downloadUrl}' class='btn btn-primary'>⬇️ Tải App Miễn Phí</a>
+                <a href='{appDeepLink}' class='btn btn-outline'>Mở Ứng Dụng (Nếu Đã Cài)</a>
                 {mapsBtn}
             </div>
         </div>
     </div>
 
     <script>
-        var appOpened = false;
-
-        document.addEventListener('visibilitychange', function () {{
-            if (document.hidden) appOpened = true;
-        }});
-        window.addEventListener('blur', function () {{
-            appOpened = true;
-        }});
-
-        setTimeout(function () {{
-            window.location.href = '{appDeepLink}';
-        }}, 50);
-
-        setTimeout(function () {{
-            if (!appOpened) {{
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('fallback').style.display = 'block';
-            }}
-        }}, 2500);
+        {scriptHtml}
     </script>
 </body>
 </html>";
@@ -474,7 +526,7 @@ public class QRScansController : ControllerBase
                     DeviceName = deviceName,
                     DeviceModel = deviceModel,
                     DeviceOS = deviceOS,
-                    AppVersion = "1.0.0",
+                    AppVersion = "web-scan", // Phân biệt với app
                     IsOnline = true,
                     LastOnlineAt = DateTime.Now,
                     RegisteredAt = DateTime.Now,
@@ -503,6 +555,61 @@ public class QRScansController : ControllerBase
             _logger.LogWarning(ex, "Warning tracking device: {DeviceId}", deviceId);
             // Don't throw - device tracking should not block QR scan
         }
+    }
+
+    /// <summary>
+    /// Tách lấy mã code (VD: POI_12345) từ một chuỗi URL hoặc code đầy đủ.
+    /// </summary>
+    private static string SanitizeQRCode(string qrCode)
+    {
+        if (string.IsNullOrWhiteSpace(qrCode))
+        {
+            return string.Empty;
+        }
+
+        if (qrCode.Contains("/qr/"))
+        {
+            return qrCode.Substring(qrCode.LastIndexOf("/qr/") + 4);
+        }
+        
+        // Xử lý trường hợp code không chứa URL nhưng có thể có các query params khác
+        int queryIndex = qrCode.IndexOf('?');
+        if (queryIndex != -1)
+        {
+            qrCode = qrCode.Substring(0, queryIndex);
+        }
+
+        return qrCode;
+    }
+
+    /// <summary>
+    /// Kiểm tra giới hạn lượt quét của một thiết bị và reset nếu cần.
+    /// </summary>
+    /// <returns>Tuple chứa (bool isAllowed, DeviceScanLimit? limit, string message)</returns>
+    private async Task<(bool isAllowed, DeviceScanLimit? limit, string message)> CheckScanLimitAsync(string deviceId)
+    {
+        var scanLimit = await _db.GetDeviceScanLimitAsync(deviceId) ?? new DeviceScanLimit
+        {
+            DeviceId = deviceId,
+            ScanCount = 0,
+            MaxScans = 5, // Giá trị mặc định cho thiết bị mới
+            LastResetDate = DateTime.Now.Date,
+            CreatedAt = DateTime.Now
+        };
+
+        if (scanLimit.LastResetDate < DateTime.Now.Date)
+        {
+            scanLimit.ScanCount = 0;
+            scanLimit.LastResetDate = DateTime.Now.Date;
+            await _db.SaveDeviceScanLimitAsync(scanLimit); // Lưu lại ngày reset mới
+        }
+
+        if (scanLimit.ScanCount >= scanLimit.MaxScans)
+        {
+            return (false, scanLimit, "Bạn đã hết lượt nghe trong ngày. Vui lòng tải ứng dụng và đăng ký gói để nghe không giới hạn.");
+        }
+
+        return (true, scanLimit, "OK");
     }
 
     /// <summary>
@@ -584,7 +691,27 @@ public class QRScansController : ControllerBase
         try
         {
             var limits = await _db.GetAllDeviceScanLimitsAsync();
-            return Ok(limits);
+            var devices = await _db.GetAllUserDevicesAsync();
+
+            var formattedLimits = limits.Select(limit => 
+            {
+                var device = devices.FirstOrDefault(d => d.DeviceId == limit.DeviceId);
+                int remaining = limit.MaxScans - limit.ScanCount;
+                return new 
+                {
+                    id = limit.Id,
+                    deviceId = limit.DeviceId,
+                    deviceName = device?.DeviceName ?? "Khách vãng lai (Web)",
+                    deviceOS = device?.DeviceOS ?? "N/A",
+                    scanCount = limit.ScanCount,
+                    maxScans = limit.MaxScans,
+                    remainingScans = remaining < 0 ? 0 : remaining,
+                    lastResetDate = limit.LastResetDate,
+                    createdAt = limit.CreatedAt
+                };
+            }).OrderByDescending(x => x.lastResetDate).ToList();
+
+            return Ok(formattedLimits);
         }
         catch (Exception ex)
         {
@@ -644,12 +771,12 @@ public class QRScansController : ControllerBase
                 summary.TotalRegisteredUsers,
                 summary.TotalPaidUsers,
                 OnlineDevices = realOnlineDevices.Count,
-                TodayQRScans = summary.TodayQRScans,
+                TodayQRScans = 0, // Xóa thống kê lượt nghe hôm nay
                 QRActivity = new
                 {
-                    TotalScans = qrActivity.totalScans,
-                    UniqueUsers = qrActivity.uniqueUsers,
-                    TopPOIs = qrActivity.topPOIs
+                    TotalScans = 0, // Xóa tổng lượt quét
+                    UniqueUsers = 0,
+                    TopPOIs = new List<object>() // Ẩn danh sách quán ăn
                 },
                 OnlineDevicesList = realOnlineDevices.OrderByDescending(d => d.LastOnlineAt).ToList()
             });
@@ -659,5 +786,333 @@ public class QRScansController : ControllerBase
             _logger.LogError(ex, "Lỗi khi lấy dashboard stats");
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Trang web hiển thị danh sách toàn bộ quán ăn khi khách quét QR phố ẩm thực bằng camera điện thoại.
+    /// Khuyến khích người dùng tải app để xem toàn bộ danh sách.
+    /// </summary>
+    private static string BuildFoodStreetHtml(List<AudioPOI> pois, Dictionary<int, string> mainImages, string baseUrl, DeviceScanLimit scanLimit, string deviceId)
+    {
+        // Resolve image URL: prefer admin-uploaded image, fallback to static asset
+        string ResolveImageUrl(AudioPOI p) =>
+            mainImages.TryGetValue(p.Id, out var uploaded) && !string.IsNullOrEmpty(uploaded)
+                ? uploaded
+                : (string.IsNullOrWhiteSpace(p.ImageAsset) ? "" : $"/images/restaurants/{p.ImageAsset}");
+
+        // Serialize all POI data as JSON — keeps Vietnamese text out of HTML onclick attributes
+        var poisJson = System.Text.Json.JsonSerializer.Serialize(pois.Select(p => new
+        {
+            id = p.Id,
+            name = p.Name ?? "",
+            desc = p.Description ?? p.Name ?? "",
+            audioUrl = p.AudioUrl ?? "",
+            imageUrl = ResolveImageUrl(p),
+            lat = p.Lat,
+            lng = p.Lng
+        }));
+
+        var cards = new System.Text.StringBuilder();
+        foreach (var poi in pois)
+        {
+            string category = poi.Priority switch
+            {
+                1 => "🐚 Ốc",
+                2 => "🔥 Nướng & Lẩu",
+                _ => "🍡 Ăn vặt"
+            };
+            string categoryColor = poi.Priority switch
+            {
+                1 => "#0ea5e9",
+                2 => "#f97316",
+                _ => "#a855f7"
+            };
+
+            string imageUrl = ResolveImageUrl(poi);
+            string mapsUrl = (poi.Lat != 0 && poi.Lng != 0)
+                ? $"https://www.google.com/maps/search/?api=1&query={poi.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{poi.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
+                : $"https://www.google.com/maps/search/?api=1&query={System.Net.WebUtility.UrlEncode(poi.Address + " " + poi.Name)}";
+
+            string imageHtml = !string.IsNullOrEmpty(imageUrl)
+                ? $"<img src='{imageUrl}' class='card-img' alt='{System.Net.WebUtility.HtmlEncode(poi.Name)}' onerror=\"this.style.display='none'\">"
+                : "<div class='card-img-placeholder'>🍲</div>";
+
+            string addressHtml = !string.IsNullOrWhiteSpace(poi.Address)
+                ? $"<a href='{mapsUrl}' target='_blank' class='card-address'><span style='font-size:14px'>📍</span> <span>{System.Net.WebUtility.HtmlEncode(poi.Address)}</span></a>"
+                : "";
+
+            string descHtml = !string.IsNullOrWhiteSpace(poi.Description)
+                ? $"<p class='card-desc'>{System.Net.WebUtility.HtmlEncode(poi.Description)}</p>"
+                : "";
+
+            cards.Append($@"
+        <div class='card'>
+            <div class='card-img-wrap'>
+                <div class='cat-badge'><span>{category}</span></div>
+                {imageHtml}
+            </div>
+            <div class='card-content'>
+                <h3 class='card-title'>{System.Net.WebUtility.HtmlEncode(poi.Name)}</h3>
+                {addressHtml}
+                {descHtml}
+                <div id='player-{poi.Id}' class='player-wrap' style='display:none;'></div>
+                <button id='btn-{poi.Id}' class='btn-play' onclick=""playPOI({poi.Id})"">🔊 Phát Thuyết Minh</button>
+            </div>
+        </div>");
+        }
+
+        return $@"<!DOCTYPE html>
+<html lang='vi'>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Phố Ẩm Thực Vĩnh Khánh</title>
+    <style>
+        :root {{ --primary: #e74c3c; --bg: #f8fafc; --card: #ffffff; }}
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            color: #1e293b;
+            padding-bottom: 40px;
+        }}
+        #content {{ display: none; }}
+        #loading {{ display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }}
+        .spinner {{
+            width: 44px; height: 44px; border: 4px solid #fee2e2; border-top-color: #e74c3c; border-radius: 50%; animation: spin 1s linear infinite;
+        }}
+        @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+
+        /* ─── Header ─── */
+        .hero {{
+            background: linear-gradient(135deg, #e74c3c 0%, #f97316 100%);
+            color: white;
+            padding: 50px 20px 70px;
+            text-align: center;
+            border-radius: 0 0 32px 32px;
+            box-shadow: 0 10px 20px -5px rgba(231,76,60,0.3);
+            margin-bottom: -40px;
+        }}
+        .hero h1 {{ font-size: 28px; font-weight: 800; margin: 0 0 12px; letter-spacing: -0.5px; }}
+        .hero p {{ font-size: 15px; opacity: 0.9; margin: 0 0 20px; line-height: 1.5; }}
+        .badge-quota {{
+            background: rgba(0,0,0,0.2); padding: 8px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; backdrop-filter: blur(4px);
+        }}
+
+        /* ─── List ─── */
+        .container {{ max-width: 520px; margin: 0 auto; padding: 0 16px; position: relative; z-index: 10; }}
+
+        /* ─── Card ─── */
+        .card {{
+            background: var(--card); border-radius: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05); margin-bottom: 20px; overflow: hidden; border: 1px solid #f1f5f9; transition: transform 0.2s;
+        }}
+        .card:hover {{ transform: translateY(-2px); }}
+        .card-img-wrap {{ position: relative; height: 180px; background: #e2e8f0; }}
+        .card-img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
+        .card-img-placeholder {{ width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; background: linear-gradient(135deg, #fce7f3, #fed7aa); }}
+        .cat-badge {{ position: absolute; top: 16px; left: 16px; background: rgba(255,255,255,0.95); color: #000; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; backdrop-filter: blur(4px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        .card-content {{ padding: 20px; }}
+        .card-title {{ font-size: 20px; font-weight: 800; margin: 0 0 10px; line-height: 1.3; color: #0f172a; }}
+        .card-address {{ display: inline-flex; align-items: flex-start; gap: 6px; font-size: 13px; color: var(--primary); text-decoration: none; font-weight: 600; margin-bottom: 12px; line-height: 1.4; }}
+        .card-desc {{ color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 20px; }}
+        
+        .player-wrap {{ background: #f8fafc; border-radius: 16px; padding: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0; }}
+        .player-wrap audio {{ width: 100%; height: 40px; outline: none; border-radius: 8px; }}
+        
+        .btn-play {{
+            background: var(--primary); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(231,76,60,0.2);
+        }}
+
+        /* ─── Footer ─── */
+        .footer-cta {{ margin-top: 40px; text-align: center; background: white; padding: 32px 20px; border-radius: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
+        .footer-cta h3 {{ margin: 0 0 8px; font-size: 20px; font-weight: 800; color: #0f172a; }}
+        .footer-cta p {{ margin: 0 0 20px; color: #64748b; font-size: 14px; line-height: 1.5; }}
+        .btn-dark {{ background: #0f172a; color: white; text-decoration: none; padding: 14px 24px; border-radius: 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; width: 100%; justify-content: center; }}
+    </style>
+</head>
+<body>
+    <div id='loading'>
+        <div class='spinner'></div>
+        <p style='margin-top: 16px; color: #475569; font-weight: 600;'>Đang mở ứng dụng...</p>
+    </div>
+
+    <div id='content'>
+        <div class='hero'>
+            <h1>🍜 Phố Ẩm Thực Vĩnh Khánh</h1>
+            <p>Trải nghiệm văn hóa ẩm thực Sài Gòn độc đáo. Chạm để nghe thuyết minh miễn phí ngay tại đây.</p>
+            <div class='badge-quota'>🔊 Còn <span id='scan-count'>{scanLimit.ScanCount}</span> / {scanLimit.MaxScans} lượt nghe</div>
+        </div>
+
+        <div class='container'>
+            {cards}
+
+            <div class='footer-cta'>
+                <h3>Khám phá Bản đồ Ẩm thực</h3>
+                <p>Tải ứng dụng Vĩnh Khánh Food Tour để định vị quán ngon, quét QR nhanh và nghe thuyết minh không giới hạn!</p>
+                <a href='/api/download/app-apk' class='btn-dark'>⬇️ Tải App Miễn Phí</a>
+            </div>
+        </div>
+    </div>
+
+    <div id='limit-modal' class='modal-overlay'>
+        <div class='modal-box'>
+            <div style='font-size:54px; margin-bottom:16px; line-height:1;'>🛑</div>
+            <div style='font-size:22px; font-weight:800; color:#ef4444; margin-bottom:12px;'>Đã Hết Lượt Nghe!</div>
+            <div style='font-size:15px; color:#64748b; margin-bottom:24px; line-height:1.6;'>Bạn đã sử dụng hết {scanLimit.MaxScans} lượt miễn phí hôm nay. Cài đặt App để tiếp tục nghe không giới hạn nhé!</div>
+            <a href='/api/download/app-apk' class='btn-dark' style='background:#ef4444;'>⬇️ Tải Ứng Dụng Ngay</a>
+            <button onclick='document.getElementById(""limit-modal"").style.display=""none""' style='background:none; border:none; color:#94a3b8; margin-top:16px; font-size:15px; font-weight:600; cursor:pointer; width:100%; padding:8px;'>Để sau</button>
+        </div>
+    </div>
+
+    <script>
+        var appOpened = false;
+        var appDeepLink = 'vinhkhanhtour://foodstreet';
+
+        document.addEventListener('visibilitychange', function () {{
+            if (document.hidden) appOpened = true;
+        }});
+        window.addEventListener('blur', function () {{
+            appOpened = true;
+        }});
+
+        // 1. Thử mở app bằng Deep Link
+        setTimeout(function () {{
+            window.location.href = appDeepLink;
+        }}, 50);
+
+        // 2. Nếu chưa cài app thì sau 2.5s sẽ tắt màn hình Loading và hiện danh sách quán trên Web
+        setTimeout(function () {{
+            if (!appOpened) {{
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+            }}
+        }}, 2500);
+
+        var currentScans = {scanLimit.ScanCount};
+        var maxScans = {scanLimit.MaxScans};
+        var deviceId = '{deviceId}';
+        var currentAudio = null;
+        var isTTSPlaying = false;
+        var currentTTSId = null;
+
+        // POI data injected server-side as JSON — no encoding issues with Vietnamese text
+        var poisData = {poisJson};
+
+        function playPOI(id) {{
+            var poi = poisData.find(function(p) {{ return p.id === id; }});
+            if (!poi) return;
+            playAudio(id, poi.audioUrl, poi.desc);
+        }}
+
+        function playAudio(id, audioSrc, ttsText) {{
+            if (currentScans >= maxScans) {{
+                document.getElementById('limit-modal').style.display = 'flex';
+                return;
+            }}
+
+            if (currentAudio) {{ currentAudio.pause(); currentAudio = null; }}
+            if (isTTSPlaying) {{ window.speechSynthesis.cancel(); isTTSPlaying = false; }}
+
+            // Ẩn tất cả player đang mở, hiện lại nút bấm ở các thẻ khác
+            document.querySelectorAll('.player-wrap').forEach(function(el) {{ el.style.display = 'none'; }});
+            document.querySelectorAll('.btn-play').forEach(function(el) {{ el.style.display = 'flex'; }});
+
+            var playerDiv = document.getElementById('player-' + id);
+            var btn = document.getElementById('btn-' + id);
+
+            btn.style.display = 'none';
+            playerDiv.style.display = 'block';
+            currentScans++;
+            document.getElementById('scan-count').innerText = currentScans;
+
+            if (audioSrc) {{
+                playerDiv.innerHTML = '<div style=""font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #e74c3c;"">🎧 Đang phát âm thanh...</div>'
+                    + '<audio controls autoplay><source src=""' + audioSrc + '"" type=""audio/mpeg""></audio>';
+                currentAudio = playerDiv.querySelector('audio');
+            }} else {{
+                currentTTSId = id;
+                playerDiv.innerHTML = '<div style=""font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #f97316;"">🤖 Đang phát AI...</div>'
+                    + '<button onclick=""stopTTS()"" class=""btn-play"" style=""background:#f97316;"">⏸️ Dừng phát AI</button>';
+                var utterance = new SpeechSynthesisUtterance(ttsText);
+                utterance.lang = 'vi-VN';
+                utterance.onend = function() {{
+                    isTTSPlaying = false;
+                    playerDiv.innerHTML = '<div style=""font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #e74c3c;"">🎧 Thuyết Minh AI</div>'
+                        + '<button onclick=""replayTTS(' + id + ')"" class=""btn-play"">▶️ Nghe lại AI</button>';
+                }};
+                window.speechSynthesis.speak(utterance);
+                isTTSPlaying = true;
+            }}
+
+            // Bắn tín hiệu về server để tăng lượt nghe và ghi lịch sử
+            var _poi = poisData.find(function(p) {{ return p.id === id; }});
+            var _poiName = _poi ? encodeURIComponent(_poi.name) : '';
+            fetch('/api/qrscans/track-listen?deviceId=' + deviceId + '&poiId=' + id + '&poiName=' + _poiName, {{ method: 'POST' }});
+        }}
+
+        function stopTTS() {{
+            if (isTTSPlaying) {{ window.speechSynthesis.cancel(); isTTSPlaying = false; }}
+        }}
+
+        function replayTTS(id) {{
+            var poi = poisData.find(function(p) {{ return p.id === id; }});
+            if (!poi) return;
+            if (isTTSPlaying) {{ window.speechSynthesis.cancel(); isTTSPlaying = false; }}
+            var playerDiv = document.getElementById('player-' + id);
+            playerDiv.innerHTML = '<div style=""font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #f97316;"">🤖 Đang phát AI...</div>'
+                + '<button onclick=""stopTTS()"" class=""btn-play"" style=""background:#f97316;"">⏸️ Dừng phát AI</button>';
+            var utterance = new SpeechSynthesisUtterance(poi.desc);
+            utterance.lang = 'vi-VN';
+            utterance.onend = function() {{
+                isTTSPlaying = false;
+                playerDiv.innerHTML = '<div style=""font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #e74c3c;"">🎧 Thuyết Minh AI</div>'
+                    + '<button onclick=""replayTTS(' + id + ')"" class=""btn-play"">▶️ Nghe lại AI</button>';
+            }};
+            window.speechSynthesis.speak(utterance);
+            isTTSPlaying = true;
+        }}
+    </script>
+</body>
+</html>";
+    }
+
+    private static string BuildLimitExceededHtml()
+    {
+        string downloadUrl = "/api/download/app-apk";
+        return $@"
+<!DOCTYPE html>
+<html lang='vi'>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Đã hết lượt nghe miễn phí</title>
+    <style>
+        body {{
+            font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; 
+            display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; color: #0f172a;
+        }}
+        .card {{
+            background: white; border-radius: 24px; padding: 40px 24px; max-width: 400px; width: 100%; 
+            text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid #f1f5f9;
+        }}
+        .icon {{ 
+            width: 80px; height: 80px; background: #fee2e2; border-radius: 50%; display: flex; 
+            align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 24px; box-shadow: 0 0 0 10px #fef2f2; 
+        }}
+        .title {{ font-size: 24px; font-weight: 800; margin: 0 0 12px; color: #ef4444; }}
+        .desc {{ font-size: 15px; color: #64748b; line-height: 1.6; margin: 0 0 32px; }}
+        .btn {{ display: inline-block; background: #0f172a; color: white; text-decoration: none; padding: 16px 24px; border-radius: 16px; font-weight: 700; width: 100%; box-sizing: border-box; }}
+    </style>
+</head>
+<body>
+    <div class='card'>
+        <div class='icon'>🎧</div>
+        <h1 class='title'>Đã Hết Lượt Miễn Phí</h1>
+        <p class='desc'>Bạn đã sử dụng hết 5 lượt nghe thử. Tải ngay ứng dụng Vĩnh Khánh Food Tour để tiếp tục khám phá bản đồ ẩm thực không giới hạn!</p>
+        <a href='{downloadUrl}' class='btn'>⬇️ Tải App Ngay</a>
+    </div>
+</body>
+</html>";
     }
 }
