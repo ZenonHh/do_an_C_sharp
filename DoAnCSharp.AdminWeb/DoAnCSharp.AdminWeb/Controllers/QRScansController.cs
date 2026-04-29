@@ -263,8 +263,9 @@ public class QRScansController : ControllerBase
 
             _logger.LogInformation("Quét QR thành công: {QRCode} → POI {POIId} từ device {DeviceId}. Lượt quét: {ScanCount}/{MaxScans}", code, poi.Id, deviceId, scanLimit.ScanCount, scanLimit.MaxScans);
 
-            // Redirect to POI detail page
-            return Redirect($"/poi-detail.html?poiId={poi.Id}");
+            // ✅ FIX: Redirect to POI public listing instead of detail page
+            // This allows users to see the full restaurant list first from the QR scan
+            return Redirect($"/poi-public.html?poiId={poi.Id}&deviceId={Uri.EscapeDataString(deviceId)}");
         }
         catch (Exception ex)
         {

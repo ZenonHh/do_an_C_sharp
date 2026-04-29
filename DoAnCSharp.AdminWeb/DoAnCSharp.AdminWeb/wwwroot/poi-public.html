@@ -451,6 +451,15 @@
             to { transform: rotate(360deg); }
         }
 
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 6px 20px rgba(0,0,0,0.08), 0 0 0 0 rgba(232, 93, 4, 0.7);
+            }
+            50% {
+                box-shadow: 0 6px 20px rgba(0,0,0,0.08), 0 0 0 10px rgba(232, 93, 4, 0);
+            }
+        }
+
         @media (max-width: 768px) {
             .pois-grid {
                 grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -764,7 +773,7 @@
                     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address + ' ' + restaurant.name)}`;
 
                 html += `
-                    <div class="restaurant-card">
+                    <div class="restaurant-card" data-poi-id="${restaurant.id}">
                         <div class="poi-image">
                             <img src="${imageUrl}" alt="${restaurant.name}" onerror="this.src='/images/placeholder.jpg'" style="width: 100%; height: 100%; object-fit: cover;">
                             <div class="card-category-badge">${category}</div>
@@ -864,6 +873,17 @@
                 showNotification('❌ Không tìm thấy quán ăn', 'error');
             } else if (error === 'system_error') {
                 showNotification('❌ Lỗi hệ thống, vui lòng thử lại', 'error');
+            }
+
+            // If poiId is in URL, highlight that restaurant
+            if (poiId) {
+                setTimeout(() => {
+                    const restaurantCard = document.querySelector(`[data-poi-id="${poiId}"]`);
+                    if (restaurantCard) {
+                        restaurantCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        restaurantCard.style.animation = 'pulse 0.5s ease-in-out 3';
+                    }
+                }, 500);
             }
 
             // Clean URL (remove query parameters)
