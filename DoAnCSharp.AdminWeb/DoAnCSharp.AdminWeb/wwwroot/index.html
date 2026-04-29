@@ -6,7 +6,9 @@
     <title>Vĩnh Khánh Tour - Admin Dashboard</title>
     <link rel="stylesheet" href="/css/admin_modern.css?v=2.0" />
     <link rel="stylesheet" href="/css/devices.css?v=2.0" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <script src="/js/admin-features.js?v=2.0" defer></script>
+    <script src="/js/dashboard.js?v=1.0" defer></script>
     <script src="/js/qr-scanner.js?v=1.0" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
@@ -18,6 +20,9 @@
             <h1 style="margin: 0; font-size: 26px; color: #2c3e50; font-weight: 700;">🍴 Vĩnh Khánh Tour - Admin Dashboard</h1>
             <p style="margin: 3px 0 0 0; color: #7f8c8d; font-size: 13px;">Quản lý quán ăn, người dùng, thanh toán và lịch sử phát</p>
           </div>
+          <a href="/master-qr.html" style="padding: 10px 16px; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+            📱 Master QR
+          </a>
         </div>
         <div class="tabs">
           <button class="tab-btn active" onclick="switchTab('dashboard')">
@@ -89,6 +94,22 @@
           <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;">
             <div id="topScannedPOIs" style="flex:1; min-width:300px;" class="loading"><div class="spinner"></div></div>
             <div id="topPOIsChart" style="flex:0 0 320px; background:white; border-radius:10px; padding:22px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); align-self:flex-start;"></div>
+          </div>
+
+          <!-- Charts Section -->
+          <div style="margin-top: 40px;">
+            <h3>📈 Biểu Đồ Lượt Nghe</h3>
+            <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-top: 15px;">
+              <canvas id="scansChart" style="max-width: 100%; max-height: 400px;"></canvas>
+            </div>
+          </div>
+
+          <!-- Device Activity Chart -->
+          <div style="margin-top: 40px;">
+            <h3>📱 Hoạt Động Thiết Bị</h3>
+            <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-top: 15px;">
+              <canvas id="deviceChart" style="max-width: 100%; max-height: 300px;"></canvas>
+            </div>
           </div>
 
         </div>

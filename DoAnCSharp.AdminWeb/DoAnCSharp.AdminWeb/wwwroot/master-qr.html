@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master QR Code - Vĩnh Khánh Tour</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+        }
+
+        .container {
+            background: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #E85D04 0%, #D84315 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(232, 93, 4, 0.2);
+        }
+
+        .header .logo {
+            font-size: 48px;
+            margin-bottom: 15px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin: 10px 0;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+            margin: 8px 0;
+        }
+
+        .content-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .qr-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+        .qr-section h3 {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        #qrDisplay {
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .qr-container {
+            border: 3px solid #E85D04;
+            border-radius: 12px;
+            padding: 15px;
+            background: white;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(232, 93, 4, 0.2);
+        }
+
+        .qr-container img {
+            width: 280px;
+            height: 280px;
+            display: block;
+        }
+
+        #qrInfo {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #E85D04;
+            margin-top: 20px;
+        }
+
+        .qr-info-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #ecf0f1;
+            text-align: left;
+        }
+
+        .qr-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .qr-info-label {
+            font-weight: 600;
+            color: #E85D04;
+            min-width: 100px;
+            font-size: 14px;
+        }
+
+        .qr-info-value {
+            color: #2c3e50;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            flex: 1;
+            margin-left: 15px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            flex-direction: column;
+            margin-bottom: 25px;
+        }
+
+        .action-buttons .btn {
+            padding: 14px 24px;
+            font-size: 16px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .action-buttons .btn-primary {
+            background: linear-gradient(135deg, #E85D04 0%, #D84315 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(232, 93, 4, 0.3);
+        }
+
+        .action-buttons .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(232, 93, 4, 0.4);
+        }
+
+        .action-buttons .btn-secondary {
+            background: white;
+            color: #E85D04;
+            border: 2px solid #E85D04;
+        }
+
+        .action-buttons .btn-secondary:hover {
+            background: #fff3e0;
+        }
+
+        .features {
+            background: white;
+            border-radius: 16px;
+            padding: 30px 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .features h3 {
+            font-size: 20px;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-item {
+            text-align: center;
+            padding: 15px;
+            border-radius: 12px;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+
+        .feature-item:hover {
+            background: #fff3e0;
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .feature-text {
+            font-size: 14px;
+            color: #555;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                padding: 30px 15px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .header p {
+                font-size: 14px;
+            }
+
+            .qr-container img {
+                width: 220px;
+                height: 220px;
+            }
+
+            .feature-list {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .copy-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🍴</div>
+            <h1>Master QR Code</h1>
+            <p>Mã quét chính cho khách tham quan</p>
+        </div>
+
+        <div class="content-wrapper">
+            <div class="qr-section">
+                <h3>📱 Mã QR của bạn</h3>
+                <div id="qrDisplay">
+                    <div class="loading"></div>
+                    <p style="margin-top: 15px; color: #7f8c8d;">Đang tạo mã QR...</p>
+                </div>
+
+                <div id="qrInfo" style="display: none;">
+                    <div class="qr-info-item">
+                        <span class="qr-info-label">📍 URL:</span>
+                        <span class="qr-info-value" id="qrUrl"></span>
+                    </div>
+                    <div class="qr-info-item">
+                        <span class="qr-info-label">🔑 Mã:</span>
+                        <span class="qr-info-value" id="qrCode"></span>
+                    </div>
+                    <div class="qr-info-item">
+                        <span class="qr-info-label">⏰ Cập nhật:</span>
+                        <span class="qr-info-value" id="qrUpdated"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="downloadQR()">
+                    ⬇️ Tải QR Code
+                </button>
+                <button class="btn btn-secondary" onclick="printQR()">
+                    🖨️ In Mã QR
+                </button>
+                <button class="btn btn-secondary" onclick="copyToClipboard()">
+                    📋 Copy URL
+                </button>
+            </div>
+
+            <div class="features">
+                <h3>✨ Hướng Dẫn Sử Dụng</h3>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">1️⃣</div>
+                        <div class="feature-text">Tải mã QR</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">2️⃣</div>
+                        <div class="feature-text">In & dán tại quán</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">3️⃣</div>
+                        <div class="feature-text">Khách quét mã</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">4️⃣</div>
+                        <div class="feature-text">Nghe thuyết minh</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let qrImageUrl = '';
+        let qrCodeValue = 'FOODSTREET_VINHKHANH';
+
+        // Generate Master QR
+        async function generateMasterQR() {
+            try {
+                const response = await fetch('/api/pois/foodstreet-qr');
+                const data = await response.json();
+
+                qrImageUrl = data.qrImageUrl;
+                qrCodeValue = 'FOODSTREET_VINHKHANH';
+
+                // Update display with image from qrserver
+                document.getElementById('qrDisplay').innerHTML = `
+                    <div class="qr-container">
+                        <img src="${qrImageUrl}" alt="Master QR Code" />
+                    </div>
+                `;
+
+                document.getElementById('qrUrl').textContent = data.webUrl;
+                document.getElementById('qrCode').textContent = qrCodeValue;
+                document.getElementById('qrUpdated').textContent = new Date().toLocaleString('vi-VN');
+                document.getElementById('qrInfo').style.display = 'block';
+            } catch (error) {
+                console.error('Error generating QR:', error);
+                document.getElementById('qrDisplay').innerHTML = `
+                    <div class="error">
+                        ❌ Lỗi khi tạo mã QR: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function downloadQR() {
+            if (!qrImageUrl) return;
+            const link = document.createElement('a');
+            link.href = qrImageUrl;
+            link.download = `master-qr-${qrCodeValue}.png`;
+            link.click();
+        }
+
+        function printQR() {
+            if (!qrImageUrl) return;
+            const printWindow = window.open('', '', 'width=600,height=700');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>In Mã QR</title>
+                    <style>
+                        body { text-align: center; padding: 20px; font-family: Arial; }
+                        h1 { color: #2c3e50; }
+                        img { max-width: 400px; margin: 20px 0; }
+                        p { color: #7f8c8d; }
+                    </style>
+                </head>
+                <body>
+                    <h1>🍴 Vĩnh Khánh Tour</h1>
+                    <p>Quét mã QR để xem danh sách quán ăn</p>
+                    <img src="${qrImageUrl}" />
+                    <p>URL: ${document.getElementById('qrUrl').textContent}</p>
+                </body>
+                </html>
+            `);
+            printWindow.print();
+        }
+
+        function copyToClipboard() {
+            const url = document.getElementById('qrUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                const notification = document.createElement('div');
+                notification.className = 'copy-notification';
+                notification.textContent = '✅ Đã sao chép URL!';
+                document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 2000);
+            });
+        }
+
+        // Load on page init
+        document.addEventListener('DOMContentLoaded', generateMasterQR);
+    </script>
+</body>
+</html>

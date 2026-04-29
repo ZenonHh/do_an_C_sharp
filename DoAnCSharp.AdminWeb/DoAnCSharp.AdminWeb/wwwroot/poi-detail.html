@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi Tiết Quán Ăn - Vĩnh Khánh Tour</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        html {
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            background: #f5f7fa;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        .detail-page-wrapper {
+            background: white;
+            min-height: 100vh;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        .detail-hero-section {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #E85D04 0%, #D84315 100%);
+        }
+
+        .detail-hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 10;
+        }
+
+        .back-button {
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .detail-content {
+            background: #f5f7fa;
+            padding: 20px;
+            max-width: 100%;
+            width: 100%;
+            margin: 0 auto;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        .card-section {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .restaurant-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 12px;
+        }
+
+        .restaurant-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        .rating-badge {
+            background: linear-gradient(135deg, #E85D04 0%, #D84315 100%);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .address-info {
+            color: #7f8c8d;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title-card {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .language-buttons-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .lang-button {
+            padding: 10px 14px;
+            border: 2px solid #ecf0f1;
+            background: white;
+            color: #7f8c8d;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .lang-button:hover {
+            border-color: #E85D04;
+            color: #E85D04;
+        }
+
+        .lang-button.active {
+            border-color: #E85D04;
+            background: linear-gradient(135deg, #E85D04 0%, #D84315 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(232, 93, 4, 0.3);
+        }
+
+        .section-description {
+            color: #555;
+            font-size: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+        }
+
+        .audio-section-card {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe8cc 100%);
+            border: 2px solid #E85D04;
+        }
+
+        .audio-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .free-trial-badge {
+            background: #E85D04;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .btn-play-audio {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #E85D04 0%, #D84315 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(232, 93, 4, 0.2);
+        }
+
+        .btn-play-audio:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(232, 93, 4, 0.3);
+        }
+
+        .btn-download-app {
+            width: 100%;
+            padding: 14px;
+            background: white;
+            color: #E85D04;
+            border: 2px solid #E85D04;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-download-app:hover {
+            background: #ffe8cc;
+            transform: scale(1.02);
+        }
+
+        .footer-attribution {
+            text-align: center;
+            padding: 20px;
+            color: #95a5a6;
+            font-size: 13px;
+            margin-top: 20px;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0,0,0,0.1);
+            border-top-color: #E85D04;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            margin-top: 15px;
+            color: #7f8c8d;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .error-container {
+            background: white;
+            border-left: 4px solid #ef4444;
+            color: #2c3e50;
+            padding: 40px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            margin: 30px 20px;
+        }
+
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .error-container h2 {
+            color: #ef4444;
+            font-size: 20px;
+            margin: 10px 0 20px 0;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            border-left: 4px solid;
+        }
+
+        .notification.success {
+            border-left-color: #10b981;
+            color: #10b981;
+        }
+
+        .notification.error {
+            border-left-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .notification.warning {
+            border-left-color: #f97316;
+            color: #f97316;
+        }
+
+        .notification.info {
+            border-left-color: #E85D04;
+            color: #E85D04;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .detail-hero-section {
+                height: 220px;
+            }
+
+            .detail-content {
+                padding: 15px;
+            }
+
+            .restaurant-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .restaurant-title {
+                font-size: 20px;
+            }
+
+            .card-section {
+                padding: 16px;
+                margin-bottom: 12px;
+            }
+
+            .language-buttons-group {
+                gap: 8px;
+            }
+
+            .lang-button {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+        }
+
+        /* Listening History Styles - Removed (UI hidden) */
+    </style>
+</head>
+<body>
+    <div class="detail-page-wrapper">
+        <!-- Hero Image -->
+        <div class="detail-hero-section">
+            <img id="heroImage" class="detail-hero-image" src="/images/placeholder.jpg" alt="Restaurant" onerror="this.src='/images/placeholder.jpg'">
+            <div class="hero-overlay">
+                <button class="back-button" onclick="goBack()">←</button>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="detail-content" id="content">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Đang tải thông tin quán...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLanguage = 'vi';
+        let currentPOI = null;
+        let isSpeaking = false;
+        let currentDeviceId = null;
+        let currentScanLimit = null;
+        let listeningHistory = []; // Track listening history
+
+        // Translation dictionary for UI and descriptions
+        const translations = {
+            'Ốc Oanh': {
+                'en': 'Snail Oanh',
+                'ja': 'オークオアン',
+                'ru': 'Улитка Оан',
+                'zh': '蜗牛Oanh'
+            },
+            'Ốc Vũ': {
+                'en': 'Snail Vu',
+                'ja': 'オークヴー',
+                'ru': 'Улитка Ву',
+                'zh': '蜗牛Vũ'
+            },
+            // Vietnamese descriptions with translations
+            'vinh_khanh_description': {
+                'vi': 'Phố ẩm thực nổi tiếng Vĩnh Khánh - Nơi tụ họp của những hàng quán ăn truyền thống và hiện đại',
+                'en': 'Famous food street Vinh Khanh - A gathering place of traditional and modern restaurants',
+                'ja': 'ベトナムの有名なグルメストリート「ビンカン」 - 伝統的でモダンなレストランが集まる場所',
+                'ru': 'Знаменитая улица с едой Виньхань - Место сосредоточения традиционных и современных ресторанов',
+                'zh': '著名美食街永康 - 传统和现代餐厅的聚集地'
+            }
+        };
+
+        // Get or create device ID
+        function getOrCreateDeviceId() {
+            const params = new URLSearchParams(window.location.search);
+            let deviceId = params.get('deviceId');
+
+            if (!deviceId) {
+                deviceId = getCookie('vkt_device_id');
+            }
+
+            if (!deviceId) {
+                deviceId = 'device_web_' + generateUUID();
+            }
+
+            setCookie('vkt_device_id', deviceId, 365);
+            return deviceId;
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + '=';
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                let c = cookies[i].trim();
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length);
+            }
+            return null;
+        }
+
+        function setCookie(name, value, days) {
+            const expires = new Date();
+            expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+            document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+        }
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // Get POI ID from URL
+        function getPOIIdFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('poiId') || params.get('id');
+        }
+
+        // Load POI details
+        async function loadPOIDetails() {
+            const poiId = getPOIIdFromURL();
+            if (!poiId) {
+                showError('Không tìm thấy ID quán ăn');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/pois/${poiId}`);
+                if (!response.ok) {
+                    throw new Error('Không tìm thấy quán ăn');
+                }
+
+                currentPOI = await response.json();
+                currentDeviceId = getOrCreateDeviceId();
+
+                // Normalize field names - ensure we have data in both camelCase and PascalCase formats for compatibility
+                // API returns PascalCase, but we also check camelCase for backward compatibility
+                currentPOI.description = currentPOI.description || currentPOI.Description || '';
+                currentPOI.descriptionEn = currentPOI.descriptionEn || currentPOI.DescriptionEn || '';
+                currentPOI.descriptionJa = currentPOI.descriptionJa || currentPOI.DescriptionJa || '';
+                currentPOI.descriptionRu = currentPOI.descriptionRu || currentPOI.DescriptionRu || '';
+                currentPOI.descriptionZh = currentPOI.descriptionZh || currentPOI.DescriptionZh || '';
+
+                // Also normalize Name, Address
+                currentPOI.name = currentPOI.name || currentPOI.Name || '';
+                currentPOI.address = currentPOI.address || currentPOI.Address || '';
+
+                // Normalize image URL - try multiple properties
+                let imageUrl = currentPOI.imageUrl || 
+                              currentPOI.ImageUrl || 
+                              currentPOI.imageAsset ||
+                              currentPOI.ImageAsset ||
+                              '/images/placeholder.jpg';
+
+                // If imageAsset is just a filename without path, construct the full URL
+                if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/images/')) {
+                    imageUrl = `/images/restaurants/${imageUrl}`;
+                }
+
+                // Set hero image immediately
+                const heroImage = document.getElementById('heroImage');
+                if (heroImage) {
+                    heroImage.src = imageUrl;
+                    heroImage.onerror = function() { this.src = '/images/placeholder.jpg'; };
+                }
+
+                await checkScanLimit();
+                loadListeningHistory();
+                renderPOIDetails();
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        // Load listening history from localStorage
+        function loadListeningHistory() {
+            const poiId = getPOIIdFromURL();
+            const storageKey = `listening_history_${poiId}`;
+            const stored = localStorage.getItem(storageKey);
+            listeningHistory = stored ? JSON.parse(stored) : [];
+        }
+
+        // Add listening history
+        function addToListeningHistory() {
+            const poiId = getPOIIdFromURL();
+            const now = new Date();
+            const timestamp = now.toLocaleString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
+            const historyItem = {
+                timestamp: timestamp,
+                language: currentLanguage === 'vi' ? 'Tiếng Việt' : 'English',
+                device: currentDeviceId.substring(0, 10) + '...'
+            };
+
+            listeningHistory.unshift(historyItem);
+
+            // Keep only last 10 records
+            if (listeningHistory.length > 10) {
+                listeningHistory = listeningHistory.slice(0, 10);
+            }
+
+            // Save to localStorage
+            const storageKey = `listening_history_${poiId}`;
+            localStorage.setItem(storageKey, JSON.stringify(listeningHistory));
+
+            // Note: UI rendering removed, only backend tracking retained
+        }
+
+        // Render listening history
+        function renderListeningHistory() {
+            const historyContainer = document.getElementById('historyContainer');
+            if (!historyContainer) return;
+
+            if (listeningHistory.length === 0) {
+                historyContainer.innerHTML = '<div class="history-empty">Chưa có lịch sử nghe</div>';
+                return;
+            }
+
+            const historyHtml = listeningHistory.map((item, index) => `
+                <div class="history-item">
+                    <span class="history-number">#${index + 1}</span>
+                    <span class="history-time">${item.timestamp}</span>
+                    <span class="history-lang">${item.language}</span>
+                </div>
+            `).join('');
+
+            historyContainer.innerHTML = historyHtml;
+        }
+
+        // Check scan limit
+        async function checkScanLimit() {
+            try {
+                const response = await fetch(`/api/qrscans/scan-limit?deviceId=${encodeURIComponent(currentDeviceId)}`);
+                if (!response.ok) {
+                    currentScanLimit = {
+                        deviceId: currentDeviceId,
+                        scanCount: 0,
+                        maxScans: 5
+                    };
+                } else {
+                    currentScanLimit = await response.json();
+                }
+                updateScanInfo();
+            } catch (error) {
+                console.warn('Could not check scan limit:', error);
+                currentScanLimit = {
+                    deviceId: currentDeviceId,
+                    scanCount: 0,
+                    maxScans: 5
+                };
+                updateScanInfo();
+            }
+        }
+
+        // Update scan info display
+        function updateScanInfo() {
+            if (currentScanLimit) {
+                const remaining = Math.max(0, currentScanLimit.maxScans - currentScanLimit.scanCount);
+                // Only update if element exists
+                const remainingListens = document.getElementById('remainingListens');
+                if (remainingListens) {
+                    remainingListens.textContent = currentScanLimit.scanCount;
+                }
+            }
+        }
+
+        // Track listening history
+        async function trackListeningHistory() {
+            try {
+                const poiId = getPOIIdFromURL();
+                const response = await fetch(`/api/qrscans/track-listen?deviceId=${encodeURIComponent(currentDeviceId)}&poiId=${poiId}`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    currentScanLimit.scanCount = result.scans;
+                    updateScanInfo();
+                    // Add to listening history UI
+                    addToListeningHistory();
+                }
+            } catch (error) {
+                console.warn('Could not track listening:', error);
+                // Still add to local history even if API fails
+                addToListeningHistory();
+            }
+        }
+
+        // Get description for specific language
+        function getDescriptionByLanguage(lang) {
+            if (!currentPOI) return '';
+
+            // Try to get translated description from API first
+            let description = '';
+            switch(lang) {
+                case 'en': 
+                    description = currentPOI.descriptionEn || currentPOI.DescriptionEn || '';
+                    break;
+                case 'ja': 
+                    description = currentPOI.descriptionJa || currentPOI.DescriptionJa || '';
+                    break;
+                case 'ru': 
+                    description = currentPOI.descriptionRu || currentPOI.DescriptionRu || '';
+                    break;
+                case 'zh': 
+                    description = currentPOI.descriptionZh || currentPOI.DescriptionZh || '';
+                    break;
+                default: 
+                    description = currentPOI.description || currentPOI.Description || '';
+            }
+
+            // Log for debugging
+            console.log(`getDescriptionByLanguage(${lang}) =`, {
+                result: description.substring(0, 50),
+                hasDescriptionEn: !!currentPOI.descriptionEn,
+                hasDescriptionEn2: !!currentPOI.DescriptionEn,
+                allKeys: Object.keys(currentPOI)
+            });
+
+            // If no translation from API, use fallback Vietnamese with basic English/Japanese names
+            if (!description || description.trim().length === 0) {
+                // Use Vietnamese description as fallback
+                description = currentPOI.description || currentPOI.Description || 'Không có mô tả';
+                console.log(`Fallback to Vietnamese: "${description.substring(0, 50)}..."`);
+            }
+
+            return description;
+        }
+
+        // Render POI details with card-based layout matching mockup
+        function renderPOIDetails() {
+            if (!currentPOI) return;
+
+            // Handle image URL properly
+            let imageUrl = currentPOI.imageUrl || 
+                          currentPOI.ImageUrl || 
+                          currentPOI.imageAsset ||
+                          currentPOI.ImageAsset ||
+                          '/images/placeholder.jpg';
+
+            if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/images/')) {
+                imageUrl = `/images/restaurants/${imageUrl}`;
+            }
+
+            const address = currentPOI.address || currentPOI.Address || 'Không có thông tin địa chỉ';
+            const phone = currentPOI.phone || currentPOI.Phone || 'Không có thông tin điện thoại';
+            const rating = currentPOI.rating || currentPOI.Rating || 5.0;
+
+            // Get description based on CURRENT language
+            const description = getDescriptionByLanguage(currentLanguage);
+
+            // Ensure hero image is set
+            const heroImage = document.getElementById('heroImage');
+            if (heroImage) {
+                heroImage.src = imageUrl;
+                heroImage.onerror = function() { this.src = '/images/placeholder.jpg'; };
+            }
+
+            const html = `
+                <!-- Card: Restaurant Info -->
+                <div class="card-section">
+                    <div class="restaurant-header">
+                        <div>
+                            <h1 class="restaurant-title">${currentPOI.name || currentPOI.Name}</h1>
+                        </div>
+                        <div class="rating-badge">⭐ ${rating}</div>
+                    </div>
+                    <div class="address-info">📍 ${address}</div>
+                </div>
+
+                <!-- Card: Language Selector -->
+                <div class="card-section">
+                    <div class="section-title-card">🌐 LANGUAGE</div>
+                    <div class="language-buttons-group">
+                        <button class="lang-button ${currentLanguage === 'vi' ? 'active' : ''}" data-lang="vi" onclick="switchLanguage('vi')">🇻🇳 Tiếng Việt</button>
+                        <button class="lang-button ${currentLanguage === 'en' ? 'active' : ''}" data-lang="en" onclick="switchLanguage('en')">🇬🇧 English</button>
+                        <button class="lang-button ${currentLanguage === 'ja' ? 'active' : ''}" data-lang="ja" onclick="switchLanguage('ja')">🇯🇵 日本語</button>
+                        <button class="lang-button ${currentLanguage === 'ru' ? 'active' : ''}" data-lang="ru" onclick="switchLanguage('ru')">🇷🇺 Русский</button>
+                        <button class="lang-button ${currentLanguage === 'zh' ? 'active' : ''}" data-lang="zh" onclick="switchLanguage('zh')">🇨🇳 中文</button>
+                    </div>
+                </div>
+
+                <!-- Card: About -->
+                <div class="card-section">
+                    <div class="section-title-card">📚 ABOUT</div>
+                    <p class="section-description">${description}</p>
+                </div>
+
+                <!-- Card: Audio Guide -->
+                <div class="card-section audio-section-card">
+                    <div class="audio-header">
+                        <span class="section-title-card">🎧 AUDIO GUIDE</span>
+                        <span class="free-trial-badge">Free Trial</span>
+                    </div>
+                    <button class="btn-play-audio" onclick="playAudio()">▶ Play Audio</button>
+                    <button class="btn-download-app" onclick="downloadApp()">📥 Download FoodTour App for Unlimited Audio</button>
+                </div>
+
+                <!-- Footer -->
+                <div class="footer-attribution">
+                    FoodTour Vĩnh Khánh — Powered by FoodTour System
+                </div>
+            `;
+
+            document.getElementById('content').innerHTML = html;
+        }
+
+        // Switch language
+        function switchLanguage(lang) {
+            // Don't re-render if already on same language
+            if (currentLanguage === lang) return;
+
+            currentLanguage = lang;
+            console.log(`🔄 Switching language to: ${lang}`);
+
+            // Stop current audio if playing
+            const wasPlaying = isSpeaking;
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+            }
+
+            // Update language buttons - remove active class from all and add to current
+            const langButtons = document.querySelectorAll('.lang-button');
+            console.log(`Found ${langButtons.length} language buttons`);
+            langButtons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Find and update the button for the selected language using data-lang attribute
+            const selectedBtn = document.querySelector(`.lang-button[data-lang="${lang}"]`);
+            console.log(`Selected button for lang ${lang}:`, selectedBtn);
+            if (selectedBtn) {
+                selectedBtn.classList.add('active');
+                console.log(`✅ Added active class to ${lang} button`);
+            } else {
+                console.warn(`⚠️ Could not find button for lang ${lang}`);
+            }
+
+            // Update the description text
+            const descriptionElement = document.querySelector('.section-description');
+            console.log(`Description element:`, descriptionElement);
+            if (descriptionElement) {
+                const newDescription = getDescriptionByLanguage(lang);
+                console.log(`New description (${lang}):`, newDescription.substring(0, 50) + '...');
+                descriptionElement.textContent = newDescription;
+                console.log(`✅ Updated description text`);
+            } else {
+                console.warn(`⚠️ Could not find .section-description element`);
+            }
+
+            // Show notification
+            showNotification(
+                lang === 'vi' ? '✅ Đã chuyển sang Tiếng Việt' : 
+                lang === 'en' ? '✅ Switched to English' :
+                lang === 'ja' ? '✅ 日本語に切り替えました' :
+                lang === 'ru' ? '✅ Переключено на русский' :
+                '✅ 已切换到中文',
+                'success'
+            );
+
+            // If audio was playing, auto-restart in new language after a short delay
+            if (wasPlaying) {
+                setTimeout(() => {
+                    playAudio();
+                }, 300);
+            }
+        }
+
+        // Download app function
+        function downloadApp() {
+            showNotification('🔗 Đang mở trang tải ứng dụng...', 'info');
+            setTimeout(() => {
+                window.open('https://play.google.com/store/apps/details?id=com.companyname.doancsharp_clean', '_blank');
+            }, 500);
+        }
+
+        // Play audio narration with multi-language support
+        async function playAudio() {
+            if (!currentPOI) return;
+
+            // Check if user has listening limit
+            if (currentScanLimit && currentScanLimit.scanCount >= currentScanLimit.maxScans) {
+                showNotification('⚠️ Hết lượt nghe. Tải app để nghe không giới hạn!', 'warning');
+                return;
+            }
+
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+                const playBtn = document.querySelector('.btn-play-audio');
+                if (playBtn) playBtn.textContent = '▶ Play Audio';
+                return;
+            }
+
+            // Ensure UI is updated to show current language (buttons + description)
+            // This prevents the case where audio plays in the right language 
+            // but UI doesn't reflect it
+            const langButtons = document.querySelectorAll('.lang-button');
+            langButtons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+            const selectedBtn = document.querySelector(`.lang-button[data-lang="${currentLanguage}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('active');
+            }
+
+            // Get description using the helper function
+            let text = getDescriptionByLanguage(currentLanguage);
+            let langCode = '';
+
+            switch(currentLanguage) {
+                case 'en': 
+                    langCode = 'en-US';
+                    break;
+                case 'ja': 
+                    langCode = 'ja-JP';
+                    break;
+                case 'ru': 
+                    langCode = 'ru-RU';
+                    break;
+                case 'zh': 
+                    langCode = 'zh-CN';
+                    break;
+                default: 
+                    langCode = 'vi-VN';
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = langCode;
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                const playBtn = document.querySelector('.btn-play-audio');
+                if (playBtn) playBtn.textContent = '⏸ Pause';
+                // Track listening when audio starts
+                console.log('Audio started, tracking listening history');
+                trackListeningHistory();
+            };
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                const playBtn = document.querySelector('.btn-play-audio');
+                if (playBtn) playBtn.textContent = '▶ Play Audio';
+            };
+
+            utterance.onerror = (event) => {
+                console.error('Speech error:', event);
+                showNotification('Lỗi khi phát âm thanh', 'error');
+                isSpeaking = false;
+                const playBtn = document.querySelector('.btn-play-audio');
+                if (playBtn) playBtn.textContent = '▶ Play Audio';
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        // Show error
+        function showError(message) {
+            document.getElementById('content').innerHTML = `
+                <div class="error-container">
+                    <div class="error-icon">❌</div>
+                    <h2>${message}</h2>
+                    <button class="btn btn-primary" onclick="window.history.back()" style="margin-top: 15px;">← Quay lại</button>
+                </div>
+            `;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadPOIDetails);
+    </script>
+</body>
+</html>
+

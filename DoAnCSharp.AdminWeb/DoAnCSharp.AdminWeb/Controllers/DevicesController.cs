@@ -238,6 +238,23 @@ public class DevicesController : ControllerBase
         }
     }
 
+    [HttpGet("online-count")]
+    public async Task<ActionResult<object>> GetOnlineCount()
+    {
+        try
+        {
+            var devices = await _dbService.GetAllUserDevicesAsync();
+            var online = devices.Count(d => (DateTime.Now - d.LastOnlineAt).TotalSeconds <= 60 &&
+                d.DeviceOS != "Windows" && d.DeviceOS != "macOS" && d.DeviceOS != "Linux");
+            return Ok(new { count = online });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"❌ GetOnlineCount Error: {ex.Message}");
+            return StatusCode(500, new { error = "Lỗi khi lấy số thiết bị online" });
+        }
+    }
+
     [HttpPost("status/online/increment")]
     public async Task<IActionResult> IncrementOnlineDevices()
     {

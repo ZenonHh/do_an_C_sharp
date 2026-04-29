@@ -55,5 +55,53 @@
         <None Remove="DoAnCSharp.AdminWeb\**\*" />
         <MauiAsset Remove="DoAnCSharp.AdminWeb\**\*" />
     </ItemGroup>
+    <ItemGroup>
+      <Content Include="DoAnCSharp.AdminWeb\DoAnCSharp.AdminWeb\wwwroot\master-qr.html" />
+      <Content Include="DoAnCSharp.AdminWeb\DoAnCSharp.AdminWeb\wwwroot\pois-list.html" />
+      <Content Include="DoAnCSharp.AdminWeb\DoAnCSharp.AdminWeb\wwwroot\test-foodstreet.html" />
+      <Content Include="DoAnCSharp.AdminWeb\STATUS_SUMMARY.txt" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Include="DoAnCSharp.AdminWeb\ARCHITECTURE.md" />
+      <None Include="DoAnCSharp.AdminWeb\BUILD_FIX_AND_MULTILANG_SUMMARY.md" />
+      <None Include="DoAnCSharp.AdminWeb\COMPLETE_SUMMARY.md" />
+      <None Include="DoAnCSharp.AdminWeb\COMPLETION_SUMMARY.md" />
+      <None Include="DoAnCSharp.AdminWeb\DEBUG_FOODSTREET_HANG.md" />
+      <None Include="DoAnCSharp.AdminWeb\DoAnCSharp.AdminWeb\wwwroot\js\dashboard.js" />
+      <None Include="DoAnCSharp.AdminWeb\DOCUMENTATION_INDEX.md" />
+      <None Include="DoAnCSharp.AdminWeb\DOCUMENTATION_INDEX_MASTER.md" />
+      <None Include="DoAnCSharp.AdminWeb\EXECUTIVE_SUMMARY.md" />
+      <None Include="DoAnCSharp.AdminWeb\FINAL_CHECKLIST.md" />
+      <None Include="DoAnCSharp.AdminWeb\FINAL_SETUP_COMPLETE.md" />
+      <None Include="DoAnCSharp.AdminWeb\FINAL_SUMMARY.md" />
+      <None Include="DoAnCSharp.AdminWeb\FINAL_VISUAL_SUMMARY.md" />
+      <None Include="DoAnCSharp.AdminWeb\FIXES_AND_IMPROVEMENTS.md" />
+      <None Include="DoAnCSharp.AdminWeb\FIX_FOODSTREET_FINAL.md" />
+      <None Include="DoAnCSharp.AdminWeb\FOODSTREET_QR_AUTO_UPDATE_GUIDE.md" />
+      <None Include="DoAnCSharp.AdminWeb\LAUNCH_CHECKLIST_FINAL.md" />
+      <None Include="DoAnCSharp.AdminWeb\MASTER_QR_FIX_COMPLETE.md" />
+      <None Include="DoAnCSharp.AdminWeb\MULTILANG_CHITIET_VI.md" />
+      <None Include="DoAnCSharp.AdminWeb\MULTILANG_QUICK_TEST.md" />
+      <None Include="DoAnCSharp.AdminWeb\MULTI_LANGUAGE_SUPPORT.md" />
+      <None Include="DoAnCSharp.AdminWeb\PROJECT_COMPLETE.md" />
+      <None Include="DoAnCSharp.AdminWeb\PROJECT_COMPLETION_REPORT.md" />
+      <None Include="DoAnCSharp.AdminWeb\QR_FIX_QUICK_GUIDE.md" />
+      <None Include="DoAnCSharp.AdminWeb\QR_FIX_SUMMARY.md" />
+      <None Include="DoAnCSharp.AdminWeb\QR_FIX_VERIFICATION.md" />
+      <None Include="DoAnCSharp.AdminWeb\QR_TECHNICAL_ANALYSIS.md" />
+      <None Include="DoAnCSharp.AdminWeb\QUICK_START.md" />
+      <None Include="DoAnCSharp.AdminWeb\QUICK_START_FOODSTREET_QR.md" />
+      <None Include="DoAnCSharp.AdminWeb\README.md" />
+      <None Include="DoAnCSharp.AdminWeb\README_COMPLETION.md" />
+      <None Include="DoAnCSharp.AdminWeb\README_QUICK_REFERENCE.md" />
+      <None Include="DoAnCSharp.AdminWeb\RESTAURANT_DETAIL_ENHANCEMENT.md" />
+      <None Include="DoAnCSharp.AdminWeb\RESTAURANT_DETAIL_IMPLEMENTATION_COMPLETE.md" />
+      <None Include="DoAnCSharp.AdminWeb\RESTAURANT_DETAIL_IMPLEMENTATION_SUMMARY.md" />
+      <None Include="DoAnCSharp.AdminWeb\RESTAURANT_DETAIL_QUICK_START.md" />
+      <None Include="DoAnCSharp.AdminWeb\RESTAURANT_DETAIL_STATUS.md" />
+      <None Include="DoAnCSharp.AdminWeb\RESTAURANT_DETAIL_TEST_GUIDE.md" />
+      <None Include="DoAnCSharp.AdminWeb\TESTING_CHECKLIST.md" />
+      <None Include="DoAnCSharp.AdminWeb\VISUAL_SUMMARY.md" />
+    </ItemGroup>
 
 </Project>

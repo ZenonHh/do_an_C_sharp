@@ -192,7 +192,9 @@ public class POIsController : ControllerBase
     [HttpGet("foodstreet-qr")]
     public ActionResult<object> GetFoodStreetQRInfo()
     {
-        string publicUrl = (_configuration["ServerSettings:PublicUrl"] ??
+        // 🔍 Ưu tiên lấy IP từ config (appsettings.Development.json) - có thể thay đổi tuỳ ý
+        // Nếu config không có → fallback dùng Request.Host
+        string publicUrl = (_configuration["ServerSettings:PublicUrl"] ?? 
                            $"{Request.Scheme}://{Request.Host}").TrimEnd('/');
         string webUrl = $"{publicUrl}/qr/FOODSTREET_VINHKHANH";
         string qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={Uri.EscapeDataString(webUrl)}";
@@ -202,6 +204,7 @@ public class POIsController : ControllerBase
     [HttpGet("config/server")]
     public ActionResult<object> GetServerConfig()
     {
+        // 🔍 Ưu tiên lấy IP từ config (appsettings.Development.json)
         string publicUrl = _configuration["ServerSettings:PublicUrl"] ?? $"{Request.Scheme}://{Request.Host}";
         return Ok(new { serverUrl = publicUrl });
     }
@@ -501,6 +504,69 @@ public class POIsController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("stats")]
+    public async Task<ActionResult> GetPOIStats()
+    {
+        try
+        {
+            var allHistory = await _db.GetAllPlayHistoryAsync();
+
+            // Get all POIs
+            var allPois = await _db.GetAllPOIsAsync();
+
+            // Count scans per POI
+            var poiStats = allPois
+                .Select(p => new
+                {
+                    id = p.Id,
+                    name = p.Name,
+                    scanCount = allHistory.Count(h => h.POIId == p.Id)
+                })
+                .OrderByDescending(x => x.scanCount)
+                .ToList();
+
+            return Ok(poiStats);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get Master QR code for main entry point
+    /// </summary>
+    [HttpGet("qr/master")]
+    public async Task<ActionResult> GetMasterQR()
+    {
+        try
+        {
+            // Get IP from appsettings or use request host
+            var ip = _configuration["App:PublicIP"] ?? Request.Host.Host;
+            if (ip == "localhost" || ip == "127.0.0.1")
+                ip = "192.168.1.38"; // Fallback to local network IP
+
+            var masterCode = "FOODSTREET_VINHKHANH";
+            var masterUrl = $"http://{ip}:5000/qr/{masterCode}";
+
+            // Generate QR image URL directly from qrserver (bypass our broken endpoint)
+            var qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={Uri.EscapeDataString(masterUrl)}";
+
+            return Ok(new
+            {
+                code = masterCode,
+                url = masterUrl,
+                imageUrl = qrImageUrl,
+                generatedAt = DateTime.Now
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error generating master QR: {ex.Message}");
+            return StatusCode(500, new { error = "Lỗi khi tạo mã QR chính" });
         }
     }
 

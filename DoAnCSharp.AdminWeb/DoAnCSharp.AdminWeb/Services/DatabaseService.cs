@@ -18,8 +18,12 @@ public class DatabaseService
             if (_connection != null) return;
 
             string dbPath;
-            
-            // Check for custom database path from environment variable
+
+            // 🔍 Priority order for database path:
+            // 1. Environment variable (for custom deployment)
+            // 2. Project directory (for easy sharing between machines)
+            // 3. AppData folder (fallback for MAUI app)
+
             var customPath = Environment.GetEnvironmentVariable("VINHKHANH_DB_PATH");
             if (!string.IsNullOrEmpty(customPath) && Directory.Exists(customPath))
             {
@@ -27,13 +31,26 @@ public class DatabaseService
             }
             else
             {
-                // Default path - same as MAUI app
-                var appDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "VinhKhanhTour"
-                );
-                Directory.CreateDirectory(appDataPath);
-                dbPath = Path.Combine(appDataPath, DbFileName);
+                // 🔍 Try to use project directory first (shared across machines)
+                var projectDbPath = Path.Combine(AppContext.BaseDirectory, "data", DbFileName);
+                var projectDataDir = Path.Combine(AppContext.BaseDirectory, "data");
+                Directory.CreateDirectory(projectDataDir);
+
+                // If database exists in project folder, use it
+                if (File.Exists(projectDbPath))
+                {
+                    dbPath = projectDbPath;
+                }
+                else
+                {
+                    // Fallback to AppData
+                    var appDataPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "VinhKhanhTour"
+                    );
+                    Directory.CreateDirectory(appDataPath);
+                    dbPath = Path.Combine(appDataPath, DbFileName);
+                }
             }
 
             _connection = new SQLiteAsyncConnection(dbPath);
@@ -781,15 +798,15 @@ public class DatabaseService
             var samplePOIs = new List<AudioPOI>
             {
                 // ---- THẾ GIỚI ỐC ----
-                new AudioPOI { Name = "Ốc Oanh",              Address = "534 Vĩnh Khánh, Q.4",               Description = "Quán ốc huyền thoại đông nhất Vĩnh Khánh. Nổi tiếng với ốc hương rang muối ớt và càng ghẹ nướng.",          Lat = 10.7595, Lng = 106.7045, Radius = 40, Priority = 1, ImageAsset = "oc_oanh.jpg",   QRCode = DeepLink("Ốc Oanh"),              CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
-                new AudioPOI { Name = "Ốc Vũ",                Address = "37 Vĩnh Khánh, Q.4",                Description = "Không gian siêu rộng, menu đa dạng và giá cả bình dân. Món khuyên dùng: Ốc tỏi nướng mỡ hành.",            Lat = 10.7578, Lng = 106.7058, Radius = 40, Priority = 1, ImageAsset = "oc_vu.jpg",     QRCode = DeepLink("Ốc Vũ"),                CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
+                new AudioPOI { Name = "Ốc Oanh",              Address = "534 Vĩnh Khánh, Q.4",               Description = "Quán ốc huyền thoại đông nhất Vĩnh Khánh. Nổi tiếng với ốc hương rang muối ớt và càng ghẹ nướng.", DescriptionEn = "The most legendary and busy snail restaurant in Vinh Khanh. Famous for roasted salted snails with chili and grilled crab claws.", DescriptionJa = "ビンカン地区で最も有名で賑わっているカタツムリレストラン。塩辛い揚げカタツムリと唐辛子と蒸しカニで有名です。", DescriptionRu = "Самый легендарный и оживленный ресторан с улитками во Винь Кхане. Известен обжаренными улитками с солью и перцем и жареными крабовыми когтями.", DescriptionZh = "永康最传奇、最繁忙的蜗牛餐厅。以盐烤蜗牛和辣椒烤蟹爪而闻名。", Lat = 10.7595, Lng = 106.7045, Radius = 40, Priority = 1, ImageAsset = "oc_oanh.jpg",   QRCode = DeepLink("Ốc Oanh"),              CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
+                new AudioPOI { Name = "Ốc Vũ",                Address = "37 Vĩnh Khánh, Q.4",                Description = "Không gian siêu rộng, menu đa dạng và giá cả bình dân. Món khuyên dùng: Ốc tỏi nướng mỡ hành.", DescriptionEn = "Spacious area, diverse menu and affordable prices. Recommended dish: Garlic snails roasted with lard and scallions.", DescriptionJa = "広々としたスペース、多様なメニューと手頃な価格。推奨料理：ニンニク入りカタツムリの豚脂と小ネギ焙煎。", DescriptionRu = "Просторный зал, разнообразное меню и доступные цены. Рекомендуемое блюдо: Улитки с чесноком, обжаренные со сливочным маслом и зеленью.", DescriptionZh = "宽敞的空间、丰富的菜单和价格便宜。推荐菜肴：蒜蜗牛用猪油和葱烤。", Lat = 10.7578, Lng = 106.7058, Radius = 40, Priority = 1, ImageAsset = "oc_vu.jpg",     QRCode = DeepLink("Ốc Vũ"),                CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
                 new AudioPOI { Name = "Ốc Nho",               Address = "178 Vĩnh Khánh, Q.4",               Description = "Chân ái của giới trẻ với các món ốc sốt phô mai kéo sợi, sốt trứng muối béo ngậy cực đỉnh.",               Lat = 10.7582, Lng = 106.7052, Radius = 40, Priority = 1, ImageAsset = "oc_nho.jpg",    QRCode = DeepLink("Ốc Nho"),               CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
                 new AudioPOI { Name = "Ốc Thảo",              Address = "383 Vĩnh Khánh, Q.4",               Description = "Quán lâu năm, giữ nguyên hương vị ốc truyền thống Sài Gòn. Nước mắm gừng pha cực ngon.",                   Lat = 10.7590, Lng = 106.7042, Radius = 40, Priority = 1, ImageAsset = "oc_thao.jpg",   QRCode = DeepLink("Ốc Thảo"),              CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
                 new AudioPOI { Name = "Ốc Sóc",               Address = "D58 Vĩnh Khánh, Q.4",               Description = "Nổi bật với món nghêu hấp sả ớt cay nồng và ốc móng tay xào rau muống.",                                   Lat = 10.7587, Lng = 106.7048, Radius = 40, Priority = 1, ImageAsset = "oc_soc.jpg",    QRCode = DeepLink("Ốc Sóc"),               CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
                 new AudioPOI { Name = "Ốc Tuyết",             Address = "430 Vĩnh Khánh, Q.4",               Description = "Quán bình dân nhưng chất lượng tuyệt vời, phục vụ nhanh nhẹn, các món xào me rất đậm đà.",                  Lat = 10.7585, Lng = 106.7032, Radius = 40, Priority = 1, ImageAsset = "oc_tuyet.jpg",  QRCode = DeepLink("Ốc Tuyết"),             CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
                 new AudioPOI { Name = "Ốc Đào 2",             Address = "Vĩnh Khánh, P.4, Q.4",              Description = "Thương hiệu ốc lâu đời, nêm nếm theo khẩu vị đậm đà đặc trưng, ốc xào sa tế cay xé lưỡi.",                 Lat = 10.7581, Lng = 106.7061, Radius = 40, Priority = 1, ImageAsset = "oc_dao.jpg",    QRCode = DeepLink("Ốc Đào 2"),             CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
                 // ---- LẨU & NƯỚNG ----
-                new AudioPOI { Name = "Quán Nướng Chilli",    Address = "232 Vĩnh Khánh, Q.4",               Description = "Thiên đường hàu nướng với hơn 20 loại sốt khác nhau, hải sản nướng ngói thơm lừng.",                        Lat = 10.7586, Lng = 106.7055, Radius = 50, Priority = 2, ImageAsset = "nuong_chilli.jpg", QRCode = DeepLink("Quán Nướng Chilli"), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
+                new AudioPOI { Name = "Quán Nướng Chilli",    Address = "232 Vĩnh Khánh, Q.4",               Description = "Thiên đường hàu nướng với hơn 20 loại sốt khác nhau, hải sản nướng ngói thơm lừng.", DescriptionEn = "Oyster grilling paradise with over 20 different sauce varieties, aromatic ceramic-roasted seafood.", DescriptionJa = "20種類以上のソースを備えたカキ焼きの楽園、香ばしい陶板焼きシーフード。", DescriptionRu = "Рай для жарки устриц с более чем 20 различными видами соусов, ароматные морепродукты, запеченные на керамике.", DescriptionZh = "拥有20多种不同酱汁的牡蛎烧烤天堂，香喷喷的陶板烤海鲜。", Lat = 10.7586, Lng = 106.7055, Radius = 50, Priority = 2, ImageAsset = "nuong_chilli.jpg", QRCode = DeepLink("Quán Nướng Chilli"), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
                 new AudioPOI { Name = "Lẩu Bò Khu Nhà Cháy", Address = "Chung cư Đoàn Văn Bơ, gần Vĩnh Khánh", Description = "Lẩu bò gia truyền nước dùng ngọt thanh từ xương, bò viên tự làm dai giòn sừn sựt.",                  Lat = 10.7590, Lng = 106.7025, Radius = 50, Priority = 2, ImageAsset = "lau_bo.jpg",    QRCode = DeepLink("Lẩu Bò Khu Nhà Cháy"), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
                 new AudioPOI { Name = "Sườn Nướng Muối Ớt",  Address = "Dọc đường Vĩnh Khánh, Q.4",          Description = "Sườn heo nướng tẩm ớt cay nồng, ăn kèm đồ chua giải ngấy cực kỳ bắt bia.",                                Lat = 10.7588, Lng = 106.7040, Radius = 40, Priority = 2, ImageAsset = "suon_nuong.jpg", QRCode = DeepLink("Sườn Nướng Muối Ớt"), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },
                 new AudioPOI { Name = "Khèn BBQ - Nướng Ngói", Address = "165 Vĩnh Khánh, Q.4",              Description = "Thịt được nướng trên ngói đỏ giúp giữ độ ngọt, không bị ám khói than, tẩm ướp chuẩn vị Tây Bắc.",          Lat = 10.7592, Lng = 106.7038, Radius = 40, Priority = 2, ImageAsset = "khen_bbq.jpg",  QRCode = DeepLink("Khèn BBQ - Nướng Ngói"), CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now },

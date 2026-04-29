@@ -55,8 +55,8 @@ app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthorization();
 
-// Serve static files (HTML, CSS, JS)
-app.UseStaticFiles();
+// ✅ Map API controllers FIRST - so /qr/{code} routes are handled by controller, NOT static files
+app.MapControllers();
 
 // ===== TEST ENDPOINT (KHÔNG CẦN DATABASE) =====
 app.MapGet("/test-qr", (HttpContext context) =>
@@ -64,8 +64,20 @@ app.MapGet("/test-qr", (HttpContext context) =>
     return Results.Redirect("/poi-public.html?poiId=1&test=true");
 });
 
-// Map API controllers (includes QRScansController with /qr/{code} endpoint)
-app.MapControllers();
+// Handle old URLs that may redirect to admin-dashboard.html
+app.MapGet("/admin-dashboard.html", (HttpContext context) =>
+{
+    return Results.Redirect("/");
+});
+
+// Serve default files (index.html) when directory is requested
+var defaultFilesOptions = new DefaultFilesOptions();
+defaultFilesOptions.DefaultFileNames.Clear();
+defaultFilesOptions.DefaultFileNames.Add("index.html");
+app.UseDefaultFiles(defaultFilesOptions);
+
+// Serve static files (HTML, CSS, JS) - AFTER controller routes
+app.UseStaticFiles();
 
 // ===== QR SCAN LANDING ENDPOINT =====
 // Entry point when user scans QR code
@@ -236,6 +248,9 @@ app.MapGet("/qr-scan", async (
         return Results.Redirect("/poi-public.html?error=server_error");
     }
 });
+
+// ===== NOTE: /qr/{code} route is handled by QRScansController.QuickScanQR() ====
+// No need to duplicate here - QRScansController has [Route("/qr/{code}")]
 
 // Helper functions
 string GetOrCreateDeviceId(HttpContext context)
