@@ -405,9 +405,10 @@
           if (!dashboardRefreshInterval) {
             dashboardRefreshInterval = setInterval(async () => {
               try {
-                const [dRes, uRes] = await Promise.all([
+                const [dRes, uRes, poisRes] = await Promise.all([
                   fetch(`${API_BASE}/devices/stats`),
-                  fetch(`${API_BASE}/users/dashboard/summary`)
+                  fetch(`${API_BASE}/users/dashboard/summary`),
+                  fetch(`${API_BASE}/pois/stats/scanned`)
                 ]);
                 if (dRes.ok) {
                   const d = await dRes.json();
@@ -419,6 +420,10 @@
                   const u = await uRes.json();
                   animateValue("totalUserCount", u.totalRegisteredUsers || 0);
                   animateValue("paidCount",      u.totalPaidUsers || 0);
+                }
+                if (poisRes.ok) {
+                  const pois = await poisRes.json();
+                  renderTopPOIs(pois.topScannedPOIs || []);
                 }
               } catch (e) { console.error("Auto-refresh error:", e); }
             }, 20000);
@@ -1071,11 +1076,17 @@
 
         // Apply date + search first (before source filter) to compute per-source counts
         let base = allHistoryData;
-        if (from) base = base.filter(h => h.playedAt && new Date(h.playedAt) >= new Date(from));
-        if (to) {
-          const toDate = new Date(to); toDate.setDate(toDate.getDate() + 1);
-          base = base.filter(h => h.playedAt && new Date(h.playedAt) < toDate);
+
+        if (from) {
+          const fromDate = new Date(from + 'T00:00:00').getTime();
+          base = base.filter(h => h.playedAt && new Date(h.playedAt).getTime() >= fromDate);
         }
+
+        if (to) {
+          const toDate = new Date(to + 'T23:59:59').getTime();
+          base = base.filter(h => h.playedAt && new Date(h.playedAt).getTime() <= toDate);
+        }
+
         if (q) base = base.filter(h =>
           h.poiName?.toLowerCase().includes(q) ||
           h.userName?.toLowerCase().includes(q) ||
@@ -1255,11 +1266,17 @@
         const to = document.getElementById("historyTo")?.value;
 
         let base = allHistoryData;
-        if (from) base = base.filter(h => h.playedAt && new Date(h.playedAt) >= new Date(from));
-        if (to) {
-          const d = new Date(to); d.setDate(d.getDate() + 1);
-          base = base.filter(h => h.playedAt && new Date(h.playedAt) < d);
+
+        if (from) {
+          const fromDate = new Date(from + 'T00:00:00').getTime();
+          base = base.filter(h => h.playedAt && new Date(h.playedAt).getTime() >= fromDate);
         }
+
+        if (to) {
+          const toDate = new Date(to + 'T23:59:59').getTime();
+          base = base.filter(h => h.playedAt && new Date(h.playedAt).getTime() <= toDate);
+        }
+
         if (q) base = base.filter(h =>
           h.poiName?.toLowerCase().includes(q) ||
           h.userName?.toLowerCase().includes(q) ||

@@ -637,9 +637,22 @@
         async function trackListeningHistory() {
             try {
                 const poiId = getPOIIdFromURL();
-                const response = await fetch(`/api/qrscans/track-listen?deviceId=${encodeURIComponent(currentDeviceId)}&poiId=${poiId}`, {
+                const poiName = currentPOI ? (currentPOI.name || currentPOI.Name || '') : '';
+
+                // Debug logging
+                console.log('trackListeningHistory:', {
+                    poiId,
+                    poiName,
+                    currentPOI: currentPOI ? { name: currentPOI.name, Name: currentPOI.Name } : null,
+                    deviceId: currentDeviceId
+                });
+
+                const response = await fetch(`/api/qrscans/track-listen?deviceId=${encodeURIComponent(currentDeviceId)}&poiId=${poiId}&poiName=${encodeURIComponent(poiName)}`, {
                     method: 'POST'
                 });
+
+                console.log('track-listen response:', response.status, await response.clone().json());
+
                 if (response.ok) {
                     const result = await response.json();
                     currentScanLimit.scanCount = result.scans;

@@ -194,8 +194,16 @@ public class POIsController : ControllerBase
     {
         // 🔍 Ưu tiên lấy IP từ config (appsettings.Development.json) - có thể thay đổi tuỳ ý
         // Nếu config không có → fallback dùng Request.Host
-        string publicUrl = (_configuration["ServerSettings:PublicUrl"] ?? 
-                           $"{Request.Scheme}://{Request.Host}").TrimEnd('/');
+        string configUrl = _configuration["ServerSettings:PublicUrl"];
+
+        // Format URL correctly: add http:// if not present
+        string publicUrl = string.IsNullOrEmpty(configUrl) 
+            ? $"{Request.Scheme}://{Request.Host}"
+            : (configUrl.StartsWith("http://") || configUrl.StartsWith("https://") 
+                ? configUrl 
+                : $"http://{configUrl}");
+
+        publicUrl = publicUrl.TrimEnd('/');
         string webUrl = $"{publicUrl}/qr/FOODSTREET_VINHKHANH";
         string qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={Uri.EscapeDataString(webUrl)}";
         return Ok(new { webUrl, qrImageUrl, description = "Mã QR lối vào Phố Ẩm Thực Vĩnh Khánh" });
@@ -205,7 +213,15 @@ public class POIsController : ControllerBase
     public ActionResult<object> GetServerConfig()
     {
         // 🔍 Ưu tiên lấy IP từ config (appsettings.Development.json)
-        string publicUrl = _configuration["ServerSettings:PublicUrl"] ?? $"{Request.Scheme}://{Request.Host}";
+        string configUrl = _configuration["ServerSettings:PublicUrl"];
+
+        // Format URL correctly: add http:// if not present
+        string publicUrl = string.IsNullOrEmpty(configUrl)
+            ? $"{Request.Scheme}://{Request.Host}"
+            : (configUrl.StartsWith("http://") || configUrl.StartsWith("https://")
+                ? configUrl
+                : $"http://{configUrl}");
+
         return Ok(new { serverUrl = publicUrl });
     }
 
@@ -616,11 +632,58 @@ public class POIsController : ControllerBase
                 poisScannedToday = poisToday,
                 poisScannedWeek = poisWeek,
                 topScannedPOIs
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-}
+                         });
+                     }
+                     catch (Exception ex)
+                     {
+                         return BadRequest(new { error = ex.Message });
+                     }
+                 }
+
+                 [HttpGet("debug/play-history")]
+                 public async Task<ActionResult> DebugPlayHistory()
+                 {
+                     try
+                     {
+                         var allHistory = await _db.GetAllPlayHistoryAsync();
+                         var groupedByDate = allHistory
+                             .GroupBy(h => h.PlayedAt.Date)
+                             .OrderByDescending(g => g.Key)
+                             .ToDictionary(
+                                 g => g.Key.ToString("yyyy-MM-dd"),
+                                 g => new
+                                 {
+                                     count = g.Count(),
+                                     records = g.Select(h => new
+                                     {
+                                         id = h.Id,
+                                         poiId = h.POIId,
+                                         poiName = h.POIName,
+                                         playedAt = h.PlayedAt,
+                                         source = h.Source,
+                                         userId = h.UserId
+                                     }).ToList()
+                                 }
+                             );
+
+                         return Ok(new
+                         {
+                             totalRecords = allHistory.Count,
+                             byDate = groupedByDate,
+                             allRecords = allHistory.OrderByDescending(h => h.PlayedAt).Take(50).Select(h => new
+                             {
+                                 id = h.Id,
+                                 poiId = h.POIId,
+                                 poiName = h.POIName,
+                                 playedAt = h.PlayedAt,
+                                 source = h.Source,
+                                 userId = h.UserId
+                             }).ToList()
+                         });
+                     }
+                     catch (Exception ex)
+                     {
+                         return BadRequest(new { error = ex.Message });
+                     }
+                 }
+            }

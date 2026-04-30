@@ -179,7 +179,7 @@ public class QRScansController : ControllerBase
     /// Backward-compat route: /POI_XXXX (QR codes stored without /qr/ prefix)
     /// </summary>
     [HttpGet]
-    [Route("/{code:regex(^POI_\\w+$)}")]
+    [Route("~/{code:regex(^POI_\\w+$)}")]
     public Task<IActionResult> LegacyPOIRoute(string code) => QuickScanQR(code);
 
     /// <summary>
@@ -187,7 +187,7 @@ public class QRScansController : ControllerBase
     /// VD: điện thoại quét QR → 192.168.1.100:5000/qr/POI_UA8AG0H2D
     /// </summary>
     [HttpGet]
-    [Route("/qr/{code}")]
+    [Route("~/qr/{code}")]
     public async Task<IActionResult> QuickScanQR(string code)
     {
         if (string.IsNullOrWhiteSpace(code))
