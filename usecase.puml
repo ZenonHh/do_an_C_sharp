@@ -1,0 +1,97 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Khách (Guest)" as Guest
+actor "Người dùng\n(đã có tài khoản)" as User
+actor "Dịch vụ GPS/\nĐịnh vị" as GPS
+actor "Camera/QR\nScanner" as Cam
+actor "Hệ điều hành/\nBản đồ" as MapOS
+actor "CSDL SQLite\n(nội bộ app)" as DB
+
+rectangle "Vĩnh Khánh Food Tour (MAUI App)" {
+
+  (Xem danh sách quán ăn) as UC_List
+  (Xem chi tiết quán ăn) as UC_Detail
+  (Tìm kiếm/Lọc quán ăn) as UC_Search
+  (Xem khoảng cách\nthời gian đi bộ) as UC_Distance
+
+  (Xem bản đồ quán ăn) as UC_Map
+  (Tìm kiếm trên bản đồ) as UC_MapSearch
+  (Xem vị trí của tôi) as UC_MyLocation
+  (Chỉ đường đến quán) as UC_Directions
+
+  (Nghe review/thuyết minh) as UC_Play
+  (Lưu lịch sử đã nghe) as UC_SaveHistory
+  (Xem lịch sử đã nghe) as UC_ViewHistory
+
+  (Quét QR quán ăn) as UC_ScanQR
+
+  (Đổi ngôn ngữ) as UC_Lang
+
+  (Đăng ký tài khoản) as UC_Register
+  (Chọn ảnh đại diện) as UC_Avatar
+  (Đăng nhập) as UC_Login
+  (Đăng xuất) as UC_Logout
+  (Quên mật khẩu/\nĐặt lại mật khẩu (OTP)) as UC_ResetPW
+  (Gửi OTP) as UC_SendOTP
+  (Xác thực OTP) as UC_VerifyOTP
+  (Đổi mật khẩu mới) as UC_SetNewPW
+
+  (Chỉnh sửa hồ sơ\n(tên/ảnh/mật khẩu)) as UC_EditProfile
+}
+
+' --- Ai dùng cái gì ---
+Guest --> UC_List
+Guest --> UC_Detail
+Guest --> UC_Search
+Guest --> UC_Map
+Guest --> UC_MapSearch
+Guest --> UC_ScanQR
+Guest --> UC_Lang
+Guest --> UC_Register
+Guest --> UC_Login
+Guest --> UC_ResetPW
+
+User --> UC_List
+User --> UC_Detail
+User --> UC_Search
+User --> UC_Map
+User --> UC_MapSearch
+User --> UC_MyLocation
+User --> UC_Directions
+User --> UC_Play
+User --> UC_ViewHistory
+User --> UC_Lang
+User --> UC_Logout
+User --> UC_EditProfile
+User --> UC_ScanQR
+
+' --- Include/extend ---
+UC_List .> UC_Distance : <<include>>
+UC_Play .> UC_SaveHistory : <<include>>
+UC_ScanQR .> UC_Detail : <<include>>
+
+UC_Map .> UC_MyLocation : <<include>>
+UC_Directions .> UC_MyLocation : <<include>>
+
+UC_Register .> UC_Avatar : <<extend>>
+
+UC_ResetPW .> UC_SendOTP : <<include>>
+UC_ResetPW .> UC_VerifyOTP : <<include>>
+UC_ResetPW .> UC_SetNewPW : <<include>>
+
+' --- Hệ thống/ngoại vi ---
+GPS <-- UC_MyLocation
+GPS <-- UC_Distance
+Cam <-- UC_ScanQR
+MapOS <-- UC_Directions
+DB <-- UC_Register
+DB <-- UC_Login
+DB <-- UC_EditProfile
+DB <-- UC_SaveHistory
+DB <-- UC_List
+DB <-- UC_Map
+
+@enduml
+
