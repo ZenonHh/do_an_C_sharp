@@ -569,24 +569,18 @@ public partial class MapPage : ContentPage, IQueryAttributable
     // Cycles: 🏠 real GPS → ② Mốc Nho → ① Giao thoa → ③ Mốc Chilli → back to real GPS
     // ② = inside Ốc Nho only; ① = 4-way overlap (Ốc Nho, Chilli, Trái Cây Tô, Ốc Sóc); ③ = inside Chilli only
     // ── TEST INTERSECTION SCENARIOS ─────────────────────────────────────────────
-    // Test intersection points distributed among the restaurant cluster on Vĩnh Khánh
-    // Green dot positioned in the central area where multiple restaurants overlap
+    // Test specific intersection points between named restaurant pairs
+    // Green dot positioned at the exact midpoint between two restaurants
     private static readonly (int Number, Color Color, double? Lat, double? Lng, string? Info)[] _testCyclePoints =
     {
-        // Press 1: Central intersection point 1 - among multiple restaurants
-        (1, Color.FromArgb("#FF8C42"), 10.7585, 106.7048, "INTERSECTION 1"),
+        // Press 1: Between Beef Hotpot (Lẩu Bò Khu Nhà Cháy) and Tuyet Snail (Ốc Tuyết)
+        (1, Color.FromArgb("#FF8C42"), 10.75875, 106.70285, "LAU BO vs OC TUYET"),
         
-        // Press 2: Central intersection point 2 - among multiple restaurants
-        (2, Color.FromArgb("#FF7F50"), 10.7590, 106.7050, "INTERSECTION 2"),
+        // Press 2: Between Vu Snail (Ốc Vũ) and Dao Snail 2 (Ốc Đào 2)
+        (2, Color.FromArgb("#FF7F50"), 10.75795, 106.70595, "OC VU vs OC DAO 2"),
         
-        // Press 3: Central intersection point 3 - among multiple restaurants
-        (3, Color.FromArgb("#FF6347"), 10.7588, 106.7045, "INTERSECTION 3"),
-        
-        // Press 4: Central intersection point 4 - among multiple restaurants
-        (4, Color.FromArgb("#FFD700"), 10.7592, 106.7052, "INTERSECTION 4"),
-        
-        // Press 5: Central intersection point 5 - among multiple restaurants
-        (5, Color.FromArgb("#FFA500"), 10.7586, 106.7040, "INTERSECTION 5"),
+        // Press 3: Between Nho Snail (Ốc Nho) and Chill Grill (Quán Nướng Chilli)
+        (3, Color.FromArgb("#FF6347"), 10.7584, 106.70535, "OC NHO vs QUÂN NUONG CHILLI"),
     };
 
     private void OnTestCycleClicked(object sender, EventArgs e)
