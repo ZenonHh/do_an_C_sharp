@@ -120,16 +120,22 @@ public class PaymentsController : ControllerBase
 
             if (user == null) return BadRequest(new { error = "Failed to sync user" });
 
-            // 2. Cập nhật hoặc tạo mới UserPayment
-            var payment = await _db.GetUserPaymentByUserIdAsync(user.Id) ?? new UserPayment();
-            payment.UserId = user.Id;
-            
-            payment.PackageName = request.PackageName; 
-            payment.Amount = request.Amount;
-            payment.PaymentDate = DateTime.Now;
+            // 2. Luôn tạo bản ghi mới cho mỗi lần mua — giữ toàn bộ lịch sử giao dịch
+            var now = DateTime.Now;
+            var payment = new UserPayment
+            {
+                UserId = user.Id,
+                PackageName = request.PackageName,
+                Amount = request.Amount,
+                PaymentDate = now,
+                IsPaid = true
+            };
+            await _db.InsertUserPaymentAsync(payment);
 
-            if (payment.Id == 0) await _db.InsertUserPaymentAsync(payment);
-            else await _db.UpdateUserPaymentAsync(payment);
+            // 3. Cập nhật trạng thái IsPaid + PaidAt trong bảng User để Users tab hiển thị đúng
+            user.IsPaid = true;
+            user.PaidAt = now;
+            await _db.UpdateUserAsync(user);
 
             return Ok(new { message = "Payment synced successfully to Admin Web" });
         }

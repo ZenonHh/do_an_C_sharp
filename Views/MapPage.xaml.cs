@@ -30,12 +30,19 @@ public partial class MapPage : ContentPage, IQueryAttributable
     private bool _isMapSetup = false;
     private bool _isMapLoaded = false;
     private bool _isHeatmapOn = false;
-    private Location? _debugLocation = null;
 
-    public MapPage(MapViewModel viewModel, DatabaseService dbService, ILanguageService langService, ScanQuotaService quotaService)
+    // Debug simulation
+    private Location? _debugLocation = null;
+    private int _testCycleIndex = 0;
+
+    private readonly AdminSyncService _adminSync;
+    private DateTime _lastPoiSyncAt = DateTime.MinValue;
+
+    public MapPage(MapViewModel viewModel, DatabaseService dbService, ILanguageService langService, ScanQuotaService quotaService, AdminSyncService adminSync)
     {
         _dbService = dbService;
         _quotaService = quotaService;
+        _adminSync = adminSync;
         Lang = langService;
         BindingContext = viewModel;
         InitializeComponent();
@@ -71,7 +78,7 @@ public partial class MapPage : ContentPage, IQueryAttributable
         });
 
         #if DEBUG
-        DebugPanel.IsVisible = true;
+        TestCycleButton.IsVisible = true;
         #endif
 
         try
@@ -83,6 +90,10 @@ public partial class MapPage : ContentPage, IQueryAttributable
                 await LoadDataFromDatabaseAsync();
             else
                 LoadPinsToMap();
+
+            // Sync new restaurants from admin server (throttled: at most once every 60 s)
+            if ((DateTime.UtcNow - _lastPoiSyncAt).TotalSeconds > 60)
+                _ = TrySyncPOIsFromServerAsync();
 
             StartRadar();
 
@@ -152,6 +163,36 @@ public partial class MapPage : ContentPage, IQueryAttributable
     }
 
     // ── DATA ─────────────────────────────────────────────────────────────────
+
+    private async Task TrySyncPOIsFromServerAsync()
+    {
+        try
+        {
+            var serverPois = await _adminSync.FetchPOIsFromServerAsync();
+            if (serverPois == null || serverPois.Count == 0) return;
+
+            await _dbService.SyncPOIsFromServerAsync(serverPois);
+            _lastPoiSyncAt = DateTime.UtcNow;
+
+            var updated = await _dbService.GetPOIsAsync();
+            if (updated.Count != _pois.Count ||
+                updated.Any(s => !_pois.Any(p => p.Name == s.Name)))
+            {
+                _pois = updated;
+                await RefreshHeatWeightsAsync();
+                MainThread.BeginInvokeOnMainThread(LoadPinsToMap);
+                System.Diagnostics.Debug.WriteLine($"[POI Sync] Map refreshed — {_pois.Count} POIs");
+            }
+            else
+            {
+                _lastPoiSyncAt = DateTime.UtcNow;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[POI Sync] Skipped: {ex.Message}");
+        }
+    }
 
     private async Task LoadDataFromDatabaseAsync()
     {
@@ -267,26 +308,18 @@ public partial class MapPage : ContentPage, IQueryAttributable
             }
             else if (inRangePois.Count > 1)
             {
-                // Vùng giao nhau: score = weight / distance — vừa hot vừa gần thì thắng
+                // Vùng giao nhau: ưu tiên theo độ phổ biến (HeatWeight), khoảng cách chỉ là tie-breaker
                 var ranked = inRangePois
-                    .OrderByDescending(x => x.Poi.HeatWeight / Math.Max(1.0, x.DistanceM))
+                    .OrderByDescending(x => x.Poi.HeatWeight)
+                    .ThenBy(x => x.DistanceM)
                     .ToList();
                 poi = ranked[0].Poi;
                 #if DEBUG
                 var log = string.Join(" | ", ranked.Select(x =>
-                    $"{x.Poi.Name} (w={x.Poi.HeatWeight}, d={x.DistanceM:F1}m, score={x.Poi.HeatWeight / Math.Max(1.0, x.DistanceM):F2})"));
-                System.Diagnostics.Debug.WriteLine($"[RADAR] Overlap winner: {log}");
-                MainThread.BeginInvokeOnMainThread(() =>
-                    DebugResultLabel.Text = $"✅ {poi.Name}\n{ranked.Count} quán trong vùng");
+                    $"{x.Poi.Name} (w={x.Poi.HeatWeight}, d={x.DistanceM:F1}m)"));
+                System.Diagnostics.Debug.WriteLine($"[RADAR] Overlap (heat-priority) winner: {log}");
                 #endif
             }
-            #if DEBUG
-            else if (_debugLocation != null)
-            {
-                MainThread.BeginInvokeOnMainThread(() =>
-                    DebugResultLabel.Text = "⚠️ Không có quán nào\ntrong bán kính");
-            }
-            #endif
 
             if (poi != null) { if (_currentPoi != poi) PlayAudioAlert(poi); }
             else if (_currentPoi != null && !_isManualSelection) { StopAudio(); _currentPoi = null; }
@@ -533,29 +566,42 @@ public partial class MapPage : ContentPage, IQueryAttributable
     }
 
     #if DEBUG
-    private void OnSimulateLocationClicked(object sender, EventArgs e)
+    // Cycles: 🏠 real GPS → ② Mốc Nho → ① Giao thoa → ③ Mốc Chilli → back to real GPS
+    // ② = inside Ốc Nho only; ① = 4-way overlap (Ốc Nho, Chilli, Trái Cây Tô, Ốc Sóc); ③ = inside Chilli only
+    // ── TEST INTERSECTION SCENARIOS ─────────────────────────────────────────────
+    // Test intersection points distributed among the restaurant cluster on Vĩnh Khánh
+    // Green dot positioned in the central area where multiple restaurants overlap
+    private static readonly (int Number, Color Color, double? Lat, double? Lng, string? Info)[] _testCyclePoints =
     {
-        var culture = System.Globalization.CultureInfo.InvariantCulture;
-        if (double.TryParse(DebugLatEntry.Text, System.Globalization.NumberStyles.Any, culture, out double lat) &&
-            double.TryParse(DebugLngEntry.Text, System.Globalization.NumberStyles.Any, culture, out double lng))
-        {
-            _debugLocation = new Location(lat, lng);
-            _currentPoi = null; // force re-evaluation on next radar tick
-            DebugResultLabel.Text = $"📍 {lat:F5}, {lng:F5}";
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Simulated location set: {lat}, {lng}");
-        }
-        else
-        {
-            DebugResultLabel.Text = "❌ Tọa độ không hợp lệ";
-        }
-    }
+        // Press 1: Central intersection point 1 - among multiple restaurants
+        (1, Color.FromArgb("#FF8C42"), 10.7585, 106.7048, "INTERSECTION 1"),
+        
+        // Press 2: Central intersection point 2 - among multiple restaurants
+        (2, Color.FromArgb("#FF7F50"), 10.7590, 106.7050, "INTERSECTION 2"),
+        
+        // Press 3: Central intersection point 3 - among multiple restaurants
+        (3, Color.FromArgb("#FF6347"), 10.7588, 106.7045, "INTERSECTION 3"),
+        
+        // Press 4: Central intersection point 4 - among multiple restaurants
+        (4, Color.FromArgb("#FFD700"), 10.7592, 106.7052, "INTERSECTION 4"),
+        
+        // Press 5: Central intersection point 5 - among multiple restaurants
+        (5, Color.FromArgb("#FFA500"), 10.7586, 106.7040, "INTERSECTION 5"),
+    };
 
-    private void OnClearSimulatedLocationClicked(object sender, EventArgs e)
+    private void OnTestCycleClicked(object sender, EventArgs e)
     {
-        _debugLocation = null;
+        _testCycleIndex = (_testCycleIndex + 1) % _testCyclePoints.Length;
+        var (number, color, lat, lng, info) = _testCyclePoints[_testCycleIndex];
+
         _currentPoi = null;
-        DebugResultLabel.Text = "GPS thực";
-        System.Diagnostics.Debug.WriteLine("[DEBUG] Simulated location cleared — using real GPS");
+        _debugLocation = (lat.HasValue && lng.HasValue)
+            ? new Location(lat.Value, lng.Value)
+            : null;
+
+        TestCycleButton.Text = number.ToString();
+        TestCycleButton.BackgroundColor = color;
+        System.Diagnostics.Debug.WriteLine($"[TEST] Point {number}: {info} at ({lat},{lng})");
     }
     #endif
 

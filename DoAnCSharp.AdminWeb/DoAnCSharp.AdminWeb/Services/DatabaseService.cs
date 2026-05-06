@@ -72,10 +72,44 @@ public class DatabaseService
             await _connection.CreateTableAsync<QRCodeSession>();
             await _connection.CreateTableAsync<QRScanRequest>();
             await _connection.CreateTableAsync<DeviceScanLimit>();
+
+            // Một lần khởi động: sửa dữ liệu cũ bị thiếu IsPaid / PaidAt
+            await HealPaymentDataAsync();
         }
         finally
         {
             _semaphore.Release();
+        }
+    }
+
+    // Sửa dữ liệu cũ: đặt IsPaid=true cho mọi bản ghi UserPayment,
+    // và cập nhật User.IsPaid + User.PaidAt cho những user có giao dịch.
+    private async Task HealPaymentDataAsync()
+    {
+        var allPayments = await _connection!.Table<UserPayment>().ToListAsync();
+        if (allPayments.Count == 0) return;
+
+        // 1. Đánh dấu mọi bản ghi UserPayment là IsPaid=true
+        foreach (var p in allPayments.Where(p => !p.IsPaid))
+        {
+            p.IsPaid = true;
+            await _connection.UpdateAsync(p);
+        }
+
+        // 2. Cập nhật User.IsPaid + PaidAt cho user có ít nhất 1 giao dịch
+        var latestByUser = allPayments
+            .GroupBy(p => p.UserId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(p => p.PaymentDate).First());
+
+        foreach (var (userId, pay) in latestByUser)
+        {
+            var user = await _connection.Table<User>().Where(u => u.Id == userId).FirstOrDefaultAsync();
+            if (user != null && (!user.IsPaid || user.PaidAt == null))
+            {
+                user.IsPaid = true;
+                user.PaidAt ??= pay.PaymentDate;
+                await _connection.UpdateAsync(user);
+            }
         }
     }
 
@@ -333,9 +367,12 @@ public class DatabaseService
         var onlineStatuses = await GetAllUserStatusAsync();
         var onlineUsers = onlineStatuses.Where(s => s.IsOnline).ToList();
 
-        var paidUsers = await _connection!.Table<UserPayment>()
-            .Where(p => p.IsPaid == true)
-            .ToListAsync();
+        // Đếm unique user đã trả tiền: có bất kỳ bản ghi UserPayment nào HOẶC User.IsPaid=true
+        // Không lọc theo IsPaid vì các bản ghi cũ có thể có IsPaid=false do lỗi trước đây
+        var allPayments = await _connection!.Table<UserPayment>().ToListAsync();
+        var paidUserIds = allPayments.Select(p => p.UserId).Distinct().ToHashSet();
+        foreach (var u in allUsers.Where(u => u.IsPaid))
+            paidUserIds.Add(u.Id);
 
         // Get today's QR scans
         var today = DateTime.Today;
@@ -349,7 +386,7 @@ public class DatabaseService
             OnlineDevices = onlineUsers.Count,
             ActiveListeningUsers = todayScans.Select(h => h.UserId).Distinct().Count(),
             TotalRegisteredUsers = allUsers.Count,
-            TotalPaidUsers = paidUsers.Count,
+            TotalPaidUsers = paidUserIds.Count,
             TodayQRScans = todayScans.Count,
             OnlineDeviceDetails = new List<UserDevice>()
         };

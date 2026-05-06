@@ -214,10 +214,6 @@
                 <input type="email" id="editEmail" required />
               </div>
               <div class="form-group">
-                <label>Số Điện Thoại</label>
-                <input type="text" id="editPhone" />
-              </div>
-              <div class="form-group">
                 <label>Ngôn Ngữ</label>
                 <select id="editLanguage">
                   <option value="vi">🇻🇳 Tiếng Việt</option>
@@ -915,30 +911,42 @@
                   <th style="width:50px;">ID</th>
                   <th>Họ Tên</th>
                   <th>Email</th>
-                  <th>Số Điện Thoại</th>
                   <th>Ngôn Ngữ</th>
-                  <th style="text-align:center;">Gói</th>
+                  <th style="text-align:center;">Gói Đã Mua</th>
                   <th>Ngày Thanh Toán</th>
                   <th style="text-align:center;">Thao Tác</th>
                 </tr>
               </thead>
               <tbody>
                 ${users.map((user, idx) => {
-                  const paidAt = user.paidAt ? new Date(user.paidAt).toLocaleDateString('vi-VN') : '—';
-                  const lang = user.language === 'en' ? '🇬🇧 EN' : '🇻🇳 VI';
+                  const paidAt = user.paidAt
+                    ? new Date(user.paidAt).toLocaleString('vi-VN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+                    : '—';
+                  const lang = user.language === 'en' ? '🇬🇧 EN'
+                             : user.language === 'ja' ? '🇯🇵 JA'
+                             : user.language === 'ko' ? '🇰🇷 KO'
+                             : '🇻🇳 VI';
                   const safeName = (user.fullName || user.email || '').replace(/'/g, "\\'");
+
+                  // Package badge
+                  let pkgHtml = '<span style="background:#f3f4f6;color:#6b7280;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;">🆓 Miễn phí</span>';
+                  if (user.isPaid) {
+                    const pkg = user.packageName || '';
+                    let pkgLabel = '💳 Đã mua';
+                    let pkgBg = '#dcfce7'; let pkgColor = '#15803d';
+                    if (pkg === 'basic')   { pkgLabel = '💳 Cơ Bản (+5)';  pkgBg = '#dbeafe'; pkgColor = '#1d4ed8'; }
+                    if (pkg === 'premium') { pkgLabel = '💎 Cao Cấp (+20)'; pkgBg = '#fef3c7'; pkgColor = '#b45309'; }
+                    if (pkg === 'vip')     { pkgLabel = '👑 VIP (∞)';       pkgBg = '#f3e8ff'; pkgColor = '#7c3aed'; }
+                    pkgHtml = `<span style="background:${pkgBg};color:${pkgColor};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;">${pkgLabel}</span>`;
+                  }
+
                   return `
                   <tr>
                     <td style="text-align:center; color:#999;">${idx + 1}</td>
                     <td style="font-weight:600;">${user.fullName || '<span style="color:#999;">—</span>'}</td>
-                    <td>${user.email || '—'}</td>
-                    <td>${user.phone || '<span style="color:#999;">—</span>'}</td>
+                    <td style="font-size:13px;">${user.email || '—'}</td>
                     <td style="text-align:center;">${lang}</td>
-                    <td style="text-align:center;">
-                      <span style="background:${user.isPaid ? '#dcfce7' : '#f3f4f6'}; color:${user.isPaid ? '#15803d' : '#6b7280'}; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700;">
-                        ${user.isPaid ? '💳 Paid' : '🆓 Free'}
-                      </span>
-                    </td>
+                    <td style="text-align:center;">${pkgHtml}</td>
                     <td style="color:#6b7280; font-size:13px;">${paidAt}</td>
                     <td style="text-align:center;">
                       <button onclick="editUser(${user.id})" class="small">✏️ Sửa</button>
@@ -963,7 +971,6 @@
 
           document.getElementById("editFullName").value = user.fullName || "";
           document.getElementById("editEmail").value = user.email || "";
-          document.getElementById("editPhone").value = user.phone || "";
           document.getElementById("editLanguage").value = user.language || "vi";
           document.getElementById("editIsPaid").checked = !!user.isPaid;
           document.getElementById("userForm").dataset.editingId = id;
@@ -983,7 +990,6 @@
         const payload = {
           fullName: document.getElementById("editFullName").value.trim(),
           email: document.getElementById("editEmail").value.trim(),
-          phone: document.getElementById("editPhone").value.trim(),
           language: document.getElementById("editLanguage").value,
           isPaid: document.getElementById("editIsPaid").checked
         };

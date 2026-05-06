@@ -16,12 +16,37 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<User>>> GetAll()
+    public async Task<ActionResult> GetAll()
     {
         try
         {
             var users = await _db.GetAllUsersAsync();
-            return Ok(users);
+            var allPayments = await _db.GetAllPaymentsAsync();
+
+            // Lấy giao dịch mới nhất của mỗi user để hiển thị gói và ngày thanh toán
+            var latestByUser = allPayments
+                .GroupBy(p => p.UserId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderByDescending(p => p.PaymentDate).First());
+
+            var result = users.Select(u =>
+            {
+                latestByUser.TryGetValue(u.Id, out var pay);
+                return new
+                {
+                    id = u.Id,
+                    fullName = u.FullName,
+                    email = u.Email,
+                    phone = u.Phone,
+                    language = u.Language,
+                    isPaid = u.IsPaid || pay != null,           // paid if either flag or any payment record
+                    paidAt = pay?.PaymentDate ?? u.PaidAt,      // prefer payment record date
+                    packageName = pay?.PackageName ?? ""         // latest package bought
+                };
+            }).ToList();
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -73,7 +98,7 @@ public class UsersController : ControllerBase
 
             existing.FullName = user.FullName;
             existing.Email = user.Email;
-            existing.Phone = user.Phone;
+            // Phone is managed by the mobile app — don't overwrite from admin web
             existing.Language = user.Language;
 
             if (user.IsPaid && !existing.IsPaid)
