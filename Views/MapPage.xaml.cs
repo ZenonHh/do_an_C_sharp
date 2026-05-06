@@ -31,18 +31,18 @@ public partial class MapPage : ContentPage, IQueryAttributable
     private bool _isMapLoaded = false;
     private bool _isHeatmapOn = false;
 
-    // Debug simulation
-    private Location? _debugLocation = null;
-    private int _testCycleIndex = 0;
+// Debug simulation
+private Location? _debugLocation = null;
+private int _testCycleIndex = 0;
 
-    private readonly AdminSyncService _adminSync;
-    private DateTime _lastPoiSyncAt = DateTime.MinValue;
+private readonly AdminSyncService _adminSync;
+private DateTime _lastPoiSyncAt = DateTime.MinValue;
 
-    public MapPage(MapViewModel viewModel, DatabaseService dbService, ILanguageService langService, ScanQuotaService quotaService, AdminSyncService adminSync)
-    {
-        _dbService = dbService;
-        _quotaService = quotaService;
-        _adminSync = adminSync;
+public MapPage(MapViewModel viewModel, DatabaseService dbService, ILanguageService langService, ScanQuotaService quotaService, AdminSyncService adminSync)
+{
+    _dbService = dbService;
+    _quotaService = quotaService;
+    _adminSync = adminSync;
         Lang = langService;
         BindingContext = viewModel;
         InitializeComponent();
@@ -77,6 +77,62 @@ public partial class MapPage : ContentPage, IQueryAttributable
             });
         });
 
+        // ✅ LISTEN FOR DEEP LINK AUDIO MESSAGE (từ web poi-public.html)
+        WeakReferenceMessenger.Default.Unregister<PlayAudioMessage>(this);
+        WeakReferenceMessenger.Default.Register<PlayAudioMessage>(this, async (_, msg) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"📱 MapPage: Deep link audio message received!");
+            System.Diagnostics.Debug.WriteLine($"   - POI Name: {msg.PoiName}");
+            System.Diagnostics.Debug.WriteLine($"   - POI ID: {msg.PoiId}");
+
+            // ⚡ FORCE SYNC + RELOAD trước khi tìm POI
+            System.Diagnostics.Debug.WriteLine($"🔄 MapPage: Starting force sync...");
+            await SyncPOIsFromServerAsync();
+
+            System.Diagnostics.Debug.WriteLine($"📥 MapPage: Loading data from database...");
+            await LoadDataFromDatabaseAsync();
+
+            System.Diagnostics.Debug.WriteLine($"🔍 MapPage: Searching for POI ID {msg.PoiId} in {_pois.Count} POIs");
+
+            var target = _pois.FirstOrDefault(p => p.Id == msg.PoiId);
+            if (target == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ MapPage: POI ID {msg.PoiId} NOT FOUND!");
+                System.Diagnostics.Debug.WriteLine($"   Available POIs:");
+                foreach (var poi in _pois)
+                {
+                    System.Diagnostics.Debug.WriteLine($"     - ID: {poi.Id}, Name: {poi.Name}");
+                }
+
+                // Show alert to user
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await DisplayAlert("❌ Lỗi", $"Không tìm thấy quán ID {msg.PoiId}\n\nCác quán có sẵn: {string.Join(", ", _pois.Select(p => $"{p.Name}(ID:{p.Id})"))}","OK");
+                });
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"✓ MapPage: POI FOUND! {target.Name} (ID: {target.Id})");
+            System.Diagnostics.Debug.WriteLine($"   - Lat: {target.Lat}, Lng: {target.Lng}");
+
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                System.Diagnostics.Debug.WriteLine($"🎯 MapPage: Centering map on POI...");
+                RunScript($"centerOn({target.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {target.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture)}, 17)");
+
+                _isManualSelection = true;
+                StopAudio();
+
+                System.Diagnostics.Debug.WriteLine($"📄 MapPage: Updating detail card...");
+                await UpdateDetailCardAsync(target);
+
+                System.Diagnostics.Debug.WriteLine($"🔊 MapPage: Playing audio...");
+                PlayAudioAlert(target);
+
+                System.Diagnostics.Debug.WriteLine($"✅ MapPage: Deep link handling complete!");
+            });
+        });
+
         #if DEBUG
         TestCycleButton.IsVisible = true;
         #endif
@@ -86,10 +142,11 @@ public partial class MapPage : ContentPage, IQueryAttributable
             if (!_isMapSetup)
                 SetupWebMap();
 
-            if (_pois.Count == 0)
-                await LoadDataFromDatabaseAsync();
-            else
-                LoadPinsToMap();
+            // ⚡ FORCE SYNC từ server mỗi lần vào MapPage để có quán mới nhất
+            await SyncPOIsFromServerAsync();
+
+            // Load lại data từ database sau khi sync
+            await LoadDataFromDatabaseAsync();
 
             // Sync new restaurants from admin server (throttled: at most once every 60 s)
             if ((DateTime.UtcNow - _lastPoiSyncAt).TotalSeconds > 60)
@@ -164,35 +221,55 @@ public partial class MapPage : ContentPage, IQueryAttributable
 
     // ── DATA ─────────────────────────────────────────────────────────────────
 
-    private async Task TrySyncPOIsFromServerAsync()
+// Throttled sync — chạy ngầm mỗi 60 giây, refresh map nếu có quán mới
+private async Task TrySyncPOIsFromServerAsync()
+{
+    try
     {
-        try
+        var serverPois = await _adminSync.FetchPOIsFromServerAsync();
+        if (serverPois == null || serverPois.Count == 0) return;
+
+        await _dbService.SyncPOIsFromServerAsync(serverPois);
+        _lastPoiSyncAt = DateTime.UtcNow;
+
+        var updated = await _dbService.GetPOIsAsync();
+        if (updated.Count != _pois.Count ||
+            updated.Any(s => !_pois.Any(p => p.Name == s.Name)))
         {
-            var serverPois = await _adminSync.FetchPOIsFromServerAsync();
-            if (serverPois == null || serverPois.Count == 0) return;
-
-            await _dbService.SyncPOIsFromServerAsync(serverPois);
-            _lastPoiSyncAt = DateTime.UtcNow;
-
-            var updated = await _dbService.GetPOIsAsync();
-            if (updated.Count != _pois.Count ||
-                updated.Any(s => !_pois.Any(p => p.Name == s.Name)))
-            {
-                _pois = updated;
-                await RefreshHeatWeightsAsync();
-                MainThread.BeginInvokeOnMainThread(LoadPinsToMap);
-                System.Diagnostics.Debug.WriteLine($"[POI Sync] Map refreshed — {_pois.Count} POIs");
-            }
-            else
-            {
-                _lastPoiSyncAt = DateTime.UtcNow;
-            }
+            _pois = updated;
+            await RefreshHeatWeightsAsync();
+            MainThread.BeginInvokeOnMainThread(LoadPinsToMap);
+            System.Diagnostics.Debug.WriteLine($"[POI Sync] Map refreshed — {_pois.Count} POIs");
         }
-        catch (Exception ex)
+        else
         {
-            System.Diagnostics.Debug.WriteLine($"[POI Sync] Skipped: {ex.Message}");
+            _lastPoiSyncAt = DateTime.UtcNow;
         }
     }
+    catch (Exception ex)
+    {
+        System.Diagnostics.Debug.WriteLine($"[POI Sync] Skipped: {ex.Message}");
+    }
+}
+
+// Force sync — dùng khi cần đảm bảo có dữ liệu mới nhất (deep link, OnAppearing)
+private async Task SyncPOIsFromServerAsync()
+{
+    try
+    {
+        System.Diagnostics.Debug.WriteLine("🔄 MapPage: Syncing POIs from admin server...");
+        var serverPois = await _adminSync.FetchPOIsFromServerAsync();
+        if (serverPois != null && serverPois.Count > 0)
+        {
+            await _dbService.SyncPOIsFromServerAsync(serverPois);
+            System.Diagnostics.Debug.WriteLine($"✓ MapPage: Synced {serverPois.Count} POIs");
+        }
+    }
+    catch (Exception ex)
+    {
+        System.Diagnostics.Debug.WriteLine($"⚠️ MapPage: Sync failed (server offline?): {ex.Message}");
+    }
+}
 
     private async Task LoadDataFromDatabaseAsync()
     {

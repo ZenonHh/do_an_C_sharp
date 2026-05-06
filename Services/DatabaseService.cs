@@ -11,8 +11,8 @@ namespace DoAnCSharp.Services;
 
 public class DatabaseService
 {
-    // Đã đổi tên file để hệ thống tạo DB mới chứa 15 quán ăn
-    private const string DbFileName = "VinhKhanhTour_V6.db3";
+    // Đổi sang V7 để force tạo DB mới với schema đúng (không còn AutoIncrement)
+    private const string DbFileName = "VinhKhanhTour_V7.db3";
     private SQLiteAsyncConnection? _connection;
     private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private readonly AdminSyncService _sync;
@@ -105,29 +105,33 @@ public class DatabaseService
                 var initialData = new List<AudioPOI>
 {
     // ---- THẾ GIỚI ỐC ----
-    new AudioPOI { Name = "Ốc Oanh", Address = "534 Vĩnh Khánh, Q.4", Description = "Quán ốc 'huyền thoại' đông nhất Vĩnh Khánh. Nổi tiếng với ốc hương rang muối ớt và càng ghẹ nướng.", Lat = 10.7595, Lng = 106.7045, Radius = 40, Priority = 1, ImageAsset = "oc_oanh.jpg" },
-    new AudioPOI { Name = "Ốc Vũ", Address = "37 Vĩnh Khánh, Q.4", Description = "Không gian siêu rộng, menu đa dạng và giá cả bình dân. Món khuyên dùng: Ốc tỏi nướng mỡ hành.", Lat = 10.7578, Lng = 106.7058, Radius = 40, Priority = 1, ImageAsset = "oc_vu.jpg" },
-    new AudioPOI { Name = "Ốc Nho", Address = "178 Vĩnh Khánh, Q.4", Description = "Chân ái của giới trẻ với các món ốc sốt phô mai kéo sợi, sốt trứng muối béo ngậy cực đỉnh.", Lat = 10.7582, Lng = 106.7052, Radius = 40, Priority = 1, ImageAsset = "oc_nho.jpg" },
-    new AudioPOI { Name = "Ốc Thảo", Address = "383 Vĩnh Khánh, Q.4", Description = "Quán lâu năm, giữ nguyên hương vị ốc truyền thống Sài Gòn. Nước mắm gừng pha cực ngon.", Lat = 10.7590, Lng = 106.7042, Radius = 40, Priority = 1, ImageAsset = "oc_thao.jpg" },
-    new AudioPOI { Name = "Ốc Sóc", Address = "D58 Vĩnh Khánh, Q.4", Description = "Nổi bật với món nghêu hấp sả ớt cay nồng và ốc móng tay xào rau muống.", Lat = 10.7587, Lng = 106.7048, Radius = 40, Priority = 1, ImageAsset = "oc_soc.jpg" },
-    new AudioPOI { Name = "Ốc Tuyết", Address = "430 Vĩnh Khánh, Q.4", Description = "Quán bình dân nhưng chất lượng tuyệt vời, phục vụ nhanh nhẹn, các món xào me rất đậm đà.", Lat = 10.7585, Lng = 106.7032, Radius = 40, Priority = 1, ImageAsset = "oc_tuyet.jpg" },
-    new AudioPOI { Name = "Ốc Đào 2", Address = "Vĩnh Khánh, P.4, Q.4", Description = "Thương hiệu ốc lâu đời, nêm nếm theo khẩu vị đậm đà đặc trưng, ốc xào sa tế cay xé lưỡi.", Lat = 10.7581, Lng = 106.7061, Radius = 40, Priority = 1, ImageAsset = "oc_dao.jpg" },
+    new AudioPOI { Id = 1, Name = "Ốc Oanh", Address = "534 Vĩnh Khánh, Q.4", Description = "Quán ốc 'huyền thoại' đông nhất Vĩnh Khánh. Nổi tiếng với ốc hương rang muối ớt và càng ghẹ nướng.", Lat = 10.7595, Lng = 106.7045, Radius = 40, Priority = 1, ImageAsset = "oc_oanh.jpg" },
+    new AudioPOI { Id = 2, Name = "Ốc Vũ", Address = "37 Vĩnh Khánh, Q.4", Description = "Không gian siêu rộng, menu đa dạng và giá cả bình dân. Món khuyên dùng: Ốc tỏi nướng mỡ hành.", Lat = 10.7578, Lng = 106.7058, Radius = 40, Priority = 1, ImageAsset = "oc_vu.jpg" },
+    new AudioPOI { Id = 3, Name = "Ốc Nho", Address = "178 Vĩnh Khánh, Q.4", Description = "Chân ái của giới trẻ với các món ốc sốt phô mai kéo sợi, sốt trứng muối béo ngậy cực đỉnh.", Lat = 10.7582, Lng = 106.7052, Radius = 40, Priority = 1, ImageAsset = "oc_nho.jpg" },
+    new AudioPOI { Id = 4, Name = "Ốc Thảo", Address = "383 Vĩnh Khánh, Q.4", Description = "Quán lâu năm, giữ nguyên hương vị ốc truyền thống Sài Gòn. Nước mắm gừng pha cực ngon.", Lat = 10.7590, Lng = 106.7042, Radius = 40, Priority = 1, ImageAsset = "oc_thao.jpg" },
+    new AudioPOI { Id = 5, Name = "Ốc Sóc", Address = "D58 Vĩnh Khánh, Q.4", Description = "Nổi bật với món nghêu hấp sả ớt cay nồng và ốc móng tay xào rau muống.", Lat = 10.7587, Lng = 106.7048, Radius = 40, Priority = 1, ImageAsset = "oc_soc.jpg" },
+    new AudioPOI { Id = 6, Name = "Ốc Tuyết", Address = "430 Vĩnh Khánh, Q.4", Description = "Quán bình dân nhưng chất lượng tuyệt vời, phục vụ nhanh nhẹn, các món xào me rất đậm đà.", Lat = 10.7585, Lng = 106.7032, Radius = 40, Priority = 1, ImageAsset = "oc_tuyet.jpg" },
+    new AudioPOI { Id = 7, Name = "Ốc Đào 2", Address = "Vĩnh Khánh, P.4, Q.4", Description = "Thương hiệu ốc lâu đời, nêm nếm theo khẩu vị đậm đà đặc trưng, ốc xào sa tế cay xé lưỡi.", Lat = 10.7581, Lng = 106.7061, Radius = 40, Priority = 1, ImageAsset = "oc_dao.jpg" },
 
     // ---- LẨU & NƯỚNG ----
-    new AudioPOI { Name = "Quán Nướng Chilli", Address = "232 Vĩnh Khánh, Q.4", Description = "Thiên đường hàu nướng với hơn 20 loại sốt khác nhau, hải sản nướng ngói thơm lừng.", Lat = 10.7586, Lng = 106.7055, Radius = 50, Priority = 2, ImageAsset = "nuong_chilli.jpg" },
-    new AudioPOI { Name = "Lẩu Bò Khu Nhà Cháy", Address = "Chung cư Đoàn Văn Bơ (Gần Vĩnh Khánh)", Description = "Lẩu bò gia truyền nước dùng ngọt thanh từ xương, bò viên tự làm dai giòn sừn sựt.", Lat = 10.7590, Lng = 106.7025, Radius = 50, Priority = 2, ImageAsset = "lau_bo.jpg" },
-    new AudioPOI { Name = "Sườn Nướng Muối Ớt", Address = "Dọc đường Vĩnh Khánh, Q.4", Description = "Sườn heo nướng tẩm ớt cay nồng, ăn kèm đồ chua giải ngấy cực kỳ bắt bia.", Lat = 10.7588, Lng = 106.7040, Radius = 40, Priority = 2, ImageAsset = "suon_nuong.jpg" },
-    new AudioPOI { Name = "Khèn BBQ - Nướng Ngói", Address = "165 Vĩnh Khánh, Q.4", Description = "Thịt được nướng trên ngói đỏ giúp giữ độ ngọt, không bị ám khói than, tẩm ướp chuẩn vị Tây Bắc.", Lat = 10.7592, Lng = 106.7038, Radius = 40, Priority = 2, ImageAsset = "khen_bbq.jpg" },
-    new AudioPOI { Name = "Lẩu Dê Dũng Mập", Address = "Đầu đường Vĩnh Khánh", Description = "Lẩu dê nấu chao thơm phức, thịt dê núi mềm ngọt, không bị hôi, ăn kèm rau rừng.", Lat = 10.7602, Lng = 106.7049, Radius = 50, Priority = 2, ImageAsset = "lau_de.jpg" },
+    new AudioPOI { Id = 8, Name = "Quán Nướng Chilli", Address = "232 Vĩnh Khánh, Q.4", Description = "Thiên đường hàu nướng với hơn 20 loại sốt khác nhau, hải sản nướng ngói thơm lừng.", Lat = 10.7586, Lng = 106.7055, Radius = 50, Priority = 2, ImageAsset = "nuong_chilli.jpg" },
+    new AudioPOI { Id = 9, Name = "Lẩu Bò Khu Nhà Cháy", Address = "Chung cư Đoàn Văn Bơ (Gần Vĩnh Khánh)", Description = "Lẩu bò gia truyền nước dùng ngọt thanh từ xương, bò viên tự làm dai giòn sừn sựt.", Lat = 10.7590, Lng = 106.7025, Radius = 50, Priority = 2, ImageAsset = "lau_bo.jpg" },
+    new AudioPOI { Id = 10, Name = "Sườn Nướng Muối Ớt", Address = "Dọc đường Vĩnh Khánh, Q.4", Description = "Sườn heo nướng tẩm ớt cay nồng, ăn kèm đồ chua giải ngấy cực kỳ bắt bia.", Lat = 10.7588, Lng = 106.7040, Radius = 40, Priority = 2, ImageAsset = "suon_nuong.jpg" },
+    new AudioPOI { Id = 11, Name = "Khèn BBQ - Nướng Ngói", Address = "165 Vĩnh Khánh, Q.4", Description = "Thịt được nướng trên ngói đỏ giúp giữ độ ngọt, không bị ám khói than, tẩm ướp chuẩn vị Tây Bắc.", Lat = 10.7592, Lng = 106.7038, Radius = 40, Priority = 2, ImageAsset = "khen_bbq.jpg" },
+    new AudioPOI { Id = 12, Name = "Lẩu Dê Dũng Mập", Address = "Đầu đường Vĩnh Khánh", Description = "Lẩu dê nấu chao thơm phức, thịt dê núi mềm ngọt, không bị hôi, ăn kèm rau rừng.", Lat = 10.7602, Lng = 106.7049, Radius = 50, Priority = 2, ImageAsset = "lau_de.jpg" },
 
     // ---- ĂN VẶT & MÓN KHÁC ----
-    new AudioPOI { Name = "Phá Lấu Cô Oanh", Address = "Đoạn giao Tôn Đản - Vĩnh Khánh", Description = "Phá lấu bò nấu nước cốt dừa béo ngậy, ăn kèm bánh mì nóng giòn chấm mắm me chua ngọt.", Lat = 10.7570, Lng = 106.7065, Radius = 30, Priority = 3, ImageAsset = "pha_lau.jpg" },
-    new AudioPOI { Name = "Sushi Viên Vĩnh Khánh", Address = "Dọc vỉa hè Vĩnh Khánh", Description = "Sushi lề đường giá học sinh sinh viên nhưng cá hồi, trứng cuộn rất tươi và sạch sẽ.", Lat = 10.7598, Lng = 106.7042, Radius = 30, Priority = 3, ImageAsset = "sushi_vien.jpg" },
-    new AudioPOI { Name = "Trái Cây Tô & Chè", Address = "Giữa phố Vĩnh Khánh", Description = "Tráng miệng mát lạnh giải nhiệt sau khi ăn đồ nướng cay nóng, trái cây xô ngập tràn sữa chua.", Lat = 10.7584, Lng = 106.7050, Radius = 30, Priority = 3, ImageAsset = "trai_cay_to.jpg" }
+    new AudioPOI { Id = 13, Name = "Phá Lấu Cô Oanh", Address = "Đoạn giao Tôn Đản - Vĩnh Khánh", Description = "Phá lấu bò nấu nước cốt dừa béo ngậy, ăn kèm bánh mì nóng giòn chấm mắm me chua ngọt.", Lat = 10.7570, Lng = 106.7065, Radius = 30, Priority = 3, ImageAsset = "pha_lau.jpg" },
+    new AudioPOI { Id = 14, Name = "Sushi Viên Vĩnh Khánh", Address = "Dọc vỉa hè Vĩnh Khánh", Description = "Sushi lề đường giá học sinh sinh viên nhưng cá hồi, trứng cuộn rất tươi và sạch sẽ.", Lat = 10.7598, Lng = 106.7042, Radius = 30, Priority = 3, ImageAsset = "sushi_vien.jpg" },
+    new AudioPOI { Id = 15, Name = "Trái Cây Tô & Chè", Address = "Giữa phố Vĩnh Khánh", Description = "Tráng miệng mát lạnh giải nhiệt sau khi ăn đồ nướng cay nóng, trái cây xô ngập tràn sữa chua.", Lat = 10.7584, Lng = 106.7050, Radius = 30, Priority = 3, ImageAsset = "trai_cay_to.jpg" }
 };
-                
-                int inserted = await _connection.InsertAllAsync(initialData);
-                System.Diagnostics.Debug.WriteLine($"✓ Successfully inserted {inserted} POIs into database");
+
+                // ✅ Use InsertOrReplace to handle ID conflicts gracefully
+                foreach (var poi in initialData)
+                {
+                    await _connection.InsertOrReplaceAsync(poi);
+                }
+                System.Diagnostics.Debug.WriteLine($"✓ Successfully seeded {initialData.Count} POIs into database");
             }
             else
             {
@@ -154,13 +158,13 @@ public class DatabaseService
         try
         {
             await InitAsync();
-            
+
             if (_connection == null)
                 throw new InvalidOperationException("Database connection not initialized");
-            
+
             var pois = await _connection.Table<AudioPOI>().ToListAsync();
             System.Diagnostics.Debug.WriteLine($"✓ GetPOIsAsync returned {pois.Count} POIs");
-            
+
             return pois;
         }
         catch (Exception ex)
@@ -168,6 +172,31 @@ public class DatabaseService
             System.Diagnostics.Debug.WriteLine($"✗ ERROR in GetPOIsAsync: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"✗ Stack Trace: {ex.StackTrace}");
             return new List<AudioPOI>();
+        }
+    }
+
+    // 3.5. HÀM LẤY THÔNG TIN MỘT QUÁN ĂN (Cho Deep Link từ web)
+    public async Task<AudioPOI?> GetPOIByIdAsync(int poiId)
+    {
+        try
+        {
+            await InitAsync();
+
+            if (_connection == null)
+                throw new InvalidOperationException("Database connection not initialized");
+
+            var poi = await _connection.Table<AudioPOI>().Where(p => p.Id == poiId).FirstOrDefaultAsync();
+            if (poi != null)
+                System.Diagnostics.Debug.WriteLine($"✓ GetPOIByIdAsync found POI: {poi.Name}");
+            else
+                System.Diagnostics.Debug.WriteLine($"✗ GetPOIByIdAsync: POI ID {poiId} not found");
+
+            return poi;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"✗ ERROR in GetPOIByIdAsync: {ex.Message}");
+            return null;
         }
     }
 
@@ -299,46 +328,33 @@ public class DatabaseService
     }
 
     // 9. ĐỒNG BỘ DANH SÁCH QUÁN ĂN TỪ ADMIN SERVER
-    // Cập nhật các trường thay đổi được (địa chỉ, mô tả, toạ độ, bán kính, độ ưu tiên, ảnh).
-    // Khớp theo tên quán — insert nếu quán mới, không xoá quán cũ (tránh mất lịch sử nghe).
+    // Xóa toàn bộ POI cũ và insert lại từ server để đảm bảo ID luôn khớp.
+    // PlayHistory dùng PoiName nên không bị ảnh hưởng.
     public async Task SyncPOIsFromServerAsync(List<AudioPOI> serverPois)
     {
         await InitAsync();
-        var localPois = await _connection!.Table<AudioPOI>().ToListAsync();
-        var localByName = localPois.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
 
+        if (serverPois == null || serverPois.Count == 0)
+        {
+            System.Diagnostics.Debug.WriteLine("⚠️ SyncPOIs: No server POIs to sync");
+            return;
+        }
+
+        // Xóa toàn bộ POI cũ trong local DB
+        await _connection!.DeleteAllAsync<AudioPOI>();
+        System.Diagnostics.Debug.WriteLine($"🗑️ Cleared all local POIs");
+
+        // Insert toàn bộ từ server (giữ nguyên ID từ server)
+        int inserted = 0;
         foreach (var sp in serverPois)
         {
             if (string.IsNullOrWhiteSpace(sp.Name)) continue;
-
-            if (localByName.TryGetValue(sp.Name, out var local))
-            {
-                local.Address = sp.Address;
-                local.Description = sp.Description;
-                local.Lat = sp.Lat;
-                local.Lng = sp.Lng;
-                local.Radius = sp.Radius;
-                local.Priority = sp.Priority;
-                if (!string.IsNullOrWhiteSpace(sp.ImageAsset))
-                    local.ImageAsset = sp.ImageAsset;
-                await _connection.UpdateAsync(local);
-            }
-            else
-            {
-                await _connection.InsertAsync(new AudioPOI
-                {
-                    Name = sp.Name,
-                    Address = sp.Address,
-                    Description = sp.Description,
-                    Lat = sp.Lat,
-                    Lng = sp.Lng,
-                    Radius = sp.Radius,
-                    Priority = sp.Priority,
-                    ImageAsset = sp.ImageAsset
-                });
-            }
+            await _connection.InsertAsync(sp);
+            inserted++;
+            System.Diagnostics.Debug.WriteLine($"✓ Synced POI: [{sp.Id}] {sp.Name}");
         }
-        System.Diagnostics.Debug.WriteLine($"✓ SyncPOIsFromServerAsync: processed {serverPois.Count} POIs");
+
+        System.Diagnostics.Debug.WriteLine($"✅ Sync complete: {inserted} POIs from server");
     }
 
     // 10. HÀM CẬP NHẬT THÔNG TIN NGƯỜI DÙNG

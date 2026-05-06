@@ -7,12 +7,14 @@ public partial class ProfilePage : ContentPage
 {
     public ILanguageService Lang { get; }
     private readonly ScanQuotaService _quotaService;
+    private readonly AdminSyncService _syncService;
 
-    public ProfilePage(ProfileViewModel viewModel, ILanguageService langService, ScanQuotaService quotaService)
+    public ProfilePage(ProfileViewModel viewModel, ILanguageService langService, ScanQuotaService quotaService, AdminSyncService syncService)
     {
         InitializeComponent();
         Lang = langService;
         _quotaService = quotaService;
+        _syncService = syncService;
         BindingContext = viewModel;
     }
 
@@ -29,6 +31,12 @@ public partial class ProfilePage : ContentPage
             QuotaLabel.Text = remaining > 900
                 ? "Không giới hạn lượt nghe"
                 : $"Còn {remaining} lượt nghe";
+
+            var currentUrl = _syncService.ServerUrl;
+            ServerUrlEntry.Text = currentUrl;
+            ServerUrlStatus.Text = $"Hiện tại: {currentUrl}";
+            ServerUrlEntryGuest.Text = currentUrl;
+            ServerUrlStatusGuest.Text = $"Hiện tại: {currentUrl}";
         }
         catch (Exception ex)
         {
@@ -78,20 +86,45 @@ public partial class ProfilePage : ContentPage
         }
     }
     private async void OnLogoutClicked(object sender, EventArgs e)
-{
-    bool confirm = await DisplayAlert("Đăng xuất", "Bạn có chắc muốn đăng xuất?", "Có", "Không");
-    if (confirm)
     {
-        Preferences.Default.Remove("CurrentUserEmail");
-        
-        // Cập nhật lại Heartbeat thành guest
-        var syncService = ServiceHelper.GetService<AdminSyncService>();
-        syncService?.StartHeartbeat("guest");
-
-        if (BindingContext is ProfileViewModel viewModel)
+        bool confirm = await DisplayAlert("Đăng xuất", "Bạn có chắc muốn đăng xuất?", "Có", "Không");
+        if (confirm)
         {
-            await viewModel.LoadUserProfileAsync(); // Lệnh này sẽ ẩn profile và hiện nút Login
+            Preferences.Default.Remove("CurrentUserEmail");
+            var syncService = ServiceHelper.GetService<AdminSyncService>();
+            syncService?.StartHeartbeat("guest");
+            if (BindingContext is ProfileViewModel viewModel)
+            {
+                await viewModel.LoadUserProfileAsync();
+            }
         }
     }
-}
+
+    private void OnSaveServerUrlClicked(object sender, EventArgs e)
+    {
+        SaveServerUrl(ServerUrlEntry.Text, ServerUrlStatus);
+    }
+
+    private void OnSaveServerUrlGuestClicked(object sender, EventArgs e)
+    {
+        SaveServerUrl(ServerUrlEntryGuest.Text, ServerUrlStatusGuest);
+    }
+
+    private void SaveServerUrl(string? url, Label statusLabel)
+    {
+        url = url?.Trim();
+        if (string.IsNullOrEmpty(url))
+        {
+            statusLabel.Text = "URL không được để trống!";
+            statusLabel.TextColor = Colors.Red;
+            return;
+        }
+        _syncService.ServerUrl = url;
+        ServerUrlEntry.Text = url;
+        ServerUrlEntryGuest.Text = url;
+        ServerUrlStatus.Text = $"Đã lưu: {url}";
+        ServerUrlStatus.TextColor = Color.FromArgb("#27AE60");
+        ServerUrlStatusGuest.Text = $"Đã lưu: {url}";
+        ServerUrlStatusGuest.TextColor = Color.FromArgb("#27AE60");
+    }
 }

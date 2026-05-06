@@ -27,6 +27,30 @@
                     </Grid>
                 </Border>
 
+                <!-- Cài đặt Server URL -->
+                <Border StrokeShape="RoundRectangle 16" StrokeThickness="0" BackgroundColor="White">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Offset="0,4" Radius="8" Opacity="0.05" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="⚙️ Server URL" FontSize="16" FontAttributes="Bold" TextColor="#34495E"/>
+                        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                            <Entry x:Name="ServerUrlEntryGuest" Grid.Column="0"
+                                   Placeholder="http://192.168.x.x:5000"
+                                   FontSize="13" TextColor="#2C3E50"
+                                   PlaceholderColor="#BDC3C7"
+                                   ReturnType="Done"
+                                   Keyboard="Url"/>
+                            <Button Grid.Column="1" Text="Lưu"
+                                    Clicked="OnSaveServerUrlGuestClicked"
+                                    BackgroundColor="#3F8CFF" TextColor="White"
+                                    CornerRadius="8" FontSize="13"
+                                    Padding="12,0" HeightRequest="42"/>
+                        </Grid>
+                        <Label x:Name="ServerUrlStatusGuest" FontSize="11" TextColor="#95A5A6"/>
+                    </VerticalStackLayout>
+                </Border>
+
                 <!-- Nút đăng nhập / đăng ký -->
                 <Button Text="{Binding Lang[login_register], Source={RelativeSource AncestorType={x:Type views:ProfilePage}}}"
                         Command="{Binding GoToLoginCommand}"
@@ -104,6 +128,30 @@
                             <Label Grid.Column="1" Text="{Binding Lang[edit_profile], Source={RelativeSource AncestorType={x:Type views:ProfilePage}}}" FontSize="16" VerticalOptions="Center" TextColor="#34495E"/>
                             <Label Grid.Column="2" Text="❯" FontSize="16" TextColor="#BDC3C7" VerticalOptions="Center"/>
                         </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Cài đặt Server URL -->
+                <Border StrokeShape="RoundRectangle 16" StrokeThickness="0" BackgroundColor="White">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Offset="0,4" Radius="8" Opacity="0.05" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="⚙️ Server URL" FontSize="16" FontAttributes="Bold" TextColor="#34495E"/>
+                        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                            <Entry x:Name="ServerUrlEntry" Grid.Column="0"
+                                   Placeholder="http://192.168.x.x:5000"
+                                   FontSize="13" TextColor="#2C3E50"
+                                   PlaceholderColor="#BDC3C7"
+                                   ReturnType="Done"
+                                   Keyboard="Url"/>
+                            <Button Grid.Column="1" Text="Lưu"
+                                    Clicked="OnSaveServerUrlClicked"
+                                    BackgroundColor="#3F8CFF" TextColor="White"
+                                    CornerRadius="8" FontSize="13"
+                                    Padding="12,0" HeightRequest="42"/>
+                        </Grid>
+                        <Label x:Name="ServerUrlStatus" FontSize="11" TextColor="#95A5A6"/>
                     </VerticalStackLayout>
                 </Border>
 

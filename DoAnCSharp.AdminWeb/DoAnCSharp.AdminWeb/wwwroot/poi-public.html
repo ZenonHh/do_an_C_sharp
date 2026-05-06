@@ -119,9 +119,12 @@
 
         .pois-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 24px;
             margin-top: 0;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .restaurant-card {
@@ -460,9 +463,15 @@
             }
         }
 
+        @media (max-width: 1200px) {
+            .pois-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
         @media (max-width: 768px) {
             .pois-grid {
-                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                grid-template-columns: repeat(2, 1fr);
                 gap: 18px;
             }
 
@@ -719,8 +728,18 @@
             // Update UI
             updateScanInfo();
 
-            // Navigate to detail page
-            window.location.href = `/poi-detail.html?poiId=${poiId}`;
+            // ✅ TRY DEEP LINK FIRST - nhảy qua app nếu đã cài
+            // Deep link format: vinhkhanhtour://poi/{id}/play-audio
+            const deepLink = `vinhkhanhtour://poi/${poiId}/play-audio`;
+            const webLink = `/poi-detail.html?poiId=${poiId}`;
+
+            // Try to open via deep link
+            window.location.href = deepLink;
+
+            // Fallback to web page after 2.5 seconds if app not installed
+            setTimeout(() => {
+                window.location.href = webLink;
+            }, 2500);
         }
 
         // Load restaurants

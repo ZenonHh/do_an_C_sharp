@@ -839,10 +839,40 @@
 
         // Download app function
         function downloadApp() {
-            showNotification('🔗 Đang mở trang tải ứng dụng...', 'info');
-            setTimeout(() => {
-                window.open('https://play.google.com/store/apps/details?id=com.companyname.doancsharp_clean', '_blank');
-            }, 500);
+            // Phát hiện thiết bị
+            const isAndroid = /android/i.test(navigator.userAgent);
+            const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+            if (isIOS) {
+                showNotification('🍎 iOS chưa hỗ trợ. Vui lòng dùng Android.', 'error');
+                return;
+            }
+
+            // Hiển thị hướng dẫn cài APK
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+            overlay.innerHTML = `
+                <div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;font-family:sans-serif">
+                    <h3 style="margin:0 0 12px;color:#2C3E50;font-size:18px">📱 Tải Ứng Dụng VinhKhanhTour</h3>
+                    <p style="color:#555;font-size:14px;margin:0 0 16px;line-height:1.6">
+                        Trước khi cài đặt, bạn cần bật <b>"Cài từ nguồn không xác định"</b>:<br><br>
+                        <b>Android 8+:</b> Cài đặt → Ứng dụng → Trình duyệt/File Manager → Bật "Cài ứng dụng không rõ nguồn"<br><br>
+                        <b>Android 7-:</b> Cài đặt → Bảo mật → Bật "Nguồn không xác định"
+                    </p>
+                    <div style="display:flex;gap:10px">
+                        <button onclick="this.closest('div').parentElement.parentElement.remove()" 
+                            style="flex:1;padding:12px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:14px">
+                            Hủy
+                        </button>
+                        <a href="/api/download/app-apk" download="VinhKhanhTour.apk"
+                            onclick="this.closest('div').parentElement.parentElement.remove();showNotification('⬇️ Đang tải APK...','info')"
+                            style="flex:2;padding:12px;background:#3F8CFF;color:#fff;border-radius:8px;text-align:center;text-decoration:none;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:6px">
+                            ⬇️ Tải APK (~171 MB)
+                        </a>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
         }
 
         // Strip HTML tags/entities so TTS doesn't read raw markup

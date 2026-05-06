@@ -11,7 +11,7 @@ namespace DoAnCSharp;
     new[] { Intent.ActionView },
     Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
     DataScheme = "vinhkhanhtour",
-    DataHost = "play_audio")]
+    DataPathPrefix = "/poi/")]
 public class MainActivity : MauiAppCompatActivity
 {
     protected override void OnCreate(Bundle? savedInstanceState)

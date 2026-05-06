@@ -5,7 +5,9 @@ namespace DoAnCSharp.Models;
 
 public partial class AudioPOI : ObservableObject
 {
-    [PrimaryKey, AutoIncrement]
+    // ✅ Removed AutoIncrement to allow ID from server
+    // Server will provide the ID, SQLite will use it as-is
+    [PrimaryKey]
     public int Id { get; set; }
     
     public string Name { get; set; } = string.Empty;

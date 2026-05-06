@@ -15,7 +15,7 @@ public class AdminSyncService
     // LƯU Ý: IP hiện tại được lấy động từ Preferences, giúp bạn đổi IP từ cài đặt App mà không cần build lại
     public string ServerUrl
     {
-        get => Microsoft.Maui.Storage.Preferences.Default.Get("ServerIP", "http://10.0.2.2:5000");
+        get => Microsoft.Maui.Storage.Preferences.Default.Get("ServerIP", "http://192.168.1.32:5000");
         set => Microsoft.Maui.Storage.Preferences.Default.Set("ServerIP", value);
     }
 

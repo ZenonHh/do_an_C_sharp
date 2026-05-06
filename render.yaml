@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: doan-csharp-backend
+    env: docker
+    dockerfilePath: ./DoAnCSharp.AdminWeb/DoAnCSharp.AdminWeb/Dockerfile
+    dockerContext: ./DoAnCSharp.AdminWeb/DoAnCSharp.AdminWeb
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:$PORT
