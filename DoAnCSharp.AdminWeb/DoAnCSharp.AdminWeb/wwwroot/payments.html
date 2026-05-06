@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Thanh Toán & Lượt Quét</title>
+    <title>Quản lý Thanh Toán & Lượt Nghe</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f6fa; padding: 30px; color: #2c3e50; }
         .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 1000px; margin: auto; }
@@ -31,7 +31,7 @@
 <body>
     <div class="container">
         <div class="header-action">
-            <h2>💰 Lịch sử Nạp Lượt Quét</h2>
+            <h2>🔊 Lịch sử Nạp Lượt Nghe</h2>
             <a href="/" class="btn-back">⬅ Quay lại Dashboard</a>
         </div>
         
@@ -61,15 +61,15 @@
                 tbody.innerHTML = ''; 
 
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #7f8c8d;">Chưa có giao dịch nạp lượt quét nào từ App.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #7f8c8d;">Chưa có giao dịch nạp lượt nghe nào từ App.</td></tr>';
                     return;
                 }
 
-                data.forEach(p => {
+                data.forEach((p, idx) => {
                     // Logic tự động nhận diện và làm đẹp tên Gói
                     let pkgClass = 'pkg-basic';
                     let pkgName = p.packageName;
-                    
+
                     if (pkgName === 'premium') { pkgClass = 'pkg-premium'; pkgName = 'Gói Cao Cấp (+20 lượt)'; }
                     else if (pkgName === 'vip') { pkgClass = 'pkg-vip'; pkgName = 'Gói VIP (Không giới hạn)'; }
                     else if (pkgName === 'basic') { pkgName = 'Gói Cơ Bản (+5 lượt)'; }
@@ -80,7 +80,7 @@
 
                     let tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td style="color: #bdc3c7;">#${p.id}</td>
+                        <td style="color: #bdc3c7;">#${idx + 1}</td>
                         <td class="user-info">
                             <span class="user-name">${p.userName}</span>
                             <span class="user-email">${p.userEmail}</span>

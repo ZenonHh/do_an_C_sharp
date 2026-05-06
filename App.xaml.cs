@@ -59,6 +59,39 @@ public partial class App : Application
                     System.Diagnostics.Debug.WriteLine($"✗ Database Init Error: {dbEx}");
                 }
 
+                // Đồng bộ dữ liệu quán ăn từ admin server — cập nhật mọi thay đổi admin đã chỉnh sửa.
+                // Fire-and-forget với try/catch: nếu server tắt thì app vẫn dùng dữ liệu cục bộ bình thường.
+                try
+                {
+                    var serverPois = await _syncService.FetchPOIsFromServerAsync();
+                    if (serverPois != null && serverPois.Count > 0)
+                    {
+                        await _dbService.SyncPOIsFromServerAsync(serverPois);
+                        System.Diagnostics.Debug.WriteLine($"✓ Synced {serverPois.Count} POIs from admin server");
+                    }
+                }
+                catch (Exception syncEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"✗ POI sync skipped (server offline): {syncEx.Message}");
+                }
+
+                // Tải cấu hình thanh toán từ admin (mô hình, lượt miễn phí, gói cước).
+                // Lưu vào Preferences để ScanQuotaService và PaymentViewModel đọc ngay khi cần.
+                try
+                {
+                    var config = await _syncService.FetchAppConfigAsync();
+                    if (config != null)
+                    {
+                        Microsoft.Maui.Storage.Preferences.Default.Set("daily_free_listens", config.DailyFreeListens);
+                        Microsoft.Maui.Storage.Preferences.Default.Set("payment_model", config.PaymentModel);
+                        System.Diagnostics.Debug.WriteLine($"✓ App config: model={config.PaymentModel}, freeListens={config.DailyFreeListens}");
+                    }
+                }
+                catch (Exception cfgEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"✗ App config fetch skipped (server offline): {cfgEx.Message}");
+                }
+
                 _isInitialized = true;
                 System.Diagnostics.Debug.WriteLine("=== App Initialization Complete ===");
 

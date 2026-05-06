@@ -767,24 +767,29 @@ public class DatabaseService
     {
         await InitAsync();
 
-        // Seed sample users if none exist
-        var userCount = await _connection!.Table<User>().CountAsync();
-        if (userCount == 0)
+        // Remove previously seeded virtual/test accounts so only real accounts remain
+        var virtualEmails = new[] { "user1@example.com", "user2@example.com", "user3@example.com", "user4@example.com", "user5@example.com" };
+        foreach (var email in virtualEmails)
         {
-            var sampleUsers = new List<User>
+            var vUser = await _connection!.Table<User>().Where(u => u.Email == email).FirstOrDefaultAsync();
+            if (vUser != null)
             {
-                new User { Id = 1, FullName = "Nguyễn Văn A", Email = "user1@example.com", Password = "password", Phone = "0901234567", Avatar = "dotnet_bot.png", Language = "vi", IsPaid = true, PaidAt = DateTime.Now.AddMonths(-1) },
-                new User { Id = 2, FullName = "Trần Thị B", Email = "user2@example.com", Password = "password", Phone = "0909876543", Avatar = "dotnet_bot.png", Language = "vi", IsPaid = false },
-                new User { Id = 3, FullName = "Lê Văn C", Email = "user3@example.com", Password = "password", Phone = "0912345678", Avatar = "dotnet_bot.png", Language = "en", IsPaid = true, PaidAt = DateTime.Now.AddDays(-15) },
-                new User { Id = 4, FullName = "Phạm Thị D", Email = "user4@example.com", Password = "password", Phone = "0913456789", Avatar = "dotnet_bot.png", Language = "vi", IsPaid = false },
-                new User { Id = 5, FullName = "Hoàng Văn E", Email = "user5@example.com", Password = "password", Phone = "0914567890", Avatar = "dotnet_bot.png", Language = "ja", IsPaid = true, PaidAt = DateTime.Now }
-            };
-
-            foreach (var user in sampleUsers)
-            {
-                await _connection!.InsertAsync(user);
+                await _connection!.ExecuteAsync("DELETE FROM UserPayment WHERE UserId = ?", vUser.Id);
+                await _connection!.ExecuteAsync("DELETE FROM PlayHistory WHERE UserId = ?", vUser.Id);
+                await _connection!.ExecuteAsync("DELETE FROM UserDevice WHERE UserId = ?", vUser.Id);
+                await _connection!.DeleteAsync(vUser);
             }
         }
+
+        // Remove previously seeded virtual devices by their hardcoded names/models
+        var virtualDeviceNames = new[] { "iPhone 12", "Samsung Galaxy A12", "iPad Air 4" };
+        foreach (var name in virtualDeviceNames)
+        {
+            var vDevice = await _connection!.Table<UserDevice>().Where(d => d.DeviceName == name).FirstOrDefaultAsync();
+            if (vDevice != null) await _connection!.DeleteAsync(vDevice);
+        }
+
+        // Do NOT seed sample users — only real accounts from the app should appear
 
         var poiCount = await _connection!.Table<AudioPOI>().CountAsync();
         if (poiCount < 15)
@@ -823,46 +828,6 @@ public class DatabaseService
             }
         }
 
-        // Seed sample payments if none exist
-        var paymentCount = await _connection!.Table<UserPayment>().CountAsync();
-        if (paymentCount == 0)
-        {
-            var samplePayments = new List<UserPayment>
-            {
-                new UserPayment { UserId = 1, IsPaid = true, PaymentMethod = "Credit Card", Amount = 99000, PaidDate = DateTime.Now.AddMonths(-1) },
-                new UserPayment { UserId = 2, IsPaid = false, PaymentMethod = "", Amount = 0, PaidDate = null },
-                new UserPayment { UserId = 3, IsPaid = true, PaymentMethod = "Bank Transfer", Amount = 99000, PaidDate = DateTime.Now.AddDays(-15) },
-                new UserPayment { UserId = 4, IsPaid = false, PaymentMethod = "", Amount = 0, PaidDate = null },
-                new UserPayment { UserId = 5, IsPaid = true, PaymentMethod = "Credit Card", Amount = 99000, PaidDate = DateTime.Now }
-            };
-
-            foreach (var payment in samplePayments)
-            {
-                await _connection!.InsertAsync(payment);
-            }
-        }
-
-        // Seed sample play history
-        var historyCount = await _connection!.Table<PlayHistory>().CountAsync();
-        if (historyCount == 0)
-        {
-            var today = DateTime.Today;
-            var sampleHistory = new List<PlayHistory>
-            {
-                new PlayHistory { UserId = 1, POIName = "Ốc Oanh", ImageAsset = "dotnet_bot.png", PlayedAt = today.AddHours(8) },
-                new PlayHistory { UserId = 2, POIName = "Ốc Vũ", ImageAsset = "dotnet_bot.png", PlayedAt = today.AddHours(9) },
-                new PlayHistory { UserId = 3, POIName = "Ốc Nho", ImageAsset = "dotnet_bot.png", PlayedAt = today.AddHours(10) },
-                new PlayHistory { UserId = 1, POIName = "Quán Nướng Chilli", ImageAsset = "dotnet_bot.png", PlayedAt = today.AddHours(11) },
-                new PlayHistory { UserId = 4, POIName = "Lẩu Bò Khu Nhà Cháy", ImageAsset = "dotnet_bot.png", PlayedAt = today.AddHours(12) },
-                new PlayHistory { UserId = 5, POIName = "Ốc Oanh", ImageAsset = "dotnet_bot.png", PlayedAt = today.AddHours(13) }
-            };
-
-            foreach (var history in sampleHistory)
-            {
-                await _connection!.InsertAsync(history);
-            }
-        }
-
         // Seed sample AdminUsers if none exist
         var adminCount = await _connection!.Table<AdminUser>().CountAsync();
         if (adminCount == 0)
@@ -879,28 +844,11 @@ public class DatabaseService
             }
         }
 
-        // Seed sample UserDevices if none exist
-        var deviceCount = await _connection!.Table<UserDevice>().CountAsync();
-        if (deviceCount == 0)
-        {
-            var sampleDevices = new List<UserDevice>
-            {
-                new UserDevice { UserId = 1, DeviceId = Guid.NewGuid().ToString(), DeviceName = "iPhone 12", DeviceModel = "iPhone12,1", DeviceOS = "iOS", AppVersion = "1.0.0", IsOnline = true, LastOnlineAt = DateTime.Now, RegisteredAt = DateTime.Now.AddDays(-30), IpAddress = "192.168.1.100", LocationInfo = "Hồ Chí Minh", IsActive = true },
-                new UserDevice { UserId = 2, DeviceId = Guid.NewGuid().ToString(), DeviceName = "Samsung Galaxy A12", DeviceModel = "SM-A125F", DeviceOS = "Android", AppVersion = "1.0.0", IsOnline = false, LastOnlineAt = DateTime.Now.AddHours(-2), RegisteredAt = DateTime.Now.AddDays(-15), IpAddress = "192.168.1.101", LocationInfo = "Bình Dương", IsActive = true },
-                new UserDevice { UserId = 3, DeviceId = Guid.NewGuid().ToString(), DeviceName = "iPad Air 4", DeviceModel = "iPad Air (4th generation)", DeviceOS = "iOS", AppVersion = "1.0.0", IsOnline = true, LastOnlineAt = DateTime.Now, RegisteredAt = DateTime.Now.AddDays(-7), IpAddress = "192.168.1.102", LocationInfo = "Đồng Nai", IsActive = true }
-            };
-
-            foreach (var device in sampleDevices)
-            {
-                await _connection!.InsertAsync(device);
-            }
-        }
-
-        // Seed SystemSettings if none exist
+        // Seed base settings only when DB is brand new
         var settingCount = await _connection!.Table<SystemSetting>().CountAsync();
         if (settingCount == 0)
         {
-            var sampleSettings = new List<SystemSetting>
+            var baseSettings = new List<SystemSetting>
             {
                 new SystemSetting { Key = "App.Name", Value = "Vĩnh Khánh Tour", Description = "Tên ứng dụng", SettingType = "string", UpdatedAt = DateTime.Now, UpdatedBy = "system" },
                 new SystemSetting { Key = "App.Version", Value = "1.0.0", Description = "Phiên bản ứng dụng", SettingType = "string", UpdatedAt = DateTime.Now, UpdatedBy = "system" },
@@ -909,13 +857,31 @@ public class DatabaseService
                 new SystemSetting { Key = "Feature.QRScanning", Value = "true", Description = "Bật/tắt quét QR", SettingType = "bool", UpdatedAt = DateTime.Now, UpdatedBy = "system" },
                 new SystemSetting { Key = "Feature.AudioGuide", Value = "true", Description = "Bật/tắt hướng dẫn âm thanh", SettingType = "bool", UpdatedAt = DateTime.Now, UpdatedBy = "system" },
                 new SystemSetting { Key = "Security.SessionTimeout", Value = "3600", Description = "Thời gian hết phiên (giây)", SettingType = "int", UpdatedAt = DateTime.Now, UpdatedBy = "system" },
-                new SystemSetting { Key = "Maintenance.Mode", Value = "false", Description = "Chế độ bảo trì", SettingType = "bool", UpdatedAt = DateTime.Now, UpdatedBy = "system" }
+                new SystemSetting { Key = "Maintenance.Mode", Value = "false", Description = "Chế độ bảo trì", SettingType = "bool", UpdatedAt = DateTime.Now, UpdatedBy = "system" },
             };
+            foreach (var s in baseSettings)
+                await _connection!.InsertAsync(s);
+        }
 
-            foreach (var setting in sampleSettings)
-            {
-                await _connection!.InsertAsync(setting);
-            }
+        // Always upsert Payment.* settings so they exist even on existing DBs.
+        // These are read by the mobile app at startup via GET /api/settings/app-config.
+        // Admin can change values at runtime; this block only inserts if the key is missing.
+        var paymentDefaults = new (string Key, string Value, string Desc, string Type)[]
+        {
+            ("Payment.Model",           "listen",  "Mô hình thanh toán: 'listen' hoặc 'scan'",             "string"),
+            ("Payment.DailyFreeListens","5",        "Số lượt nghe miễn phí mỗi ngày",                       "int"),
+            ("Payment.PkgBasicListens", "5",        "Gói Cơ Bản — số lượt nghe",                            "int"),
+            ("Payment.PkgBasicPrice",   "5000",     "Gói Cơ Bản — giá (VND)",                               "int"),
+            ("Payment.PkgPremiumListens","20",      "Gói Cao Cấp — số lượt nghe",                           "int"),
+            ("Payment.PkgPremiumPrice", "15000",    "Gói Cao Cấp — giá (VND)",                              "int"),
+            ("Payment.PkgVipListens",   "999",      "Gói VIP — số lượt nghe (999 = không giới hạn)",        "int"),
+            ("Payment.PkgVipPrice",     "50000",    "Gói VIP — giá (VND)",                                  "int"),
+        };
+        foreach (var (key, value, desc, type) in paymentDefaults)
+        {
+            var exists = await _connection!.Table<SystemSetting>().Where(s => s.Key == key).FirstOrDefaultAsync();
+            if (exists == null)
+                await _connection!.InsertAsync(new SystemSetting { Key = key, Value = value, Description = desc, SettingType = type, UpdatedAt = DateTime.Now, UpdatedBy = "system" });
         }
     }
 

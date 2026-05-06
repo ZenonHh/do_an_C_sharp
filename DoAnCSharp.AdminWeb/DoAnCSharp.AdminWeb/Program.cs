@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddScoped<DatabaseService>();
+builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {
@@ -304,6 +305,27 @@ string GetClientIP(HttpContext context)
 
     return context.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
 }
+
+// TTS proxy — forwards Google Translate TTS requests server-side to avoid browser CORS/blocking
+app.MapGet("/api/tts", async (string q, string tl, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var client = httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Add("User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36");
+        var url = $"https://translate.googleapis.com/translate_tts?ie=UTF-8&q={Uri.EscapeDataString(q)}&tl={tl}&client=gtx";
+        var response = await client.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+            return Results.StatusCode((int)response.StatusCode);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        return Results.File(bytes, "audio/mpeg");
+    }
+    catch
+    {
+        return Results.StatusCode(503);
+    }
+});
 
 // Fallback to index.html for SPA (MUST be last)
 app.MapFallbackToFile("index.html");

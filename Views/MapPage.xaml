@@ -136,6 +136,30 @@
             </Grid>
         </Border>
 
+        <!-- Debug location simulator — shown only in DEBUG builds via code-behind -->
+        <Border x:Name="DebugPanel" IsVisible="False"
+                VerticalOptions="End" HorizontalOptions="Start"
+                Margin="10,0,0,140" Padding="10,8"
+                BackgroundColor="#DD1a1a2e" StrokeThickness="0" ZIndex="10">
+            <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+            <VerticalStackLayout Spacing="5">
+                <Label Text="🧪 Giả lập vị trí" TextColor="#FFD700" FontSize="11" FontAttributes="Bold"/>
+                <Entry x:Name="DebugLatEntry" Placeholder="Latitude" Text="10.7584"
+                       TextColor="White" PlaceholderColor="#888" BackgroundColor="Transparent" FontSize="12" WidthRequest="145"/>
+                <Entry x:Name="DebugLngEntry" Placeholder="Longitude" Text="106.70535"
+                       TextColor="White" PlaceholderColor="#888" BackgroundColor="Transparent" FontSize="12" WidthRequest="145"/>
+                <Label x:Name="DebugResultLabel" Text="" TextColor="#7FFF7F" FontSize="10" LineBreakMode="WordWrap"/>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="5">
+                    <Button Grid.Column="0" Text="▶ Thử" Clicked="OnSimulateLocationClicked"
+                            BackgroundColor="#FF6B35" TextColor="White" FontSize="11"
+                            CornerRadius="7" HeightRequest="30" Padding="0"/>
+                    <Button Grid.Column="1" Text="✕ Xóa" Clicked="OnClearSimulatedLocationClicked"
+                            BackgroundColor="#555" TextColor="White" FontSize="11"
+                            CornerRadius="7" HeightRequest="30" Padding="0"/>
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+
         <Border x:Name="AudioPlayerUI" IsVisible="False" VerticalOptions="End" HorizontalOptions="Fill" Margin="20, 0, 20, 20" Padding="15, 12" BackgroundColor="#EB1A1A1A" StrokeThickness="0" ZIndex="5">
             <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
             <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="15">

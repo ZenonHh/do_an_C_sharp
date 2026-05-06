@@ -25,11 +25,10 @@ public partial class ProfilePage : ContentPage
             if (BindingContext is ProfileViewModel viewModel)
                 await viewModel.LoadUserProfileAsync();
 
-            // Cập nhật số lượt quét còn lại
             int remaining = _quotaService.GetRemaining();
             QuotaLabel.Text = remaining > 900
-                ? "Không giới hạn lượt quét"
-                : $"Còn {remaining} lượt quét QR";
+                ? "Không giới hạn lượt nghe"
+                : $"Còn {remaining} lượt nghe";
         }
         catch (Exception ex)
         {

@@ -298,7 +298,50 @@ public class DatabaseService
         return result;
     }
 
-    // 9. HÀM CẬP NHẬT THÔNG TIN NGƯỜI DÙNG
+    // 9. ĐỒNG BỘ DANH SÁCH QUÁN ĂN TỪ ADMIN SERVER
+    // Cập nhật các trường thay đổi được (địa chỉ, mô tả, toạ độ, bán kính, độ ưu tiên, ảnh).
+    // Khớp theo tên quán — insert nếu quán mới, không xoá quán cũ (tránh mất lịch sử nghe).
+    public async Task SyncPOIsFromServerAsync(List<AudioPOI> serverPois)
+    {
+        await InitAsync();
+        var localPois = await _connection!.Table<AudioPOI>().ToListAsync();
+        var localByName = localPois.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var sp in serverPois)
+        {
+            if (string.IsNullOrWhiteSpace(sp.Name)) continue;
+
+            if (localByName.TryGetValue(sp.Name, out var local))
+            {
+                local.Address = sp.Address;
+                local.Description = sp.Description;
+                local.Lat = sp.Lat;
+                local.Lng = sp.Lng;
+                local.Radius = sp.Radius;
+                local.Priority = sp.Priority;
+                if (!string.IsNullOrWhiteSpace(sp.ImageAsset))
+                    local.ImageAsset = sp.ImageAsset;
+                await _connection.UpdateAsync(local);
+            }
+            else
+            {
+                await _connection.InsertAsync(new AudioPOI
+                {
+                    Name = sp.Name,
+                    Address = sp.Address,
+                    Description = sp.Description,
+                    Lat = sp.Lat,
+                    Lng = sp.Lng,
+                    Radius = sp.Radius,
+                    Priority = sp.Priority,
+                    ImageAsset = sp.ImageAsset
+                });
+            }
+        }
+        System.Diagnostics.Debug.WriteLine($"✓ SyncPOIsFromServerAsync: processed {serverPois.Count} POIs");
+    }
+
+    // 10. HÀM CẬP NHẬT THÔNG TIN NGƯỜI DÙNG
 public async Task<bool> UpdateUserAsync(string email, string newFullName, string newPassword, string newAvatarPath)
 {
     await InitAsync();

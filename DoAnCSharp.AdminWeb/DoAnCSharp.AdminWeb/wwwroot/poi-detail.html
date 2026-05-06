@@ -751,7 +751,7 @@
 
                 <!-- Card: Language Selector -->
                 <div class="card-section">
-                    <div class="section-title-card">🌐 LANGUAGE</div>
+                    <div class="section-title-card">🌐 NGÔN NGỮ</div>
                     <div class="language-buttons-group">
                         <button class="lang-button ${currentLanguage === 'vi' ? 'active' : ''}" data-lang="vi" onclick="switchLanguage('vi')">🇻🇳 Tiếng Việt</button>
                         <button class="lang-button ${currentLanguage === 'en' ? 'active' : ''}" data-lang="en" onclick="switchLanguage('en')">🇬🇧 English</button>
@@ -763,18 +763,18 @@
 
                 <!-- Card: About -->
                 <div class="card-section">
-                    <div class="section-title-card">📚 ABOUT</div>
+                    <div class="section-title-card">📚 THÔNG TIN</div>
                     <p class="section-description">${description}</p>
                 </div>
 
                 <!-- Card: Audio Guide -->
                 <div class="card-section audio-section-card">
                     <div class="audio-header">
-                        <span class="section-title-card">🎧 AUDIO GUIDE</span>
-                        <span class="free-trial-badge">Free Trial</span>
+                        <span class="section-title-card">🎧 NGHE THUYẾT MINH</span>
+                        <span class="free-trial-badge">Dùng thử miễn phí</span>
                     </div>
-                    <button class="btn-play-audio" onclick="playAudio()">▶ Play Audio</button>
-                    <button class="btn-download-app" onclick="downloadApp()">📥 Download FoodTour App for Unlimited Audio</button>
+                    <button class="btn-play-audio" onclick="playAudio()">▶ Nghe thuyết minh</button>
+                    <button class="btn-download-app" onclick="downloadApp()">📥 Tải app để nghe không giới hạn</button>
                 </div>
 
                 <!-- Footer -->
@@ -787,52 +787,44 @@
         }
 
         // Switch language
-        function switchLanguage(lang) {
-            // Don't re-render if already on same language
+        async function switchLanguage(lang) {
             if (currentLanguage === lang) return;
-
             currentLanguage = lang;
-            console.log(`🔄 Switching language to: ${lang}`);
 
             // Stop current audio if playing
             const wasPlaying = isSpeaking;
             if (isSpeaking) {
-                window.speechSynthesis.cancel();
+                _ttsAborted = true;
+                if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
                 isSpeaking = false;
             }
 
-            // Update language buttons - remove active class from all and add to current
-            const langButtons = document.querySelectorAll('.lang-button');
-            console.log(`Found ${langButtons.length} language buttons`);
-            langButtons.forEach(btn => {
-                btn.classList.remove('active');
-            });
-
-            // Find and update the button for the selected language using data-lang attribute
+            // Update active button
+            document.querySelectorAll('.lang-button').forEach(btn => btn.classList.remove('active'));
             const selectedBtn = document.querySelector(`.lang-button[data-lang="${lang}"]`);
-            console.log(`Selected button for lang ${lang}:`, selectedBtn);
-            if (selectedBtn) {
-                selectedBtn.classList.add('active');
-                console.log(`✅ Added active class to ${lang} button`);
-            } else {
-                console.warn(`⚠️ Could not find button for lang ${lang}`);
-            }
+            if (selectedBtn) selectedBtn.classList.add('active');
 
-            // Update the description text
-            const descriptionElement = document.querySelector('.section-description');
-            console.log(`Description element:`, descriptionElement);
-            if (descriptionElement) {
-                const newDescription = getDescriptionByLanguage(lang);
-                console.log(`New description (${lang}):`, newDescription.substring(0, 50) + '...');
-                descriptionElement.textContent = newDescription;
-                console.log(`✅ Updated description text`);
-            } else {
-                console.warn(`⚠️ Could not find .section-description element`);
+            // Update description — translate on-the-fly if no stored translation
+            const descEl = document.querySelector('.section-description');
+            if (descEl) {
+                let desc = getDescriptionByLanguage(lang);
+                const viText = currentPOI?.description || currentPOI?.Description || '';
+                const isFallback = lang !== 'vi' && desc === viText && viText;
+                if (isFallback) {
+                    descEl.textContent = '⏳ Đang dịch...';
+                    const translated = await translateText(viText, lang);
+                    if (translated) {
+                        desc = translated;
+                        const fieldMap = { en: 'descriptionEn', ja: 'descriptionJa', ru: 'descriptionRu', zh: 'descriptionZh' };
+                        if (fieldMap[lang]) currentPOI[fieldMap[lang]] = translated;
+                    }
+                }
+                descEl.textContent = desc;
             }
 
             // Show notification
             showNotification(
-                lang === 'vi' ? '✅ Đã chuyển sang Tiếng Việt' : 
+                lang === 'vi' ? '✅ Đã chuyển sang Tiếng Việt' :
                 lang === 'en' ? '✅ Switched to English' :
                 lang === 'ja' ? '✅ 日本語に切り替えました' :
                 lang === 'ru' ? '✅ Переключено на русский' :
@@ -840,11 +832,8 @@
                 'success'
             );
 
-            // If audio was playing, auto-restart in new language after a short delay
             if (wasPlaying) {
-                setTimeout(() => {
-                    playAudio();
-                }, 300);
+                setTimeout(() => playAudio(), 300);
             }
         }
 
@@ -856,87 +845,130 @@
             }, 500);
         }
 
+        // Strip HTML tags/entities so TTS doesn't read raw markup
+        function cleanForTTS(text) {
+            const el = document.createElement('textarea');
+            el.innerHTML = text;
+            return (el.value || text).replace(/<[^>]*>/g, '').trim();
+        }
+
+        // Translate text via Google Translate (same approach as the MAUI app)
+        async function translateText(text, targetLang) {
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data[0].map(item => item[0] || '').join('').trim();
+            } catch (e) {
+                console.warn('Translation failed:', e);
+                return null;
+            }
+        }
+
+        // Google Translate TTS — works for all languages including Vietnamese
+        let _currentAudio = null;
+        let _ttsAborted = false;
+
+        async function speakWithGoogleTTS(text, langCode) {
+            const tl = langCode.split('-')[0];
+            const MAX = 190;
+            const chunks = [];
+            let buf = text;
+            while (buf.length > MAX) {
+                let cut = -1;
+                for (const sep of ['。', '！', '？', '. ', '! ', '? ', ', ', ' ']) {
+                    const pos = buf.lastIndexOf(sep, MAX);
+                    if (pos > MAX / 2) { cut = pos + sep.trimEnd().length; break; }
+                }
+                if (cut < 10) cut = buf.lastIndexOf(' ', MAX);
+                if (cut < 10) cut = MAX;
+                chunks.push(buf.slice(0, cut).trim());
+                buf = buf.slice(cut).trim();
+            }
+            if (buf) chunks.push(buf);
+
+            for (const chunk of chunks) {
+                if (_ttsAborted || !chunk) break;
+                const url = `/api/tts?q=${encodeURIComponent(chunk)}&tl=${tl}`;
+                await new Promise(resolve => {
+                    _currentAudio = new Audio(url);
+                    _currentAudio.onended = resolve;
+                    _currentAudio.onerror = (e) => {
+                        console.error('TTS audio error:', e);
+                        resolve();
+                    };
+                    // When stop button calls .pause(), the pause event fires — unblock the promise
+                    _currentAudio.onpause = () => { if (_ttsAborted) resolve(); };
+                    _currentAudio.play().catch((e) => {
+                        console.error('TTS play() rejected:', e);
+                        resolve();
+                    });
+                });
+            }
+        }
+
         // Play audio narration with multi-language support
         async function playAudio() {
             if (!currentPOI) return;
 
-            // Check if user has listening limit
             if (currentScanLimit && currentScanLimit.scanCount >= currentScanLimit.maxScans) {
                 showNotification('⚠️ Hết lượt nghe. Tải app để nghe không giới hạn!', 'warning');
                 return;
             }
 
+            // Toggle stop
             if (isSpeaking) {
-                window.speechSynthesis.cancel();
+                _ttsAborted = true;
+                if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
                 isSpeaking = false;
                 const playBtn = document.querySelector('.btn-play-audio');
-                if (playBtn) playBtn.textContent = '▶ Play Audio';
+                if (playBtn) playBtn.innerHTML = '▶ Nghe thuyết minh';
                 return;
             }
 
-            // Ensure UI is updated to show current language (buttons + description)
-            // This prevents the case where audio plays in the right language 
-            // but UI doesn't reflect it
-            const langButtons = document.querySelectorAll('.lang-button');
-            langButtons.forEach(btn => {
-                btn.classList.remove('active');
-            });
-            const selectedBtn = document.querySelector(`.lang-button[data-lang="${currentLanguage}"]`);
-            if (selectedBtn) {
-                selectedBtn.classList.add('active');
-            }
+            const playBtn = document.querySelector('.btn-play-audio');
+            if (playBtn) playBtn.innerHTML = '⏳ Đang chuẩn bị...';
 
-            // Get description using the helper function
-            let text = getDescriptionByLanguage(currentLanguage);
-            let langCode = '';
+            const langCodeMap = { en: 'en-US', ja: 'ja-JP', ru: 'ru-RU', zh: 'zh-CN', vi: 'vi-VN' };
+            let langCode = langCodeMap[currentLanguage] || 'vi-VN';
 
-            switch(currentLanguage) {
-                case 'en': 
-                    langCode = 'en-US';
-                    break;
-                case 'ja': 
-                    langCode = 'ja-JP';
-                    break;
-                case 'ru': 
-                    langCode = 'ru-RU';
-                    break;
-                case 'zh': 
-                    langCode = 'zh-CN';
-                    break;
-                default: 
+            let text = cleanForTTS(getDescriptionByLanguage(currentLanguage));
+            const viText = cleanForTTS(currentPOI.description || currentPOI.Description || '');
+
+            // If no stored translation, auto-translate before playing
+            const isFallbackToVietnamese = currentLanguage !== 'vi' && text === viText;
+            if (isFallbackToVietnamese && viText) {
+                const translated = await translateText(viText, currentLanguage);
+                if (translated) {
+                    text = translated;
+                    const fieldMap = { en: 'descriptionEn', ja: 'descriptionJa', ru: 'descriptionRu', zh: 'descriptionZh' };
+                    if (fieldMap[currentLanguage]) currentPOI[fieldMap[currentLanguage]] = translated;
+                    const descEl = document.querySelector('.section-description');
+                    if (descEl) descEl.textContent = translated;
+                } else {
+                    text = viText;
                     langCode = 'vi-VN';
+                }
             }
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = langCode;
-            utterance.rate = 0.9;
-            utterance.pitch = 1;
-            utterance.volume = 1;
+            if (!text) {
+                showNotification('Không có nội dung để phát', 'warning');
+                if (playBtn) playBtn.innerHTML = '▶ Nghe thuyết minh';
+                return;
+            }
 
-            utterance.onstart = () => {
-                isSpeaking = true;
-                const playBtn = document.querySelector('.btn-play-audio');
-                if (playBtn) playBtn.textContent = '⏸ Pause';
-                // Track listening when audio starts
-                console.log('Audio started, tracking listening history');
-                trackListeningHistory();
-            };
+            isSpeaking = true;
+            _ttsAborted = false;
+            if (playBtn) playBtn.innerHTML = '⏸ Tạm dừng';
+            trackListeningHistory();
 
-            utterance.onend = () => {
+            await speakWithGoogleTTS(text, langCode);
+
+            // Reset after natural end; if user pressed stop, the stop handler already reset UI
+            if (isSpeaking) {
                 isSpeaking = false;
-                const playBtn = document.querySelector('.btn-play-audio');
-                if (playBtn) playBtn.textContent = '▶ Play Audio';
-            };
-
-            utterance.onerror = (event) => {
-                console.error('Speech error:', event);
-                showNotification('Lỗi khi phát âm thanh', 'error');
-                isSpeaking = false;
-                const playBtn = document.querySelector('.btn-play-audio');
-                if (playBtn) playBtn.textContent = '▶ Play Audio';
-            };
-
-            window.speechSynthesis.speak(utterance);
+                if (playBtn) playBtn.innerHTML = '▶ Nghe thuyết minh';
+            }
         }
 
         function goBack() {
@@ -968,7 +1000,9 @@
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', loadPOIDetails);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPOIDetails();
+        });
     </script>
 </body>
 </html>

@@ -3,7 +3,11 @@ namespace DoAnCSharp.Services;
 public class ScanQuotaService
 {
     private const string QuotaKey = "listen_quota_remaining";
-    private const int FreeQuota = 5;
+
+    // Đọc từ Preferences — được cập nhật từ server lúc khởi động app.
+    // Admin thay đổi "Payment.DailyFreeListens" trên web sẽ có hiệu lực ngay lần mở app tiếp theo.
+    private int GetFreeQuota()
+        => Microsoft.Maui.Storage.Preferences.Default.Get("daily_free_listens", 5);
 
     private string GetUserQuotaKey()
     {
@@ -12,7 +16,7 @@ public class ScanQuotaService
     }
 
     public int GetRemaining()
-        => Microsoft.Maui.Storage.Preferences.Default.Get(GetUserQuotaKey(), FreeQuota);
+        => Microsoft.Maui.Storage.Preferences.Default.Get(GetUserQuotaKey(), GetFreeQuota());
 
     // Trả về true nếu còn lượt, false nếu hết
     public bool TryUseOne()
@@ -31,6 +35,6 @@ public class ScanQuotaService
 
 #if DEBUG
     public void ResetToFree()
-        => Microsoft.Maui.Storage.Preferences.Default.Set(GetUserQuotaKey(), FreeQuota);
+        => Microsoft.Maui.Storage.Preferences.Default.Set(GetUserQuotaKey(), GetFreeQuota());
 #endif
 }

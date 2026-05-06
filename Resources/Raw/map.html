@@ -68,27 +68,46 @@
         }
 
         // Hiển thị heatmap với data [{lat, lng, weight}]
+        // Quán phổ biến hơn tạo vùng nhiệt rộng hơn và sẫm hơn,
+        // giúp nó trực quan "lấn át" quán kém nổi tiếng khi hai vùng giao nhau.
         function showHeatmap(points) {
             if (heatLayer) {
                 map.removeLayer(heatLayer);
                 heatLayer = null;
             }
 
-            // Tìm max weight để normalize
             var maxWeight = 1;
             points.forEach(function(p) { if (p.weight > maxWeight) maxWeight = p.weight; });
 
-            var heatData = points.map(function(p) {
-                // weight tối thiểu 0.2 để điểm chưa có lượt nghe vẫn hiện nhạt
-                var w = p.weight > 0 ? (p.weight / maxWeight) : 0.2;
-                return [p.lat, p.lng, w];
+            var heatData = [];
+            points.forEach(function(p) {
+                var normalized = p.weight > 0 ? (p.weight / maxWeight) : 0;
+                // Luỹ thừa 1.5 khuếch đại khoảng cách giữa quán hot và quán bình thường,
+                // khiến quán ưu tiên cao chiếm màu đỏ/cam còn quán thấp hơn chỉ hiện xanh nhạt.
+                var w = Math.max(0.1, Math.pow(normalized, 1.5));
+                heatData.push([p.lat, p.lng, w]);
+
+                // Thêm điểm vệ tinh để tạo vùng nhiệt rộng hơn cho quán phổ biến.
+                // Khi hai quán giao nhau, quán hot sẽ "đẩy" màu đỏ vào vùng giao,
+                // trực quan cho thấy đây là địa điểm được ưu tiên hơn.
+                var d = 0.00018; // ~20 m
+                if (normalized >= 0.7) {
+                    heatData.push([p.lat + d, p.lng,     w * 0.55]);
+                    heatData.push([p.lat - d, p.lng,     w * 0.55]);
+                    heatData.push([p.lat,     p.lng + d, w * 0.55]);
+                    heatData.push([p.lat,     p.lng - d, w * 0.55]);
+                } else if (normalized >= 0.35) {
+                    var d2 = 0.00012; // ~13 m
+                    heatData.push([p.lat + d2, p.lng + d2, w * 0.45]);
+                    heatData.push([p.lat - d2, p.lng - d2, w * 0.45]);
+                }
             });
 
             heatLayer = L.heatLayer(heatData, {
-                radius: 40,
-                blur: 30,
+                radius: 42,
+                blur: 32,
                 maxZoom: 17,
-                gradient: { 0.2: '#4575b4', 0.4: '#74add1', 0.6: '#fee090', 0.8: '#f46d43', 1.0: '#d73027' }
+                gradient: { 0.1: '#4575b4', 0.4: '#74add1', 0.65: '#fee090', 0.85: '#f46d43', 1.0: '#d73027' }
             }).addTo(map);
         }
 

@@ -96,22 +96,6 @@
             <div id="topPOIsChart" style="flex:0 0 320px; background:white; border-radius:10px; padding:22px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); align-self:flex-start;"></div>
           </div>
 
-          <!-- Charts Section -->
-          <div style="margin-top: 40px;">
-            <h3>📈 Biểu Đồ Lượt Nghe</h3>
-            <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-top: 15px;">
-              <canvas id="scansChart" style="max-width: 100%; max-height: 400px;"></canvas>
-            </div>
-          </div>
-
-          <!-- Device Activity Chart -->
-          <div style="margin-top: 40px;">
-            <h3>📱 Hoạt Động Thiết Bị</h3>
-            <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-top: 15px;">
-              <canvas id="deviceChart" style="max-width: 100%; max-height: 300px;"></canvas>
-            </div>
-          </div>
-
         </div>
 
         <!-- POIS TAB - WITH GRID LAYOUT -->
@@ -939,13 +923,13 @@
                 </tr>
               </thead>
               <tbody>
-                ${users.map(user => {
+                ${users.map((user, idx) => {
                   const paidAt = user.paidAt ? new Date(user.paidAt).toLocaleDateString('vi-VN') : '—';
                   const lang = user.language === 'en' ? '🇬🇧 EN' : '🇻🇳 VI';
                   const safeName = (user.fullName || user.email || '').replace(/'/g, "\\'");
                   return `
                   <tr>
-                    <td style="text-align:center; color:#999;">${user.id}</td>
+                    <td style="text-align:center; color:#999;">${idx + 1}</td>
                     <td style="font-weight:600;">${user.fullName || '<span style="color:#999;">—</span>'}</td>
                     <td>${user.email || '—'}</td>
                     <td>${user.phone || '<span style="color:#999;">—</span>'}</td>
@@ -1170,6 +1154,36 @@
         if (hourlyChartInstance) { hourlyChartInstance.destroy(); hourlyChartInstance = null; }
         if (weeklyChartInstance) { weeklyChartInstance.destroy(); weeklyChartInstance = null; }
 
+        // Build date-range label from filter inputs or actual data
+        const fromVal = document.getElementById("historyFrom")?.value;
+        const toVal   = document.getElementById("historyTo")?.value;
+        const fmtDate = s => new Date(s + 'T00:00:00').toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
+        let rangeLabel = '';
+        if (fromVal && toVal && fromVal === toVal) {
+          rangeLabel = ` — Ngày ${fmtDate(fromVal)}`;
+        } else if (fromVal && toVal) {
+          rangeLabel = ` — ${fmtDate(fromVal)} → ${fmtDate(toVal)}`;
+        } else if (fromVal) {
+          rangeLabel = ` — từ ${fmtDate(fromVal)}`;
+        } else if (toVal) {
+          rangeLabel = ` — đến ${fmtDate(toVal)}`;
+        } else if (data.length) {
+          const dates = data.map(h => new Date(h.playedAt)).filter(d => !isNaN(d));
+          if (dates.length) {
+            const minD = new Date(Math.min(...dates));
+            const maxD = new Date(Math.max(...dates));
+            const fmtD = d => d.toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
+            rangeLabel = fmtD(minD) === fmtD(maxD) ? ` — Ngày ${fmtD(minD)}` : ` — ${fmtD(minD)} → ${fmtD(maxD)}`;
+          }
+        }
+
+        // Determine which single day the hourly chart should show
+        const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const targetDay = (fromVal && toVal && fromVal === toVal) ? fromVal
+                        : fromVal ? fromVal
+                        : todayStr;
+        const fmtTargetDay = fmtDate(targetDay);
+
         el.innerHTML = `
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
             <div style="background:white; border-radius:10px; padding:16px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); height:200px;">
@@ -1181,19 +1195,24 @@
           </div>
         `;
 
+        // Hourly chart: only data from targetDay
         const hourlyApp = new Array(24).fill(0);
         const hourlyWeb = new Array(24).fill(0);
+        // Weekly chart: all filtered data
         const weeklyApp = new Array(7).fill(0);
         const weeklyWeb = new Array(7).fill(0);
         const dayMapIndex = [6, 0, 1, 2, 3, 4, 5]; // Sun→6, Mon→0 … Sat→5
 
         data.forEach(h => {
-          if (h.playedAt) {
-            const d = new Date(h.playedAt);
+          if (!h.playedAt) return;
+          const d = new Date(h.playedAt);
+          const dayStr = d.toISOString().split('T')[0];
+          const dayIdx = dayMapIndex[d.getDay()];
+          if (h.source === 'app') weeklyApp[dayIdx]++; else weeklyWeb[dayIdx]++;
+          // Hourly: only count records that fall on targetDay
+          if (dayStr === targetDay) {
             const hour = d.getHours();
-            const dayIdx = dayMapIndex[d.getDay()];
-            if (h.source === 'app') { hourlyApp[hour]++; weeklyApp[dayIdx]++; }
-            else                    { hourlyWeb[hour]++;  weeklyWeb[dayIdx]++;  }
+            if (h.source === 'app') hourlyApp[hour]++; else hourlyWeb[hour]++;
           }
         });
 
@@ -1240,7 +1259,7 @@
                 { label: '🌐 Web', data: hourlyWeb, ...barStyle('rgba(59,130,246,0.82)') }
               ]
             },
-            options: sharedOptions('Lượt nghe theo giờ trong ngày')
+            options: sharedOptions(`Lượt nghe theo giờ — Ngày ${fmtTargetDay}`)
           }
         );
 
@@ -1255,7 +1274,7 @@
                 { label: '🌐 Web', data: weeklyWeb, ...barStyle('rgba(59,130,246,0.82)') }
               ]
             },
-            options: sharedOptions('Lượt nghe theo ngày trong tuần')
+            options: sharedOptions(`Lượt nghe theo thứ trong tuần${rangeLabel}`)
           }
         );
       }
@@ -1427,7 +1446,7 @@
               </tr>
             </thead>
             <tbody>
-              ${payments.map(p => {
+              ${payments.map((p, idx) => {
                 let pkgName = p.packageName || 'Khác';
                 let pkgStyle = 'background:#ebf5fb;color:#3498db;';
                 if (pkgName === 'premium') { pkgStyle = 'background:#fdf2e9;color:#e67e22;'; pkgName = 'Gói Cao Cấp (+20 lượt)'; }
@@ -1441,7 +1460,7 @@
 
                 return `
                 <tr>
-                  <td style="text-align:center;color:#999;">${p.id}</td>
+                  <td style="text-align:center;color:#999;">${idx + 1}</td>
                   <td>
                     <div style="font-weight:600;color:#2c3e50;">${p.userName || 'Khách vãng lai'}</div>
                     <div style="font-size:12px;color:#7f8c8d;margin-top:3px;">${p.userEmail || ''}</div>
@@ -1462,6 +1481,6 @@
         loadDashboard();
       };
     </script>
-    <script src="/js/devices.js"></script>
+    <script src="/js/devices.js?v=2"></script>
   </body>
 </html>

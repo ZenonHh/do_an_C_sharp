@@ -1,6 +1,9 @@
 using System.Net.Http.Json;
+using DoAnCSharp.Models;
 
 namespace DoAnCSharp.Services;
+
+public record AppConfig(string PaymentModel, int DailyFreeListens);
 
 public class AdminSyncService
 {
@@ -12,7 +15,7 @@ public class AdminSyncService
     // LƯU Ý: IP hiện tại được lấy động từ Preferences, giúp bạn đổi IP từ cài đặt App mà không cần build lại
     public string ServerUrl
     {
-        get => Microsoft.Maui.Storage.Preferences.Default.Get("ServerIP", "http://192.168.69.13:5000");
+        get => Microsoft.Maui.Storage.Preferences.Default.Get("ServerIP", "http://10.0.2.2:5000");
         set => Microsoft.Maui.Storage.Preferences.Default.Set("ServerIP", value);
     }
 
@@ -121,6 +124,42 @@ public class AdminSyncService
         catch (Exception ex) 
         { 
             System.Diagnostics.Debug.WriteLine($"[Heartbeat] Error connecting to {ServerUrl}: {ex.Message}");
+        }
+    }
+
+    // Tải cấu hình thanh toán từ admin server (mô hình, lượt nghe miễn phí, gói cước)
+    // Admin có thể chỉnh sửa các giá trị này trên web mà không cần build lại app
+    public async Task<AppConfig?> FetchAppConfigAsync()
+    {
+        try
+        {
+            var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var config = await _http.GetFromJsonAsync<AppConfig>($"{ServerUrl}/api/settings/app-config", options);
+            System.Diagnostics.Debug.WriteLine($"[AppConfig] model={config?.PaymentModel}, freeListens={config?.DailyFreeListens}");
+            return config;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AppConfig] Offline or error: {ex.Message}");
+            return null;
+        }
+    }
+
+    // Tải danh sách quán ăn từ admin server để đồng bộ về máy
+    // Trả về null nếu server tắt hoặc lỗi mạng — app vẫn dùng dữ liệu cục bộ
+    public async Task<List<AudioPOI>?> FetchPOIsFromServerAsync()
+    {
+        try
+        {
+            var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var pois = await _http.GetFromJsonAsync<List<AudioPOI>>($"{ServerUrl}/api/pois", options);
+            System.Diagnostics.Debug.WriteLine($"[FetchPOIs] Downloaded {pois?.Count ?? 0} POIs from server");
+            return pois;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FetchPOIs] Offline or error: {ex.Message}");
+            return null;
         }
     }
 

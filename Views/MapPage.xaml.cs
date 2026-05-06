@@ -30,6 +30,7 @@ public partial class MapPage : ContentPage, IQueryAttributable
     private bool _isMapSetup = false;
     private bool _isMapLoaded = false;
     private bool _isHeatmapOn = false;
+    private Location? _debugLocation = null;
 
     public MapPage(MapViewModel viewModel, DatabaseService dbService, ILanguageService langService, ScanQuotaService quotaService)
     {
@@ -68,6 +69,10 @@ public partial class MapPage : ContentPage, IQueryAttributable
                 PlayAudioAlert(target);
             });
         });
+
+        #if DEBUG
+        DebugPanel.IsVisible = true;
+        #endif
 
         try
         {
@@ -238,8 +243,9 @@ public partial class MapPage : ContentPage, IQueryAttributable
         {
             if (_isManualSelection) return;
 
-            var userLoc = await Geolocation.Default.GetLocationAsync(
-                new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(2)));
+            var userLoc = _debugLocation
+                ?? await Geolocation.Default.GetLocationAsync(
+                    new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(2)));
             if (userLoc == null) return;
 
             RunScript($"updateUserLocation({userLoc.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {userLoc.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
@@ -262,10 +268,25 @@ public partial class MapPage : ContentPage, IQueryAttributable
             else if (inRangePois.Count > 1)
             {
                 // Vùng giao nhau: score = weight / distance — vừa hot vừa gần thì thắng
-                poi = inRangePois
+                var ranked = inRangePois
                     .OrderByDescending(x => x.Poi.HeatWeight / Math.Max(1.0, x.DistanceM))
-                    .First().Poi;
+                    .ToList();
+                poi = ranked[0].Poi;
+                #if DEBUG
+                var log = string.Join(" | ", ranked.Select(x =>
+                    $"{x.Poi.Name} (w={x.Poi.HeatWeight}, d={x.DistanceM:F1}m, score={x.Poi.HeatWeight / Math.Max(1.0, x.DistanceM):F2})"));
+                System.Diagnostics.Debug.WriteLine($"[RADAR] Overlap winner: {log}");
+                MainThread.BeginInvokeOnMainThread(() =>
+                    DebugResultLabel.Text = $"✅ {poi.Name}\n{ranked.Count} quán trong vùng");
+                #endif
             }
+            #if DEBUG
+            else if (_debugLocation != null)
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                    DebugResultLabel.Text = "⚠️ Không có quán nào\ntrong bán kính");
+            }
+            #endif
 
             if (poi != null) { if (_currentPoi != poi) PlayAudioAlert(poi); }
             else if (_currentPoi != null && !_isManualSelection) { StopAudio(); _currentPoi = null; }
@@ -510,6 +531,33 @@ public partial class MapPage : ContentPage, IQueryAttributable
     {
         RunScript("centerOn(10.7585, 106.7042, 15)");
     }
+
+    #if DEBUG
+    private void OnSimulateLocationClicked(object sender, EventArgs e)
+    {
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        if (double.TryParse(DebugLatEntry.Text, System.Globalization.NumberStyles.Any, culture, out double lat) &&
+            double.TryParse(DebugLngEntry.Text, System.Globalization.NumberStyles.Any, culture, out double lng))
+        {
+            _debugLocation = new Location(lat, lng);
+            _currentPoi = null; // force re-evaluation on next radar tick
+            DebugResultLabel.Text = $"📍 {lat:F5}, {lng:F5}";
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Simulated location set: {lat}, {lng}");
+        }
+        else
+        {
+            DebugResultLabel.Text = "❌ Tọa độ không hợp lệ";
+        }
+    }
+
+    private void OnClearSimulatedLocationClicked(object sender, EventArgs e)
+    {
+        _debugLocation = null;
+        _currentPoi = null;
+        DebugResultLabel.Text = "GPS thực";
+        System.Diagnostics.Debug.WriteLine("[DEBUG] Simulated location cleared — using real GPS");
+    }
+    #endif
 
     private async void OnScanQRClicked(object sender, EventArgs e)
     {

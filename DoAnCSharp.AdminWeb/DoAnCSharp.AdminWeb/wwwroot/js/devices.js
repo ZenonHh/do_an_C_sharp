@@ -93,11 +93,11 @@ function renderDevicesTable(devices) {
         </tr>
       </thead>
       <tbody>
-        ${paged.map(d => {
+        ${paged.map((d, i) => {
           const osIcon = d.deviceOS === 'Android' ? '🤖' : d.deviceOS === 'iOS' ? '🍎' : '💻';
           return `
           <tr>
-            <td style="text-align:center;color:#999;">${d.id}</td>
+            <td style="text-align:center;color:#999;">${start + i + 1}</td>
             <td style="font-weight:600;">${d.deviceName || '<span style="color:#999;">—</span>'}</td>
             <td>${d.deviceModel || '—'}</td>
             <td>${osIcon} ${d.deviceOS || '—'}</td>
