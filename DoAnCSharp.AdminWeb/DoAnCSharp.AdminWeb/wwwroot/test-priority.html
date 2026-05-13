@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Test Hàng Đợi Ưu Tiên</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        h1 { color: #1e293b; text-align: center; margin-bottom: 10px; font-size: 26px; }
+        .desc { text-align: center; color: #64748b; margin-bottom: 30px; line-height: 1.6; }
+        .control-group { display: flex; gap: 20px; margin-bottom: 20px; }
+        select { flex: 1; padding: 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; background: #fff; cursor: pointer; outline: none; }
+        select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+        button { width: 100%; padding: 16px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2); }
+        button:hover { background: #2563eb; transform: translateY(-1px); }
+        
+        .result-card { margin-top: 30px; border: 2px solid #e2e8f0; border-radius: 12px; overflow: hidden; display: none; }
+        .result-header { background: #1e293b; color: white; padding: 15px 20px; font-size: 18px; font-weight: bold; }
+        .winner-banner { background: #ecfdf5; border-left: 6px solid #10b981; padding: 20px; margin: 20px; border-radius: 8px; }
+        .winner-banner h2 { color: #065f46; margin: 0 0 10px 0; font-size: 20px; }
+        .queue-list { padding: 0 20px 20px; }
+        
+        .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; background: #f8fafc; }
+        .queue-item.winner { background: #fff; border-color: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); transform: scale(1.01); }
+        .rank-badge { background: #94a3b8; color: white; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; font-size: 18px; margin-right: 20px; }
+        .winner .rank-badge { background: #10b981; box-shadow: 0 0 0 4px #d1fae5; }
+        .item-info { flex: 1; }
+        .item-stats { text-align: right; }
+        .stat-badge { display: inline-block; padding: 6px 10px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-left: 5px; }
+        .bg-red { background: #fee2e2; color: #ef4444; }
+        .bg-blue { background: #dbeafe; color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚦 Simulator: Kiểm Tra Hàng Đợi Ưu Tiên</h1>
+        <div class="desc">
+            Công cụ này đặt GPS của người dùng vào <b>chính xác điểm chính giữa</b> (tọa độ Midpoint) của 2 quán ăn.<br/>
+            Khoảng cách lúc này là bằng nhau tới từng milimet. Thuật toán sẽ dùng Độ Phổ Biến (HeatWeight) để phân định thắng thua.
+        </div>
+        
+        <div class="control-group">
+            <select id="poi1"></select>
+            <select id="poi2"></select>
+        </div>
+        <button onclick="runTest()">▶ BẮT ĐẦU MÔ PHỎNG VÙNG GIAO NHAU</button>
+
+        <div id="result" class="result-card">
+            <div class="result-header">📊 Bảng Xếp Hạng Hàng Đợi (Priority Queue)</div>
+            <div id="winner-box" class="winner-banner"></div>
+            <div id="queue-box" class="queue-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // Tải danh sách quán ăn đổ vào 2 ô dropdown
+        fetch('/api/pois')
+            .then(res => res.json())
+            .then(data => {
+                const sel1 = document.getElementById('poi1');
+                const sel2 = document.getElementById('poi2');
+                data.forEach(poi => {
+                    sel1.add(new Option(poi.name, poi.id));
+                    sel2.add(new Option(poi.name, poi.id));
+                });
+                if(data.length > 1) sel2.selectedIndex = 1;
+            });
+
+        function runTest() {
+            const id1 = document.getElementById('poi1').value;
+            const id2 = document.getElementById('poi2').value;
+            
+            fetch(`/api/POIs/debug/test-priority?poi1Id=${id1}&poi2Id=${id2}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('result').style.display = 'block';
+                    
+                    const winner = data.winner;
+                    document.getElementById('winner-box').innerHTML = `
+                        <h2>🏆 Kết Quả: Chọn phát Audio cho [${winner}]</h2>
+                        <p><strong>Giải thích:</strong> Vì khoảng cách đo được đến 2 quán là <strong>chính xác bằng nhau</strong>, hệ thống tự động kiểm tra Độ Phổ Biến (HeatWeight) để phá vỡ thế cân bằng (Tie-breaker). Quán có điểm cao hơn giành quyền phát âm thanh.</p>
+                    `;
+
+                    let queueHtml = '<h3 style="margin-top: 20px; margin-bottom: 15px; color:#334155;">Thứ tự được nạp vào Queue:</h3>';
+                    data.priorityQueueRanking.forEach(item => {
+                        queueHtml += `
+                            <div class="queue-item ${item.isWinner ? 'winner' : ''}">
+                                <div class="rank-badge">${item.rank}</div>
+                                <div class="item-info">
+                                    <div style="font-size: 20px; font-weight: bold; color: #0f172a;">${item.name}</div>
+                                    <div style="font-size: 14px; color: #64748b; margin-top: 6px;">Cấu thành độ hot: ${item.priorityBase} (Điểm gốc) + ${item.playCount} (Lượt nghe thực)</div>
+                                </div>
+                                <div class="item-stats">
+                                    <div style="margin-bottom: 8px;"><span class="stat-badge bg-red">🔥 ĐỘ PHỔ BIẾN: ${item.totalHeatWeight} ĐIỂM</span></div>
+                                    <div><span class="stat-badge bg-blue">📍 CÁCH USER: ${item.distanceToMidpoint} MÉT</span></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('queue-box').innerHTML = queueHtml;
+                });
+        }
+    </script>
+</body>
+</html>

@@ -8,7 +8,14 @@
       "Bash(\"C:/Users/HIEN LE/AppData/Local/Android/Sdk/platform-tools/adb.exe\" devices)",
       "PowerShell(& \"C:\\\\Users\\\\HIEN LE\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" devices)",
       "Read(//c/Program Files \\(x86\\)/Android/**)",
-      "Read(//c/Users/HIEN LE/AppData/Local/Android/**)"
+      "Read(//c/Users/HIEN LE/AppData/Local/Android/**)",
+      "Bash(ipconfig)",
+      "Bash(dotnet run *)",
+      "Bash(timeout 5 curl -s http://localhost:5000/api/qrqueue/stats)",
+      "Bash(pwsh -File test-queue.ps1)",
+      "Bash(curl -s http://localhost:5000/api/qrqueue/stats)",
+      "Bash(curl -s -X POST \"http://localhost:5000/api/qrqueue/test/enqueue?isPaid=false\")",
+      "Bash(dir *)"
     ]
   }
 }

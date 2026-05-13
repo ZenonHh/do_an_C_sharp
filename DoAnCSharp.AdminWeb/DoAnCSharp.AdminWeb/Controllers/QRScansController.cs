@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using DoAnCSharp.AdminWeb.Models;
 using DoAnCSharp.AdminWeb.Services;
 using System;
@@ -15,11 +16,17 @@ public class QRScansController : ControllerBase
 {
     private readonly DatabaseService _db;
     private readonly ILogger<QRScansController> _logger;
+    private readonly IConfiguration _configuration;
+    private readonly QRQueueService _queueService;
+    /// <summary>Suffix for a second logical device row — one physical scan appears as two online devices (dashboard demo).</summary>
+    private const string CompanionDeviceSuffix = "::content-view";
 
-    public QRScansController(DatabaseService db, ILogger<QRScansController> logger)
+    public QRScansController(DatabaseService db, ILogger<QRScansController> logger, IConfiguration configuration, QRQueueService queueService)
     {
         _db = db;
         _logger = logger;
+        _configuration = configuration;
+        _queueService = queueService;
     }
 
     /// <summary>
@@ -39,7 +46,7 @@ public class QRScansController : ControllerBase
         try
         {
             // 🔥 Theo dõi và lưu thông tin thiết bị khi App gọi API Verify QR
-            await TrackDeviceInfoAsync(deviceId);
+            await TrackPrimaryAndOptionalCompanionAsync(deviceId);
 
             var (isAllowed, scanLimit, message) = await CheckScanLimitAsync(deviceId);
             if (!isAllowed)
@@ -214,23 +221,51 @@ public class QRScansController : ControllerBase
         try
         {
             // 🔥 NEW: Capture & Track Device Info
-            await TrackDeviceInfoAsync(deviceId);
+            await TrackPrimaryAndOptionalCompanionAsync(deviceId);
 
-            // Lấy hoặc tạo mới giới hạn nghe cho thiết bị
-            var (isAllowed, scanLimit, _) = await CheckScanLimitAsync(deviceId);
+            // 🎯 CHECK: Kiểm tra xem user có phải paid user không
+            var scanLimit = await _db.GetDeviceScanLimitAsync(deviceId);
+            bool isPaidUser = scanLimit?.MaxScans > 5; // Paid users have > 5 scans
+
+            // 🎯 QUEUE: Thêm request vào hàng đợi
+            var queueResult = await _queueService.EnqueueRequestAsync(deviceId, code, isPaidUser);
+
+            if (!queueResult.Success)
+            {
+                // Queue full hoặc đã có request đang xử lý
+                if (queueResult.Status == "queue_full")
+                {
+                    return Content(BuildQueueFullHtml(), "text/html", System.Text.Encoding.UTF8);
+                }
+                else if (queueResult.Status == "already_processing" || queueResult.Status == "already_queued")
+                {
+                    return Content(BuildAlreadyInQueueHtml(queueResult.QueuePosition), "text/html", System.Text.Encoding.UTF8);
+                }
+            }
+
+            // 🎯 PROCESS: Xử lý request (nếu đang ở trạng thái processing hoặc queued)
+            if (queueResult.Status == "queued")
+            {
+                // Hiển thị trang chờ với vị trí trong hàng đợi
+                return Content(BuildQueueWaitingHtml(queueResult.QueuePosition, queueResult.EstimatedWaitSeconds, deviceId, queueResult.QueueItemId!), "text/html", System.Text.Encoding.UTF8);
+            }
+
+            // Request đang được xử lý ngay lập tức
+            var (isAllowed, scanLimitCheck, _) = await CheckScanLimitAsync(deviceId);
 
             string codeToSearch = SanitizeQRCode(code);
 
             // Xử lý QR phố ẩm thực: redirect đến trang danh sách
             if (codeToSearch.StartsWith("FOODSTREET", StringComparison.OrdinalIgnoreCase))
             {
+                _queueService.CompleteRequest(deviceId);
                 return Redirect($"/poi-public.html?deviceId={Uri.EscapeDataString(deviceId)}");
             }
 
             // Kiểm tra giới hạn (Chỉ áp dụng khi người dùng quét xem chi tiết một quán)
-            // isAllowed đã được kiểm tra ở trên
             if (!isAllowed)
             {
+                _queueService.CompleteRequest(deviceId);
                 return Content(BuildLimitExceededHtml(), "text/html", System.Text.Encoding.UTF8);
             }
 
@@ -240,6 +275,7 @@ public class QRScansController : ControllerBase
             if (poi == null)
             {
                 _logger.LogWarning("POI không tìm thấy cho code: {QRCode}", code);
+                _queueService.CompleteRequest(deviceId);
                 return Redirect($"/poi-public.html?error=poi_not_found&code={Uri.EscapeDataString(code)}");
             }
 
@@ -248,8 +284,8 @@ public class QRScansController : ControllerBase
             string ttsText = System.Web.HttpUtility.JavaScriptStringEncode(poi.Description ?? poi.Name ?? "");
 
             // Tăng lượt quét và lưu lại
-            scanLimit!.ScanCount++;
-            await _db.SaveDeviceScanLimitAsync(scanLimit);
+            scanLimitCheck!.ScanCount++;
+            await _db.SaveDeviceScanLimitAsync(scanLimitCheck);
 
             // Record listen in play history (fire-and-forget, non-blocking)
             _ = _db.InsertPlayHistoryAsync(new PlayHistory
@@ -261,7 +297,10 @@ public class QRScansController : ControllerBase
                 Source = "web"
             });
 
-            _logger.LogInformation("Quét QR thành công: {QRCode} → POI {POIId} từ device {DeviceId}. Lượt quét: {ScanCount}/{MaxScans}", code, poi.Id, deviceId, scanLimit.ScanCount, scanLimit.MaxScans);
+            _logger.LogInformation("Quét QR thành công: {QRCode} → POI {POIId} từ device {DeviceId}. Lượt quét: {ScanCount}/{MaxScans}", code, poi.Id, deviceId, scanLimitCheck.ScanCount, scanLimitCheck.MaxScans);
+
+            // 🎯 COMPLETE: Đánh dấu request hoàn thành
+            _queueService.CompleteRequest(deviceId);
 
             // ✅ FIX: Redirect to POI public listing instead of detail page
             // This allows users to see the full restaurant list first from the QR scan
@@ -270,6 +309,7 @@ public class QRScansController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi khi quét QR nhanh: {QRCode}", code);
+            _queueService.CompleteRequest(deviceId);
             return Redirect($"/poi-public.html?error=system_error&code={Uri.EscapeDataString(code)}");
         }
     }
@@ -278,7 +318,17 @@ public class QRScansController : ControllerBase
     /// 🔥 NEW: Track device info when QR is scanned
     /// Captures device information and updates online status
     /// </summary>
-    private async Task TrackDeviceInfoAsync(string deviceId)
+    private async Task TrackPrimaryAndOptionalCompanionAsync(string deviceId)
+    {
+        await TrackDeviceInfoAsync(deviceId);
+        if (!_configuration.GetValue("Demo:QrScanRegistersCompanionDevice", false))
+            return;
+        if (deviceId.IndexOf(CompanionDeviceSuffix, StringComparison.Ordinal) >= 0)
+            return;
+        await TrackDeviceInfoAsync(deviceId + CompanionDeviceSuffix, "web-scan-view");
+    }
+
+    private async Task TrackDeviceInfoAsync(string deviceId, string appVersionLabel = "web-scan")
     {
         try
         {
@@ -302,7 +352,7 @@ public class QRScansController : ControllerBase
                     DeviceName = deviceName,
                     DeviceModel = deviceModel,
                     DeviceOS = deviceOS,
-                    AppVersion = "web-scan", // Phân biệt với app
+                    AppVersion = appVersionLabel, // web-scan | web-scan-view | phân biệt với app
                     IsOnline = true,
                     LastOnlineAt = DateTime.Now,
                     RegisteredAt = DateTime.Now,
@@ -865,16 +915,16 @@ public class QRScansController : ControllerBase
     <title>Đã hết lượt nghe miễn phí</title>
     <style>
         body {{
-            font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; 
+            font-family: system-ui, -apple-system, sans-serif; background: #f8fafc;
             display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; color: #0f172a;
         }}
         .card {{
-            background: white; border-radius: 24px; padding: 40px 24px; max-width: 400px; width: 100%; 
+            background: white; border-radius: 24px; padding: 40px 24px; max-width: 400px; width: 100%;
             text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid #f1f5f9;
         }}
-        .icon {{ 
-            width: 80px; height: 80px; background: #fee2e2; border-radius: 50%; display: flex; 
-            align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 24px; box-shadow: 0 0 0 10px #fef2f2; 
+        .icon {{
+            width: 80px; height: 80px; background: #fee2e2; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 24px; box-shadow: 0 0 0 10px #fef2f2;
         }}
         .title {{ font-size: 24px; font-weight: 800; margin: 0 0 12px; color: #ef4444; }}
         .desc {{ font-size: 15px; color: #64748b; line-height: 1.6; margin: 0 0 32px; }}
@@ -887,6 +937,169 @@ public class QRScansController : ControllerBase
         <h1 class='title'>Đã Hết Lượt Miễn Phí</h1>
         <p class='desc'>Bạn đã sử dụng hết 5 lượt nghe thử. Tải ngay ứng dụng Vĩnh Khánh Food Tour để tiếp tục khám phá bản đồ ẩm thực không giới hạn!</p>
         <a href='{downloadUrl}' class='btn'>⬇️ Tải App Ngay</a>
+    </div>
+</body>
+</html>";
+    }
+
+    private static string BuildQueueFullHtml()
+    {
+        return @"
+<!DOCTYPE html>
+<html lang='vi'>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Hệ thống đang quá tải</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif; background: #f8fafc;
+            display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; color: #0f172a;
+        }
+        .card {
+            background: white; border-radius: 24px; padding: 40px 24px; max-width: 400px; width: 100%;
+            text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid #f1f5f9;
+        }
+        .icon {
+            width: 80px; height: 80px; background: #fef3c7; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 24px; box-shadow: 0 0 0 10px #fef9e7;
+        }
+        .title { font-size: 24px; font-weight: 800; margin: 0 0 12px; color: #f59e0b; }
+        .desc { font-size: 15px; color: #64748b; line-height: 1.6; margin: 0 0 32px; }
+        .btn { display: inline-block; background: #f59e0b; color: white; text-decoration: none; padding: 16px 24px; border-radius: 16px; font-weight: 700; width: 100%; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div class='card'>
+        <div class='icon'>⚠️</div>
+        <h1 class='title'>Hệ Thống Đang Quá Tải</h1>
+        <p class='desc'>Hiện tại có quá nhiều người đang truy cập. Vui lòng thử lại sau vài giây hoặc tải app để trải nghiệm tốt hơn!</p>
+        <a href='javascript:location.reload()' class='btn'>🔄 Thử Lại</a>
+    </div>
+</body>
+</html>";
+    }
+
+    private static string BuildAlreadyInQueueHtml(int position)
+    {
+        return $@"
+<!DOCTYPE html>
+<html lang='vi'>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Đang trong hàng đợi</title>
+    <style>
+        body {{
+            font-family: system-ui, -apple-system, sans-serif; background: #f8fafc;
+            display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; color: #0f172a;
+        }}
+        .card {{
+            background: white; border-radius: 24px; padding: 40px 24px; max-width: 400px; width: 100%;
+            text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid #f1f5f9;
+        }}
+        .icon {{
+            width: 80px; height: 80px; background: #dbeafe; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 24px; box-shadow: 0 0 0 10px #eff6ff;
+        }}
+        .title {{ font-size: 24px; font-weight: 800; margin: 0 0 12px; color: #3b82f6; }}
+        .desc {{ font-size: 15px; color: #64748b; line-height: 1.6; margin: 0 0 32px; }}
+        .position {{ font-size: 48px; font-weight: 800; color: #3b82f6; margin: 20px 0; }}
+    </style>
+</head>
+<body>
+    <div class='card'>
+        <div class='icon'>⏳</div>
+        <h1 class='title'>Bạn Đã Có Trong Hàng Đợi</h1>
+        <div class='position'>#{position}</div>
+        <p class='desc'>Request của bạn đang được xử lý. Vui lòng đợi trong giây lát!</p>
+    </div>
+</body>
+</html>";
+    }
+
+    private static string BuildQueueWaitingHtml(int position, int estimatedWaitSeconds, string deviceId, string queueItemId)
+    {
+        return $@"
+<!DOCTYPE html>
+<html lang='vi'>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Đang chờ xử lý</title>
+    <style>
+        body {{
+            font-family: system-ui, -apple-system, sans-serif; background: #f8fafc;
+            display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; color: #0f172a;
+        }}
+        .card {{
+            background: white; border-radius: 24px; padding: 40px 24px; max-width: 400px; width: 100%;
+            text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid #f1f5f9;
+        }}
+        .icon {{
+            width: 80px; height: 80px; background: #fef3c7; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 24px; box-shadow: 0 0 0 10px #fef9e7;
+        }}
+        .title {{ font-size: 24px; font-weight: 800; margin: 0 0 12px; color: #f59e0b; }}
+        .position {{ font-size: 48px; font-weight: 800; color: #f59e0b; margin: 20px 0; }}
+        .desc {{ font-size: 15px; color: #64748b; line-height: 1.6; margin: 0 0 20px; }}
+        .spinner {{
+            width: 40px; height: 40px; border: 4px solid #fef3c7; border-top-color: #f59e0b;
+            border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;
+        }}
+        @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+        .timer {{ font-size: 18px; font-weight: 600; color: #f59e0b; margin: 16px 0; }}
+    </style>
+    <script>
+        let checkInterval;
+        let countdown = {estimatedWaitSeconds};
+
+        async function checkStatus() {{
+            try {{
+                const response = await fetch('/api/qrqueue/status/{deviceId}');
+                if (response.ok) {{
+                    const data = await response.json();
+                    if (data.status === 'processing' || data.status === 'completed') {{
+                        // Request đã được xử lý, reload trang
+                        clearInterval(checkInterval);
+                        location.reload();
+                    }} else if (data.queuePosition) {{
+                        // Cập nhật vị trí trong hàng đợi
+                        document.getElementById('position').textContent = '#' + data.queuePosition;
+                        countdown = data.estimatedWaitSeconds || countdown;
+                    }}
+                }} else if (response.status === 404) {{
+                    // Request không còn trong queue, reload
+                    clearInterval(checkInterval);
+                    location.reload();
+                }}
+            }} catch (error) {{
+                console.error('Error checking status:', error);
+            }}
+        }}
+
+        function updateCountdown() {{
+            if (countdown > 0) {{
+                countdown--;
+                document.getElementById('countdown').textContent = countdown;
+            }}
+        }}
+
+        document.addEventListener('DOMContentLoaded', () => {{
+            checkInterval = setInterval(checkStatus, 2000); // Check every 2 seconds
+            setInterval(updateCountdown, 1000); // Update countdown every second
+        }});
+    </script>
+</head>
+<body>
+    <div class='card'>
+        <div class='icon'>⏳</div>
+        <h1 class='title'>Đang Chờ Xử Lý</h1>
+        <div class='position' id='position'>#{position}</div>
+        <p class='desc'>Vị trí của bạn trong hàng đợi</p>
+        <div class='spinner'></div>
+        <div class='timer'>Thời gian chờ ước tính: <span id='countdown'>{estimatedWaitSeconds}</span>s</div>
+        <p class='desc' style='font-size: 13px; margin-top: 20px;'>Trang sẽ tự động chuyển khi đến lượt bạn...</p>
     </div>
 </body>
 </html>";

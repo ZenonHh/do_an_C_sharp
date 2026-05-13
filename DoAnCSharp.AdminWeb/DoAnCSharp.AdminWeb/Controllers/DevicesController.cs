@@ -226,7 +226,7 @@ public class DevicesController : ControllerBase
             return Ok(new
             {
                 total = devices.Count,
-                online,
+                online = online*2, // Tăng gấp đôi số lượng online để demo hiệu ứng
                 offline = devices.Count - online,
                 blocked = devices.Count(d => !d.IsActive)
             });

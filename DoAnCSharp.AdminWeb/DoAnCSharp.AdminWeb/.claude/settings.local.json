@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet *)",
+      "Bash(Test-Path *)",
+      "PowerShell(dotnet build *)",
+      "PowerShell(dotnet run *)",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:5000/api/qrqueue/stats\" -Method GET -UseBasicParsing | Select-Object -ExpandProperty Content)",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:5000/\" -Method GET -UseBasicParsing | Select-Object StatusCode, StatusDescription)",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:5000/qr-queue-monitor.html\" -Method GET -UseBasicParsing | Select-Object StatusCode, StatusDescription)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(try { $response = Invoke-WebRequest -Uri \"http://localhost:5000/\" -Method GET -UseBasicParsing -TimeoutSec 5; Write-Output \"Status: $\\($response.StatusCode\\)\" } catch { Write-Output \"Error: $_\" })",
+      "PowerShell(Get-Process *)"
+    ]
+  }
+}

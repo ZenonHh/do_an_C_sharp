@@ -1,1 +1,2 @@
 http://192.168.69.13:5000/qr/FOODSTREET_VINHKHANH
+"C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe" logcat -s "mono-stdout" "DOTNET"

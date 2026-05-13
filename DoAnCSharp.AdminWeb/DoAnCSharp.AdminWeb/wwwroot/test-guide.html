@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Quick Test Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .step {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .step h2 {
+            color: #2563eb;
+            margin-top: 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 10px 10px 0;
+            font-weight: bold;
+        }
+        .button:hover {
+            background: #1d4ed8;
+        }
+        .success {
+            background: #10b981;
+        }
+        .warning {
+            background: #f59e0b;
+        }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 QR Queue System - Quick Test Guide</h1>
+
+    <div class="step">
+        <h2>Step 1: Open Queue Monitor Dashboard</h2>
+        <p>Click the button below to open the real-time monitoring dashboard:</p>
+        <a href="/qr-queue-monitor.html" class="button" target="_blank">
+            📊 Open Queue Monitor
+        </a>
+        <p><small>Or manually open: <code>http://localhost:5000/qr-queue-monitor.html</code></small></p>
+    </div>
+
+    <div class="step">
+        <h2>Step 2: Test Adding Requests</h2>
+        <p>On the dashboard, you'll see 3 test buttons:</p>
+        <ul>
+            <li><strong>➕ Thêm Request (Free)</strong> - Add 1 free user request</li>
+            <li><strong>⭐ Thêm Request (Paid)</strong> - Add 1 paid user request (higher priority)</li>
+            <li><strong>🔥 Thêm 10 Requests</strong> - Add 10 requests at once (simulate load)</li>
+        </ul>
+        <p><strong>Try this:</strong> Click "🔥 Thêm 10 Requests" and watch what happens!</p>
+    </div>
+
+    <div class="step">
+        <h2>Step 3: Observe the Queue in Action</h2>
+        <p>You should see:</p>
+        <ul>
+            <li>📊 <strong>Stats Cards</strong> updating in real-time</li>
+            <li>⚡ <strong>Active Requests</strong> section showing up to 10 requests being processed</li>
+            <li>⏳ <strong>Queued Requests</strong> section showing requests waiting in line</li>
+            <li>🔄 Dashboard auto-refreshes every 2 seconds</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>Step 4: Test QR Code Scanning</h2>
+        <p>Test the actual QR scan flow:</p>
+        <a href="/master-qr.html" class="button success" target="_blank">
+            📱 Get Master QR Code
+        </a>
+        <p>This will show you the QR code for "Phố Ẩm Thực Vĩnh Khánh"</p>
+        <p><strong>To test on phone:</strong></p>
+        <ol>
+            <li>Make sure your phone is on the same WiFi network</li>
+            <li>Open: <code>http://192.168.1.43:5000/master-qr.html</code></li>
+            <li>Scan the QR code with your phone camera</li>
+            <li>See the queue system in action!</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h2>Step 5: Test Priority Queue</h2>
+        <p>Test that paid users get priority:</p>
+        <ol>
+            <li>Click "🔥 Thêm 10 Requests" (free users)</li>
+            <li>Immediately click "⭐ Thêm Request (Paid)" several times</li>
+            <li>Watch the queue - paid users (green badges) should be processed first!</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h2>Step 6: Check API Endpoints</h2>
+        <p>You can also test via API:</p>
+        <a href="/api/qrqueue/stats" class="button warning" target="_blank">
+            📈 View Stats API
+        </a>
+        <a href="/api/qrqueue/active" class="button warning" target="_blank">
+            ⚡ View Active Requests
+        </a>
+        <a href="/api/qrqueue/queued" class="button warning" target="_blank">
+            ⏳ View Queued Requests
+        </a>
+    </div>
+
+    <div class="step">
+        <h2>✅ What You Should See</h2>
+        <p><strong>When adding 10 requests:</strong></p>
+        <ul>
+            <li>First 10 requests → Processed immediately (Active Requests section)</li>
+            <li>After ~30 seconds → Requests complete and disappear</li>
+            <li>"Total Processed" counter increases</li>
+        </ul>
+
+        <p><strong>When adding 15+ requests:</strong></p>
+        <ul>
+            <li>First 10 → Active (processing)</li>
+            <li>Remaining 5+ → Queued (waiting)</li>
+            <li>Queue shows position (#1, #2, #3...)</li>
+            <li>As active requests complete, queued ones move to active</li>
+        </ul>
+
+        <p><strong>When adding 100+ requests:</strong></p>
+        <ul>
+            <li>First 10 → Active</li>
+            <li>Next 100 → Queued</li>
+            <li>Remaining → Rejected (queue full)</li>
+            <li>"Total Rejected" counter increases</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>🐛 Troubleshooting</h2>
+        <p><strong>If dashboard doesn't load:</strong></p>
+        <ul>
+            <li>Check server is running: <code>dotnet run</code></li>
+            <li>Try: <code>http://localhost:5000/qr-queue-monitor.html</code></li>
+        </ul>
+
+        <p><strong>If buttons don't work:</strong></p>
+        <ul>
+            <li>Open browser console (F12) and check for errors</li>
+            <li>Verify API is working: <a href="/api/qrqueue/stats" target="_blank">Test API</a></li>
+        </ul>
+    </div>
+
+    <div class="step" style="background: #dbeafe; border-left: 4px solid #2563eb;">
+        <h2>🎉 Quick Start</h2>
+        <p><strong>Fastest way to see it working:</strong></p>
+        <ol>
+            <li>Click: <a href="/qr-queue-monitor.html" class="button" target="_blank">Open Dashboard</a></li>
+            <li>Click the "🔥 Thêm 10 Requests" button on the dashboard</li>
+            <li>Watch the magic happen! ✨</li>
+        </ol>
+    </div>
+
+    <script>
+        // Auto-check if server is running
+        fetch('/api/qrqueue/stats')
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Server is running!', data);
+                document.body.style.borderTop = '5px solid #10b981';
+            })
+            .catch(error => {
+                console.error('❌ Server not responding:', error);
+                document.body.style.borderTop = '5px solid #ef4444';
+                alert('⚠️ Server might not be running. Please start it with: dotnet run');
+            });
+    </script>
+</body>
+</html>

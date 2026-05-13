@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Queue Monitor - Vĩnh Khánh Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .subtext {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .stat-card.primary { border-left: 4px solid #3b82f6; }
+        .stat-card.success { border-left: 4px solid #10b981; }
+        .stat-card.warning { border-left: 4px solid #f59e0b; }
+        .stat-card.danger { border-left: 4px solid #ef4444; }
+
+        .section {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .section-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .badge.processing { background: #dbeafe; color: #1e40af; }
+        .badge.queued { background: #fef3c7; color: #92400e; }
+        .badge.paid { background: #d1fae5; color: #065f46; }
+        .badge.free { background: #f3f4f6; color: #374151; }
+
+        .queue-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .queue-item {
+            display: grid;
+            grid-template-columns: 60px 1fr 120px 100px 140px;
+            gap: 16px;
+            align-items: center;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+        }
+
+        .queue-item:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .queue-item.processing {
+            background: #dbeafe;
+            border-color: #93c5fd;
+        }
+
+        .queue-item.paid {
+            background: #d1fae5;
+            border-color: #6ee7b7;
+        }
+
+        .position {
+            font-size: 24px;
+            font-weight: 800;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .queue-item.processing .position {
+            color: #2563eb;
+        }
+
+        .info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .info .device {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info .qr-code {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .time {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .time strong {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.3s ease;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #64748b;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        .refresh-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #f1f5f9;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        @media (max-width: 768px) {
+            .queue-item {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .position {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎯 QR Queue Monitor</h1>
+            <p>Theo dõi hàng đợi QR scan real-time</p>
+            <div class="test-controls">
+                <button class="btn btn-primary" onclick="addTestRequest(false)">➕ Thêm Request (Free)</button>
+                <button class="btn btn-success" onclick="addTestRequest(true)">⭐ Thêm Request (Paid)</button>
+                <button class="btn btn-warning" onclick="addMultipleRequests()">🔥 Thêm 10 Requests</button>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card primary">
+                <div class="label">Đang xử lý</div>
+                <div class="value" id="stat-active">0</div>
+                <div class="subtext">/ <span id="stat-max-concurrent">10</span> slots</div>
+            </div>
+
+            <div class="stat-card warning">
+                <div class="label">Đang chờ</div>
+                <div class="value" id="stat-queued">0</div>
+                <div class="subtext">/ <span id="stat-max-queue">100</span> slots</div>
+            </div>
+
+            <div class="stat-card success">
+                <div class="label">Đã xử lý</div>
+                <div class="value" id="stat-processed">0</div>
+                <div class="subtext"><span id="stat-rate">0.0</span> req/s</div>
+            </div>
+
+            <div class="stat-card danger">
+                <div class="label">Bị từ chối</div>
+                <div class="value" id="stat-rejected">0</div>
+                <div class="subtext">Queue đầy</div>
+            </div>
+        </div>
+
+        <!-- Active Requests -->
+        <div class="section">
+            <div class="section-header">
+                <h2>⚡ Đang Xử Lý (<span id="active-count">0</span>)</h2>
+                <div class="refresh-indicator">
+                    <div class="spinner"></div>
+                    <span>Cập nhật mỗi 2s</span>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="active-progress" style="width: 0%"></div>
+            </div>
+            <div class="queue-list" id="active-list">
+                <div class="empty-state">
+                    <div class="icon">✅</div>
+                    <h3>Không có request đang xử lý</h3>
+                    <p>Hệ thống đang rảnh</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Queued Requests -->
+        <div class="section">
+            <div class="section-header">
+                <h2>⏳ Hàng Đợi (<span id="queued-count">0</span>)</h2>
+                <span class="badge queued">Ưu tiên: Paid → Free</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="queue-progress" style="width: 0%"></div>
+            </div>
+            <div class="queue-list" id="queued-list">
+                <div class="empty-state">
+                    <div class="icon">🎉</div>
+                    <h3>Hàng đợi trống</h3>
+                    <p>Tất cả requests đang được xử lý ngay lập tức</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let refreshInterval;
+
+        // Fetch queue stats
+        async function fetchQueueStats() {
+            try {
+                const response = await fetch('/api/qrqueue/stats');
+                const data = await response.json();
+                updateUI(data);
+            } catch (error) {
+                console.error('Error fetching queue stats:', error);
+            }
+        }
+
+        // Update UI with stats
+        function updateUI(stats) {
+            // Update stats cards
+            document.getElementById('stat-active').textContent = stats.activeRequests;
+            document.getElementById('stat-queued').textContent = stats.queuedRequests;
+            document.getElementById('stat-processed').textContent = stats.totalProcessed;
+            document.getElementById('stat-rejected').textContent = stats.totalRejected;
+            document.getElementById('stat-max-concurrent').textContent = stats.maxConcurrentRequests;
+            document.getElementById('stat-max-queue').textContent = stats.maxQueueSize;
+            document.getElementById('stat-rate').textContent = stats.averageProcessingRate.toFixed(2);
+
+            // Update progress bars
+            const activePercent = (stats.activeRequests / stats.maxConcurrentRequests) * 100;
+            const queuePercent = (stats.queuedRequests / stats.maxQueueSize) * 100;
+            document.getElementById('active-progress').style.width = activePercent + '%';
+            document.getElementById('queue-progress').style.width = queuePercent + '%';
+
+            // Update active requests list
+            document.getElementById('active-count').textContent = stats.activeRequests;
+            const activeList = document.getElementById('active-list');
+
+            if (stats.activeRequestsList.length === 0) {
+                activeList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">✅</div>
+                        <h3>Không có request đang xử lý</h3>
+                        <p>Hệ thống đang rảnh</p>
+                    </div>
+                `;
+            } else {
+                activeList.innerHTML = stats.activeRequestsList.map(item => `
+                    <div class="queue-item processing">
+                        <div class="position">⚡</div>
+                        <div class="info">
+                            <div class="device">${item.deviceId}</div>
+                            <div class="qr-code">📱 ${item.qrCode}</div>
+                        </div>
+                        <div class="time">
+                            <strong>${item.waitTimeSeconds.toFixed(1)}s</strong><br>
+                            <small>đã chờ</small>
+                        </div>
+                        <div class="time">
+                            <strong>${formatTime(item.processingStartedAt)}</strong><br>
+                            <small>bắt đầu</small>
+                        </div>
+                        <span class="badge ${item.isPaidUser ? 'paid' : 'free'}">
+                            ${item.isPaidUser ? '⭐ Paid' : '🆓 Free'}
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            // Update queued requests list
+            document.getElementById('queued-count').textContent = stats.queuedRequests;
+            const queuedList = document.getElementById('queued-list');
+
+            if (stats.queuedRequestsList.length === 0) {
+                queuedList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">🎉</div>
+                        <h3>Hàng đợi trống</h3>
+                        <p>Tất cả requests đang được xử lý ngay lập tức</p>
+                    </div>
+                `;
+            } else {
+                queuedList.innerHTML = stats.queuedRequestsList.map(item => `
+                    <div class="queue-item ${item.isPaidUser ? 'paid' : ''}">
+                        <div class="position">#${item.queuePosition}</div>
+                        <div class="info">
+                            <div class="device">${item.deviceId}</div>
+                            <div class="qr-code">📱 ${item.qrCode}</div>
+                        </div>
+                        <div class="time">
+                            <strong>${item.waitTimeSeconds.toFixed(1)}s</strong><br>
+                            <small>đã chờ</small>
+                        </div>
+                        <div class="time">
+                            <strong>~${item.estimatedWaitSeconds}s</strong><br>
+                            <small>còn lại</small>
+                        </div>
+                        <span class="badge ${item.isPaidUser ? 'paid' : 'free'}">
+                            ${item.isPaidUser ? '⭐ Paid' : '🆓 Free'}
+                        </span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Format time
+        function formatTime(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        // Add test request
+        async function addTestRequest(isPaid) {
+            try {
+                const response = await fetch(`/api/qrqueue/test/enqueue?isPaid=${isPaid}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                console.log('Request added:', result);
+
+                // Refresh immediately
+                await fetchQueueStats();
+            } catch (error) {
+                console.error('Error adding test request:', error);
+            }
+        }
+
+        // Add multiple requests
+        async function addMultipleRequests() {
+            for (let i = 0; i < 10; i++) {
+                const isPaid = Math.random() > 0.7; // 30% paid users
+                await addTestRequest(isPaid);
+                await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay between requests
+            }
+        }
+
+        // Start auto-refresh
+        function startAutoRefresh() {
+            fetchQueueStats(); // Initial fetch
+            refreshInterval = setInterval(fetchQueueStats, 2000); // Refresh every 2 seconds
+        }
+
+        // Stop auto-refresh
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            startAutoRefresh();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
+    </script>
+</body>
+</html>

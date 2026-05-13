@@ -33,7 +33,7 @@ public partial class MapPage : ContentPage, IQueryAttributable
 
 // Debug simulation
 private Location? _debugLocation = null;
-private int _testCycleIndex = 0;
+private int _testCycleIndex = -1;
 
 private readonly AdminSyncService _adminSync;
 private DateTime _lastPoiSyncAt = DateTime.MinValue;
@@ -373,7 +373,8 @@ private async Task SyncPOIsFromServerAsync()
                 .Select(p => new
                 {
                     Poi = p,
-                    DistanceM = Location.CalculateDistance(userLoc, new Location(p.Lat, p.Lng), DistanceUnits.Kilometers) * 1000
+                    // Làm tròn 1 chữ số thập phân để khử sai số hình cầu, đảm bảo 2 khoảng cách = nhau tuyệt đối
+                    DistanceM = Math.Round(Location.CalculateDistance(userLoc, new Location(p.Lat, p.Lng), DistanceUnits.Kilometers) * 1000, 1)
                 })
                 .Where(x => x.DistanceM <= x.Poi.Radius)
                 .ToList();
@@ -392,9 +393,22 @@ private async Task SyncPOIsFromServerAsync()
                     .ToList();
                 poi = ranked[0].Poi;
                 #if DEBUG
-                var log = string.Join(" | ", ranked.Select(x =>
-                    $"{x.Poi.Name} (w={x.Poi.HeatWeight}, d={x.DistanceM:F1}m)"));
-                System.Diagnostics.Debug.WriteLine($"[RADAR] Overlap (heat-priority) winner: {log}");
+                if (_debugLocation != null && _currentPoi != poi)
+                {
+                    Console.WriteLine("\n==================================================");
+                    Console.WriteLine("🚦 [BẢNG XẾP HẠNG HÀNG ĐỢI ƯU TIÊN - VÙNG GIAO NHAU]");
+                    Console.WriteLine("==================================================");
+                    for (int i = 0; i < ranked.Count; i++)
+                    {
+                        var x = ranked[i];
+                        Console.WriteLine($"  Top {i + 1}: {x.Poi.Name}");
+                        Console.WriteLine($"     => 🔥 Độ phổ biến (HeatWeight): {x.Poi.HeatWeight}");
+                        Console.WriteLine($"     => 📍 Khoảng cách: {x.DistanceM:F1}m");
+                    }
+                    Console.WriteLine("--------------------------------------------------");
+                    Console.WriteLine($"👉 QUYẾT ĐỊNH: Ưu tiên phát Audio cho [{poi.Name}]");
+                    Console.WriteLine("==================================================\n");
+                }
                 #endif
             }
 
@@ -648,31 +662,97 @@ private async Task SyncPOIsFromServerAsync()
     // ── TEST INTERSECTION SCENARIOS ─────────────────────────────────────────────
     // Test specific intersection points between named restaurant pairs
     // Green dot positioned at the exact midpoint between two restaurants
-    private static readonly (int Number, Color Color, double? Lat, double? Lng, string? Info)[] _testCyclePoints =
+    private static readonly (int Number, Color Color, string Poi1Name, string Poi2Name, string Info)[] _testCyclePoints =
     {
         // Press 1: Between Beef Hotpot (Lẩu Bò Khu Nhà Cháy) and Tuyet Snail (Ốc Tuyết)
-        (1, Color.FromArgb("#FF8C42"), 10.75875, 106.70285, "LAU BO vs OC TUYET"),
+        (1, Color.FromArgb("#FF8C42"), "Lẩu Bò Khu Nhà Cháy", "Ốc Tuyết", "LAU BO vs OC TUYET"),
         
         // Press 2: Between Vu Snail (Ốc Vũ) and Dao Snail 2 (Ốc Đào 2)
-        (2, Color.FromArgb("#FF7F50"), 10.75795, 106.70595, "OC VU vs OC DAO 2"),
+        (2, Color.FromArgb("#FF7F50"), "Ốc Vũ", "Ốc Đào 2", "OC VU vs OC DAO 2"),
         
         // Press 3: Between Nho Snail (Ốc Nho) and Chill Grill (Quán Nướng Chilli)
-        (3, Color.FromArgb("#FF6347"), 10.7584, 106.70535, "OC NHO vs QUÂN NUONG CHILLI"),
+        (3, Color.FromArgb("#FF6347"), "Ốc Nho", "Quán Nướng Chilli", "OC NHO vs QUÁN NƯỚNG CHILLI"),
     };
 
     private void OnTestCycleClicked(object sender, EventArgs e)
     {
-        _testCycleIndex = (_testCycleIndex + 1) % _testCyclePoints.Length;
-        var (number, color, lat, lng, info) = _testCyclePoints[_testCycleIndex];
+        // +1 to allow for our new Dynamic Midpoint state
+        _testCycleIndex = (_testCycleIndex + 1) % (_testCyclePoints.Length + 1);
+
+        if (_testCycleIndex == _testCyclePoints.Length)
+        {
+            RunDynamicMidpointTest();
+            return;
+        }
+
+        var (number, color, poi1Name, poi2Name, info) = _testCyclePoints[_testCycleIndex];
+
+        if (_pois == null || _pois.Count == 0) return;
+
+        var p1 = _pois.FirstOrDefault(p => p.Name == poi1Name);
+        var p2 = _pois.FirstOrDefault(p => p.Name == poi2Name);
+
+        if (p1 == null || p2 == null) 
+        {
+            Console.WriteLine($"[TEST] Lỗi: Không tìm thấy {poi1Name} hoặc {poi2Name}");
+            return;
+        }
+
+        // Tự động tính toán điểm chính giữa để khoảng cách là bằng nhau tuyệt đối
+        double midLat = (p1.Lat + p2.Lat) / 2.0;
+        double midLng = (p1.Lng + p2.Lng) / 2.0;
 
         _currentPoi = null;
-        _debugLocation = (lat.HasValue && lng.HasValue)
-            ? new Location(lat.Value, lng.Value)
-            : null;
+        _debugLocation = new Location(midLat, midLng);
+        // QUAN TRỌNG: Mở khóa lại Radar nếu trước đó bạn lỡ tay click thủ công vào các quán ăn
+        _isManualSelection = false; 
+
+        // Ép 2 quán này mở rộng bán kính bao phủ tới điểm Midpoint để đảm bảo luôn tạo ra vùng giao nhau
+        double distanceToMidpoint = Location.CalculateDistance(new Location(p1.Lat, p1.Lng), _debugLocation, DistanceUnits.Kilometers) * 1000;
+        p1.Radius = (int)distanceToMidpoint + 10;
+        p2.Radius = (int)distanceToMidpoint + 10;
 
         TestCycleButton.Text = number.ToString();
         TestCycleButton.BackgroundColor = color;
-        System.Diagnostics.Debug.WriteLine($"[TEST] Point {number}: {info} at ({lat},{lng})");
+        Console.WriteLine($"[TEST] Point {number}: {info} tại Trung điểm ({midLat},{midLng})");
+        Console.WriteLine($"[TEST] Khoảng cách cân bằng: {distanceToMidpoint:F1}m (Đã ép bán kính để luôn giao nhau)");
+        
+        RunScript($"centerOn({midLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {midLng.ToString(System.Globalization.CultureInfo.InvariantCulture)}, 18)");
+    }
+
+    private void RunDynamicMidpointTest()
+    {
+        if (_pois == null || _pois.Count < 2) return;
+
+        // 1. Pick the 2 POIs with the highest priority/HeatWeight
+        var targetPois = _pois.OrderByDescending(p => p.HeatWeight).Take(2).ToList();
+        var p1 = targetPois[0];
+        var p2 = targetPois[1];
+
+        // 2. Calculate their exact geographic midpoint
+        double midLat = (p1.Lat + p2.Lat) / 2.0;
+        double midLng = (p1.Lng + p2.Lng) / 2.0;
+
+        _currentPoi = null;
+        _debugLocation = new Location(midLat, midLng);
+        // QUAN TRỌNG: Mở khóa lại Radar 
+        _isManualSelection = false;
+
+        // Ép 2 quán này mở rộng bán kính bao phủ tới điểm Midpoint (đảm bảo chắc chắn sinh ra vùng giao nhau để test)
+        double distanceToMidpoint = Location.CalculateDistance(new Location(p1.Lat, p1.Lng), _debugLocation, DistanceUnits.Kilometers) * 1000;
+        p1.Radius = (int)distanceToMidpoint + 10;
+        p2.Radius = (int)distanceToMidpoint + 10;
+
+        // 3. Update the button UI to show we are in dynamic mode
+        TestCycleButton.Text = "★";
+        TestCycleButton.BackgroundColor = Colors.Purple;
+
+        Console.WriteLine($"[TEST] DYNAMIC MIDPOINT at ({midLat}, {midLng})");
+        Console.WriteLine($"[TEST] Competitor 1: {p1.Name} (HeatWeight: {p1.HeatWeight})");
+        Console.WriteLine($"[TEST] Competitor 2: {p2.Name} (HeatWeight: {p2.HeatWeight})");
+        
+        // 4. Center the map exactly on this new midpoint
+        RunScript($"centerOn({midLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {midLng.ToString(System.Globalization.CultureInfo.InvariantCulture)}, 18)");
     }
     #endif
 

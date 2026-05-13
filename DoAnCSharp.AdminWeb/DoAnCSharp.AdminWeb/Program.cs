@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddScoped<DatabaseService>();
+builder.Services.AddSingleton<QRQueueService>(); // Singleton để duy trì queue state
 builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
