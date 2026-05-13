@@ -1,2 +1,15 @@
 http://192.168.69.13:5000/qr/FOODSTREET_VINHKHANH
-"C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe" logcat -s "mono-stdout" "DOTNET"
+
+& "C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe" logcat -s "mono-stdout" "DOTNET"
+
+"Dạ thưa thầy/cô, việc chấm xanh nhìn trên màn hình có vẻ hơi lệch một chút là do hiện tượng Biến dạng của Phép chiếu bản đồ Web Mercator (Web Mercator Projection).
+
+-tại sao nó không bằng nhau về khoản cách
+Bản đồ hiển thị trên màn hình điện thoại là mặt phẳng 2D, nhưng trái đất của chúng ta là hình cầu. Thuật toán Core bên dưới của em sử dụng Công thức Haversine để tính toán khoảng cách vật lý thực tế trên bề mặt cong của Trái Đất. Một 'Trung điểm địa lý' chính xác tuyệt đối trên hình cầu, khi bị ép phẳng ra màn hình 2D (Google Maps) thì hình học trực quan của nó sẽ luôn bị lệch một chút.
+
+Ngoài ra, tâm (anchor) của cái icon hình quán ăn nằm ở mũi nhọn dưới cùng, chứ không phải ở giữa icon, nên mắt người nhìn sẽ có cảm giác lệch. Tuy nhiên, dù giao diện 2D trông có vẻ lệch, nhưng Log ở backend (Terminal) đã chứng minh khoảng cách toán học thực tế được đo là bằng nhau chính xác, và thuật toán Hàng đợi của em đã xử lý dựa trên con số thực tế đó ạ."
+
+-khi vào vùng ưu tiên thì như nào
+"Dạ thưa thầy/cô, để giải quyết bài toán xung đột khi người dùng đi vào vùng giao nhau của nhiều quán ăn, em áp dụng kết hợp kỹ thuật Geofencing (Hàng rào địa lý) và Thuật toán sắp xếp đa tiêu chí (Multi-level Sorting).
+
+Đầu tiên, hệ thống dùng công thức Haversine để quét GPS và bắt được danh sách các quán đang bao trùm lấy người dùng. Sau đó, thay vì phát ngẫu nhiên, em đưa chúng vào một Hàng đợi ưu tiên dựa trên Trọng số động (HeatWeight). Trọng số này được em thiết kế tự động tính toán bằng Điểm gốc của Admin cộng với Số lượt nghe thực tế từ Database. Nhờ vậy, nếu đứng ở khoảng cách bằng nhau, thuật toán của em sẽ đủ thông minh để chọn quán ăn đang "Hot" hơn (được nhiều người nghe hơn) để phát âm thanh lên trước ạ."

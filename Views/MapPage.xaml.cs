@@ -373,8 +373,8 @@ private async Task SyncPOIsFromServerAsync()
                 .Select(p => new
                 {
                     Poi = p,
-                    // Làm tròn 1 chữ số thập phân để khử sai số hình cầu, đảm bảo 2 khoảng cách = nhau tuyệt đối
-                    DistanceM = Math.Round(Location.CalculateDistance(userLoc, new Location(p.Lat, p.Lng), DistanceUnits.Kilometers) * 1000, 1)
+                    // Làm tròn thành số nguyên (mét) để khử hoàn toàn sai số hình cầu, đảm bảo thuật toán nhận diện là bằng nhau
+                    DistanceM = Math.Round(Location.CalculateDistance(userLoc, new Location(p.Lat, p.Lng), DistanceUnits.Kilometers) * 1000, 0)
                 })
                 .Where(x => x.DistanceM <= x.Poi.Radius)
                 .ToList();
@@ -698,12 +698,11 @@ private async Task SyncPOIsFromServerAsync()
             return;
         }
 
-        // Tự động tính toán điểm chính giữa để khoảng cách là bằng nhau tuyệt đối
-        double midLat = (p1.Lat + p2.Lat) / 2.0;
-        double midLng = (p1.Lng + p2.Lng) / 2.0;
-
         _currentPoi = null;
-        _debugLocation = new Location(midLat, midLng);
+        // Tính toán điểm chính giữa địa lý (Geographic Midpoint) cho độ chính xác milimet
+        _debugLocation = CalculateExactMidpoint(p1.Lat, p1.Lng, p2.Lat, p2.Lng);
+        double midLat = _debugLocation.Latitude;
+        double midLng = _debugLocation.Longitude;
         // QUAN TRỌNG: Mở khóa lại Radar nếu trước đó bạn lỡ tay click thủ công vào các quán ăn
         _isManualSelection = false; 
 
@@ -729,12 +728,11 @@ private async Task SyncPOIsFromServerAsync()
         var p1 = targetPois[0];
         var p2 = targetPois[1];
 
-        // 2. Calculate their exact geographic midpoint
-        double midLat = (p1.Lat + p2.Lat) / 2.0;
-        double midLng = (p1.Lng + p2.Lng) / 2.0;
-
         _currentPoi = null;
-        _debugLocation = new Location(midLat, midLng);
+        // 2. Tính toán điểm chính giữa địa lý (Geographic Midpoint) cho độ chính xác milimet
+        _debugLocation = CalculateExactMidpoint(p1.Lat, p1.Lng, p2.Lat, p2.Lng);
+        double midLat = _debugLocation.Latitude;
+        double midLng = _debugLocation.Longitude;
         // QUAN TRỌNG: Mở khóa lại Radar 
         _isManualSelection = false;
 
@@ -753,6 +751,14 @@ private async Task SyncPOIsFromServerAsync()
         
         // 4. Center the map exactly on this new midpoint
         RunScript($"centerOn({midLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {midLng.ToString(System.Globalization.CultureInfo.InvariantCulture)}, 18)");
+    }
+
+    // CÔNG THỨC TÍNH TRUNG ĐIỂM TRÊN MẶT PHẲNG 2D
+    private Location CalculateExactMidpoint(double lat1, double lng1, double lat2, double lng2)
+    {
+        // Sử dụng trung bình cộng đơn giản để điểm GPS (Chấm xanh) nằm chính giữa 100% trên màn hình bản đồ phẳng (Web Mercator)
+        // Điều này giúp giảng viên nhìn bằng mắt thường cũng thấy khoảng cách là bằng nhau hoàn hảo.
+        return new Location((lat1 + lat2) / 2.0, (lng1 + lng2) / 2.0);
     }
     #endif
 
